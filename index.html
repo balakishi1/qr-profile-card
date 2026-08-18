@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>QR Profile Card</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1220; --card:#131c2e; --card2:#0f1729; --border:#243049;
+    --text:#e7ecf7; --muted:#8b9bb8; --accent:#6366f1; --accent2:#8b5cf6;
+    --green:#22c55e; --red:#ef4444; --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:radial-gradient(circle at 20% -10%,#1b2740 0%,var(--bg) 55%);
+    color:var(--text); min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px;}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .top h1{font-size:17px;font-weight:700;}
+  .top span{display:block;font-size:12px;color:var(--muted);}
+
+  /* GATE */
+  .gate{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px 22px;margin-top:40px;text-align:center;}
+  .gate .icon{font-size:36px;margin-bottom:10px;}
+  .gate h2{font-size:18px;margin-bottom:6px;}
+  .gate p{color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.5;}
+  input[type=text],input[type=url],textarea,select{
+    width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    padding:12px 14px;border-radius:10px;font-size:14px;outline:none;
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+  .btn{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
+    padding:13px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;
+    transition:.15s;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:active{transform:scale(.98);}
+  .btn.secondary{background:var(--card2);border:1px solid var(--border);color:var(--text);}
+  .btn.danger{background:var(--red);}
+  .btn.small{width:auto;padding:9px 14px;font-size:13px;}
+  .err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+  .blocked{display:none;}
+  .blocked .icon{color:var(--red);}
+
+  /* TABS */
+  .tabs{display:flex;gap:6px;background:var(--card2);padding:5px;border-radius:12px;margin-bottom:18px;}
+  .tab{flex:1;text-align:center;padding:10px 6px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .tab.active{background:var(--accent);color:#fff;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
+  .card h3{font-size:14px;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+
+  .link-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .link-row select{flex:0 0 110px;}
+  .link-row input{flex:1;}
+  .link-row button{flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:10px 12px;cursor:pointer;}
+
+  .qr-preview{display:flex;justify-content:center;padding:20px;background:#fff;border-radius:14px;margin-bottom:14px;}
+  .row{display:flex;gap:10px;}
+  .row .btn{flex:1;}
+  .swatches{display:flex;gap:8px;margin-bottom:12px;}
+  .swatch{width:32px;height:32px;border-radius:8px;cursor:pointer;border:2px solid transparent;}
+  .swatch.selected{border-color:#fff;}
+
+  /* COMPOSER */
+  .drop{border:2px dashed var(--border);border-radius:14px;padding:26px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:14px;}
+  .drop:hover{border-color:var(--accent);}
+  .composer-stage{position:relative;width:100%;background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px;touch-action:none;}
+  .composer-stage img.bg{width:100%;display:block;pointer-events:none;}
+  .qr-handle{position:absolute;cursor:grab;touch-action:none;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));}
+  .qr-handle img{width:100%;display:block;border-radius:6px;}
+  .qr-handle:active{cursor:grabbing;}
+  .slider-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .slider-row label{font-size:12px;color:var(--muted);flex:0 0 60px;}
+  .slider-row input[type=range]{flex:1;}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;background:#0f2818;color:var(--green);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;}
+  .muted{color:var(--muted);font-size:12px;}
+  .hidden{display:none !important;}
+  a.share-link{color:var(--accent);word-break:break-all;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo">🔗</div>
+    <div>
+      <h1>QR Profile Card</h1>
+      <span id="ownerLabel">Sosial şəbəkə & QR alətin</span>
+    </div>
+  </div>
+
+  <!-- GATE -->
+  <div class="gate" id="gate">
+    <div class="icon">🔑</div>
+    <h2>Lisenziya açarını daxil et</h2>
+    <p>Bu cihaz ilk dəfə açırsan, açar avtomatik bu cihaza bağlanacaq. Başqa cihazdan açmaq mümkün olmayacaq.</p>
+    <div class="field">
+      <input type="text" id="licenseInput" placeholder="məs: A1B2C3D4" style="text-align:center;letter-spacing:2px;text-transform:uppercase;">
+    </div>
+    <button class="btn" onclick="doActivate()">Aktivləşdir</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+
+  <!-- BLOCKED -->
+  <div class="gate blocked" id="blocked">
+    <div class="icon">⛔</div>
+    <h2>Bu cihazda icazə yoxdur</h2>
+    <p>Bu lisenziya artıq başqa bir cihaza bağlıdır. Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.</p>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <div class="tabs">
+      <div class="tab active" data-tab="profile">Profil</div>
+      <div class="tab" data-tab="qr">QR Kod</div>
+      <div class="tab" data-tab="compose">Post üzərinə</div>
+    </div>
+
+    <!-- PROFILE PANEL -->
+    <div class="panel active" id="panel-profile">
+      <div class="card">
+        <h3>Şəxsi məlumat</h3>
+        <div class="field">
+          <label>Ad / Brend adı</label>
+          <input type="text" id="ownerName" placeholder="Balakişi / Casa Eleganza">
+        </div>
+        <div class="field">
+          <label>Haqqımda (bio)</label>
+          <textarea id="bioText" rows="3" placeholder="Qısa məlumat yaz..."></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Sosial şəbəkə linkləri</h3>
+        <div id="linksList"></div>
+        <button class="btn secondary small" onclick="addLinkRow()">+ Link əlavə et</button>
+      </div>
+
+      <button class="btn" onclick="saveProfile()">Yadda saxla</button>
+      <div class="err" id="profileMsg" style="color:var(--green);"></div>
+    </div>
+
+    <!-- QR PANEL -->
+    <div class="panel" id="panel-qr">
+      <div class="card">
+        <h3>QR rəngi</h3>
+        <div class="swatches" id="colorSwatches"></div>
+        <div class="qr-preview" id="qrPreview"></div>
+        <div class="row">
+          <button class="btn secondary" onclick="downloadQR()">📥 Şəkil kimi yüklə</button>
+          <button class="btn secondary" onclick="shareQR()">📤 Paylaş</button>
+        </div>
+        <p class="muted" style="margin-top:10px;">Bu QR kodu skan edən hər kəs sənin ictimai profil səhifəni (bütün linklər + bio) görəcək.</p>
+        <div id="profileLinkBox" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <!-- COMPOSER PANEL -->
+    <div class="panel" id="panel-compose">
+      <div class="card">
+        <h3>Post şəkli / PDF yüklə</h3>
+        <div class="drop" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          📁 Şəkil (JPG/PNG) və ya PDF seç
+        </div>
+        <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
+
+        <div id="composerStageWrap" class="hidden">
+          <div class="composer-stage" id="composerStage">
+            <img class="bg" id="composerBg">
+            <div class="qr-handle" id="qrHandle"><img id="qrHandleImg"></div>
+          </div>
+          <div class="slider-row">
+            <label>QR ölçü</label>
+            <input type="range" id="qrSizeSlider" min="8" max="40" value="18">
+          </div>
+          <p class="muted" style="margin-bottom:12px;">QR-ı barmağınla / siçanla sürüşdürüb istədiyin yerə qoy.</p>
+          <div class="row">
+            <button class="btn secondary" onclick="exportComposedImage()">📥 PNG kimi yüklə</button>
+            <button class="btn secondary" id="exportPdfBtn" onclick="exportComposedPDF()">📄 PDF kimi yüklə</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;">
+      <span class="badge">✅ Bu cihaz aktivdir</span>
+    </div>
+  </div>
+</div>
+
+<script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const FN = '/.netlify/functions';
+let session = JSON.parse(localStorage.getItem('qpc_session') || 'null');
+let deviceId = null;
+let currentProfileData = { bio: '', links: [] };
+let currentSlug = null;
+let qrColor = '#0f172a';
+let qrObj = null;
+
+/* ---------- DEVICE FINGERPRINT ---------- */
+async function getDeviceId() {
+  let id = localStorage.getItem('qpc_device_id');
+  if (id) return id;
+  const parts = [
+    navigator.userAgent, navigator.language,
+    screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.hardwareConcurrency || '', navigator.platform || ''
+  ];
+  try {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    ctx.textBaseline = 'top'; ctx.font = '14px Arial';
+    ctx.fillText('qpc-fingerprint-lock', 2, 2);
+    parts.push(c.toDataURL());
+  } catch (e) {}
+  const enc = new TextEncoder().encode(parts.join('|'));
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  id = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  localStorage.setItem('qpc_device_id', id);
+  return id;
+}
+
+/* ---------- BOOT / GATE ---------- */
+async function boot() {
+  deviceId = await getDeviceId();
+  if (session && session.license_key && session.token) {
+    try {
+      const r = await fetch(`${FN}/verify`, { method: 'POST', body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token }) });
+      const j = await r.json();
+      if (j.valid) { enterApp(j); return; }
+    } catch (e) {}
+    localStorage.removeItem('qpc_session');
+    session = null;
+  }
+  document.getElementById('gate').style.display = 'block';
+}
+
+async function doActivate() {
+  const key = document.getElementById('licenseInput').value.trim().toUpperCase();
+  const errBox = document.getElementById('gateErr');
+  errBox.style.display = 'none';
+  if (!key) return;
+  const device_info = { userAgent: navigator.userAgent, screen: screen.width + 'x' + screen.height, language: navigator.language, platform: navigator.platform };
+  try {
+    const r = await fetch(`${FN}/activate`, { method: 'POST', body: JSON.stringify({ license_key: key, device_id: deviceId, device_info }) });
+    const j = await r.json();
+    if (j.success) {
+      session = { license_key: key, token: j.token };
+      localStorage.setItem('qpc_session', JSON.stringify(session));
+      const vr = await fetch(`${FN}/verify`, { method: 'POST', body: JSON.stringify({ license_key: key, device_id: deviceId, token: j.token }) });
+      const vj = await vr.json();
+      enterApp(vj);
+    } else if (j.reason === 'device_mismatch') {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('blocked').style.display = 'block';
+    } else {
+      errBox.textContent = j.reason === 'not_found' ? 'Bu açar tapılmadı.' : (j.reason === 'inactive' ? 'Bu açar deaktivdir.' : 'Xəta baş verdi.');
+      errBox.style.display = 'block';
+    }
+  } catch (e) {
+    errBox.textContent = 'Şəbəkə xətası.';
+    errBox.style.display = 'block';
+  }
+}
+
+function enterApp(j) {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('blocked').style.display = 'none';
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('ownerName').value = j.owner_name || '';
+  document.getElementById('ownerLabel').textContent = j.owner_name || 'Sosial şəbəkə & QR alətin';
+  currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
+  currentSlug = j.profile_slug;
+  document.getElementById('bioText').value = currentProfileData.bio || '';
+  renderLinks();
+  buildColorSwatches();
+  renderQR();
+}
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  if (t.dataset.tab === 'qr') renderQR();
+}));
+
+/* ---------- LINKS ---------- */
+const LINK_TYPES = [
+  ['instagram','Instagram'],['facebook','Facebook'],['linkedin','LinkedIn'],
+  ['telegram','Telegram'],['whatsapp','WhatsApp'],['tiktok','TikTok'],
+  ['youtube','YouTube'],['website','Vebsayt'],['email','E-mail'],['phone','Telefon'],['other','Digər']
+];
+
+function renderLinks() {
+  const box = document.getElementById('linksList');
+  box.innerHTML = '';
+  (currentProfileData.links || []).forEach((l, i) => box.appendChild(makeLinkRow(l, i)));
+}
+
+function makeLinkRow(link, idx) {
+  const row = document.createElement('div');
+  row.className = 'link-row';
+  const sel = document.createElement('select');
+  LINK_TYPES.forEach(([v, label]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = label;
+    if (link.type === v) o.selected = true;
+    sel.appendChild(o);
+  });
+  const input = document.createElement('input');
+  input.type = 'text'; input.placeholder = 'https://...'; input.value = link.url || '';
+  const del = document.createElement('button');
+  del.textContent = '✕';
+  del.onclick = () => { currentProfileData.links.splice(idx, 1); renderLinks(); };
+  sel.onchange = () => { currentProfileData.links[idx].type = sel.value; };
+  input.oninput = () => { currentProfileData.links[idx].url = input.value; currentProfileData.links[idx].label = LINK_TYPES.find(t=>t[0]===sel.value)[1]; };
+  row.appendChild(sel); row.appendChild(input); row.appendChild(del);
+  return row;
+}
+
+function addLinkRow() {
+  if (!currentProfileData.links) currentProfileData.links = [];
+  currentProfileData.links.push({ type: 'instagram', url: '', label: 'Instagram' });
+  renderLinks();
+}
+
+async function saveProfile() {
+  currentProfileData.bio = document.getElementById('bioText').value;
+  const owner_name = document.getElementById('ownerName').value;
+  const r = await fetch(`${FN}/update-profile`, {
+    method: 'POST',
+    body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, profile_data: currentProfileData, owner_name })
+  });
+  const j = await r.json();
+  const msg = document.getElementById('profileMsg');
+  if (j.success) {
+    msg.textContent = '✅ Yadda saxlanıldı';
+    document.getElementById('ownerLabel').textContent = owner_name || 'Sosial şəbəkə & QR alətin';
+    renderQR();
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Xəta: yadda saxlanmadı';
+  }
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
+
+/* ---------- QR ---------- */
+function buildColorSwatches() {
+  const colors = ['#0f172a','#6366f1','#8b5cf6','#ef4444','#22c55e','#f59e0b','#0891b2'];
+  const box = document.getElementById('colorSwatches');
+  box.innerHTML = '';
+  colors.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (c === qrColor ? ' selected' : '');
+    sw.style.background = c;
+    sw.onclick = () => { qrColor = c; buildColorSwatches(); renderQR(); };
+    box.appendChild(sw);
+  });
+}
+
+function getProfileUrl() {
+  return `${location.origin}/p/${currentSlug}`;
+}
+
+function renderQR() {
+  const box = document.getElementById('qrPreview');
+  box.innerHTML = '';
+  new QRCode(box, {
+    text: getProfileUrl(),
+    width: 220, height: 220,
+    colorDark: qrColor, colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+  document.getElementById('profileLinkBox').innerHTML =
+    `<span class="muted">Profil linki: </span><a class="share-link" href="${getProfileUrl()}" target="_blank">${getProfileUrl()}</a>`;
+  setTimeout(() => prepareHandleQR(), 150);
+}
+
+function getQrCanvas(sourceBox) {
+  const img = sourceBox.querySelector('img');
+  const canvas = sourceBox.querySelector('canvas');
+  return canvas || img;
+}
+
+function downloadQR() {
+  const box = document.getElementById('qrPreview');
+  const el = getQrCanvas(box);
+  const link = document.createElement('a');
+  link.download = 'qr-kod.png';
+  link.href = el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src;
+  link.click();
+}
+
+async function shareQR() {
+  const box = document.getElementById('qrPreview');
+  const el = getQrCanvas(box);
+  const dataUrl = el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src;
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], 'qr-kod.png', { type: 'image/png' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Mənim QR kodum', text: getProfileUrl() }); return; } catch (e) {}
+  }
+  downloadQR();
+}
+
+/* ---------- COMPOSER ---------- */
+let composerImgDataUrl = null;
+let isPdfSource = false;
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.type === 'application/pdf') {
+    isPdfSource = true;
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    composerImgDataUrl = canvas.toDataURL('image/png');
+  } else {
+    isPdfSource = false;
+    composerImgDataUrl = await new Promise((res) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
+  document.getElementById('exportPdfBtn').style.display = isPdfSource ? 'block' : 'none';
+  loadComposer();
+});
+
+let handlePos = { xPct: 70, yPct: 70 };
+let handleSizePct = 18;
+
+function loadComposer() {
+  const bg = document.getElementById('composerBg');
+  bg.src = composerImgDataUrl;
+  document.getElementById('composerStageWrap').classList.remove('hidden');
+  bg.onload = () => { prepareHandleQR(); positionHandle(); };
+}
+
+function prepareHandleQR() {
+  const stage = document.getElementById('composerStage');
+  if (!stage || document.getElementById('composerStageWrap').classList.contains('hidden')) return;
+  const box = document.getElementById('qrPreview');
+  const el = getQrCanvas(box);
+  if (!el) return;
+  const dataUrl = el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src;
+  document.getElementById('qrHandleImg').src = dataUrl;
+  positionHandle();
+}
+
+function positionHandle() {
+  const stage = document.getElementById('composerStage');
+  const handle = document.getElementById('qrHandle');
+  const w = stage.clientWidth * (handleSizePct / 100);
+  handle.style.width = w + 'px';
+  handle.style.left = (stage.clientWidth * handlePos.xPct / 100 - w / 2) + 'px';
+  handle.style.top = (stage.clientHeight * handlePos.yPct / 100 - w / 2) + 'px';
+}
+
+document.getElementById('qrSizeSlider').addEventListener('input', (e) => {
+  handleSizePct = +e.target.value;
+  positionHandle();
+});
+
+(function enableDrag() {
+  const handle = document.getElementById('qrHandle');
+  let dragging = false;
+  function start(e) { dragging = true; e.preventDefault(); }
+  function move(e) {
+    if (!dragging) return;
+    const stage = document.getElementById('composerStage');
+    const rect = stage.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    let x = point.clientX - rect.left, y = point.clientY - rect.top;
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+    handlePos.xPct = (x / rect.width) * 100;
+    handlePos.yPct = (y / rect.height) * 100;
+    positionHandle();
+  }
+  function end() { dragging = false; }
+  handle.addEventListener('mousedown', start);
+  handle.addEventListener('touchstart', start, { passive: false });
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('mouseup', end);
+  window.addEventListener('touchend', end);
+  window.addEventListener('resize', positionHandle);
+})();
+
+function renderComposedCanvas() {
+  return new Promise((resolve) => {
+    const bg = document.getElementById('composerBg');
+    const naturalW = bg.naturalWidth, naturalH = bg.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = naturalW; canvas.height = naturalH;
+    const ctx = canvas.getContext('2d');
+    const bgImg = new Image();
+    bgImg.onload = () => {
+      ctx.drawImage(bgImg, 0, 0, naturalW, naturalH);
+      const qrImg = new Image();
+      qrImg.onload = () => {
+        const qrSize = naturalW * (handleSizePct / 100);
+        const cx = naturalW * (handlePos.xPct / 100);
+        const cy = naturalH * (handlePos.yPct / 100);
+        ctx.drawImage(qrImg, cx - qrSize / 2, cy - qrSize / 2, qrSize, qrSize);
+        resolve(canvas);
+      };
+      qrImg.src = document.getElementById('qrHandleImg').src;
+    };
+    bgImg.src = composerImgDataUrl;
+  });
+}
+
+async function exportComposedImage() {
+  const canvas = await renderComposedCanvas();
+  const link = document.createElement('a');
+  link.download = 'post-qr.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function exportComposedPDF() {
+  const canvas = await renderComposedCanvas();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'l' : 'p', unit: 'px', format: [canvas.width, canvas.height] });
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save('post-qr.pdf');
+}
+
+boot();
+</script>
+</body>
+</html>

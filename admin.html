@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — QR Profile Card</title>
+<style>
+  :root{
+    --bg:#0b1220; --card:#131c2e; --card2:#0f1729; --border:#243049;
+    --text:#e7ecf7; --muted:#8b9bb8; --accent:#6366f1; --green:#22c55e; --red:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px;}
+  h1{font-size:20px;margin-bottom:4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;}
+  input,select{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;outline:none;}
+  .btn{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn.red{background:var(--red);}
+  .btn.gray{background:var(--card2);border:1px solid var(--border);color:var(--text);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{text-align:left;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--border);font-weight:600;}
+  td{padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .pill{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .pill.active{background:#0f2818;color:var(--green);}
+  .pill.inactive{background:#2a1414;color:var(--red);}
+  .pill.bound{background:#1a2440;color:#a5b4fc;}
+  .pill.free{background:#241a30;color:#c4b5fd;}
+  .actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .actions button{font-size:11px;padding:6px 9px;border-radius:6px;border:none;cursor:pointer;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  code{background:var(--card2);padding:2px 6px;border-radius:5px;font-size:11.5px;}
+  #loginBox{max-width:340px;margin:80px auto;text-align:center;}
+  #loginBox input{width:100%;margin-bottom:10px;text-align:center;}
+  #loginBox .btn{width:100%;}
+  .hidden{display:none !important;}
+  .tabbar{display:flex;gap:8px;margin-bottom:16px;}
+  .tabbar div{padding:8px 14px;border-radius:8px;background:var(--card2);border:1px solid var(--border);cursor:pointer;font-size:13px;}
+  .tabbar div.active{background:var(--accent);border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loginBox" class="card">
+    <h1>Admin girişi</h1>
+    <p class="sub">Panelə giriş üçün şifrəni daxil et</p>
+    <input type="password" id="pwd" placeholder="Admin şifrəsi">
+    <button class="btn" onclick="login()">Daxil ol</button>
+    <div id="loginErr" style="color:var(--red);font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <div id="panel" class="hidden">
+    <h1>QR Profile Card — Admin</h1>
+    <p class="sub">Lisenziyaları yarat, cihazları idarə et, icazəsiz cəhdlərə bax</p>
+
+    <div class="tabbar">
+      <div class="tab active" data-t="licenses">Lisenziyalar</div>
+      <div class="tab" data-t="attempts">Cəhd logları</div>
+    </div>
+
+    <div id="t-licenses">
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Yeni lisenziya yarat</h3>
+        <div class="row">
+          <input type="text" id="newOwner" placeholder="Sahibin adı (məs: Elvin - müştəri)">
+          <button class="btn" onclick="createLicense()">+ Yarat</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <table id="licTable">
+          <thead><tr><th>Açar</th><th>Sahib</th><th>Status</th><th>Cihaz</th><th>Profil</th><th>Əməliyyat</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="t-attempts" class="hidden">
+      <div class="card">
+        <table id="attTable">
+          <thead><tr><th>Vaxt</th><th>Açar</th><th>Nəticə</th><th>IP</th><th>Cihaz məlumatı</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FN = '/.netlify/functions';
+let adminPwd = sessionStorage.getItem('qpc_admin_pwd') || '';
+
+function h() { return { 'x-admin-password': adminPwd }; }
+
+async function login() {
+  adminPwd = document.getElementById('pwd').value;
+  const r = await fetch(`${FN}/admin-licenses?action=list`, { headers: h() });
+  if (r.status === 200) {
+    sessionStorage.setItem('qpc_admin_pwd', adminPwd);
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+    loadLicenses();
+  } else {
+    document.getElementById('loginErr').textContent = 'Yanlış şifrə';
+  }
+}
+
+if (adminPwd) {
+  fetch(`${FN}/admin-licenses?action=list`, { headers: h() }).then(r => {
+    if (r.status === 200) {
+      document.getElementById('loginBox').classList.add('hidden');
+      document.getElementById('panel').classList.remove('hidden');
+      loadLicenses();
+    }
+  });
+}
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('t-licenses').classList.toggle('hidden', t.dataset.t !== 'licenses');
+  document.getElementById('t-attempts').classList.toggle('hidden', t.dataset.t !== 'attempts');
+  if (t.dataset.t === 'attempts') loadAttempts();
+}));
+
+async function createLicense() {
+  const owner_name = document.getElementById('newOwner').value.trim();
+  const r = await fetch(`${FN}/admin-licenses?action=create`, { method: 'POST', headers: h(), body: JSON.stringify({ owner_name }) });
+  const j = await r.json();
+  if (j.license) {
+    document.getElementById('newOwner').value = '';
+    loadLicenses();
+    alert(`Yaradıldı!\nAçar: ${j.license.license_key}\nBu açarı müştəriyə göndər — o özü öz cihazında aktivləşdirsin.`);
+  } else {
+    alert('Xəta: ' + (j.error || 'bilinməyən'));
+  }
+}
+
+async function loadLicenses() {
+  const r = await fetch(`${FN}/admin-licenses?action=list`, { headers: h() });
+  const j = await r.json();
+  const tbody = document.querySelector('#licTable tbody');
+  tbody.innerHTML = '';
+  (j.licenses || []).forEach(l => {
+    const tr = document.createElement('tr');
+    const deviceInfo = l.device_info ? `${(l.device_info.platform||'-')}<br><span style="color:var(--muted)">${(l.device_info.userAgent||'').slice(0,40)}...</span>` : '-';
+    tr.innerHTML = `
+      <td><code>${l.license_key}</code></td>
+      <td>${l.owner_name || '-'}</td>
+      <td><span class="pill ${l.is_active ? 'active' : 'inactive'}">${l.is_active ? 'Aktiv' : 'Deaktiv'}</span></td>
+      <td><span class="pill ${l.device_fingerprint ? 'bound' : 'free'}">${l.device_fingerprint ? 'Bağlıdır' : 'Boşdur'}</span><br>${deviceInfo}</td>
+      <td>${l.profile_slug ? `<a href="/p/${l.profile_slug}" target="_blank" style="color:var(--accent);font-size:11px;">/p/${l.profile_slug}</a>` : '-'}</td>
+      <td class="actions">
+        ${l.is_active
+          ? `<button class="btn red" onclick="revoke('${l.license_key}')">Söndür</button>`
+          : `<button class="btn gray" onclick="activate('${l.license_key}')">Aktivləşdir</button>`}
+        <button class="btn gray" onclick="resetDevice('${l.license_key}')">Cihazı sıfırla</button>
+        <button class="btn red" onclick="del('${l.license_key}')">Sil</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function revoke(key) { await fetch(`${FN}/admin-licenses?action=revoke`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function activate(key) { await fetch(`${FN}/admin-licenses?action=activate`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function resetDevice(key) { if(!confirm('Bu açarın cihaz bağlantısını sıfırlamaq istəyirsən? Növbəti açan cihaz avtomatik bağlanacaq.')) return; await fetch(`${FN}/admin-licenses?action=reset_device`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function del(key) { if(!confirm('Silmək istədiyinə əminsən?')) return; await fetch(`${FN}/admin-licenses?action=delete`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+
+async function loadAttempts() {
+  const r = await fetch(`${FN}/admin-licenses?action=attempts`, { headers: h() });
+  const j = await r.json();
+  const tbody = document.querySelector('#attTable tbody');
+  tbody.innerHTML = '';
+  (j.attempts || []).forEach(a => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(a.attempted_at).toLocaleString('az-AZ')}</td>
+      <td><code>${a.license_key}</code></td>
+      <td><span class="pill ${a.allowed ? 'active' : 'inactive'}">${a.allowed ? 'İcazəli' : 'İCAZƏSİZ'}</span></td>
+      <td>${a.ip || '-'}</td>
+      <td style="font-size:11px;color:var(--muted);">${a.device_info ? JSON.stringify(a.device_info) : '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+</script>
+</body>
+</html>
