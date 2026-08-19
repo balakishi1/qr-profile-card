@@ -211,10 +211,10 @@
             <input type="range" id="qrSizeSlider" min="8" max="40" value="18">
           </div>
           <div class="field" style="display:flex;align-items:center;gap:8px;">
-            <input type="checkbox" id="captionToggle" style="width:auto;">
+            <input type="checkbox" id="captionToggle" style="width:auto;" checked>
             <label for="captionToggle" style="margin:0;">QR-ın altına alt yazı əlavə et</label>
           </div>
-          <div class="field" id="captionTextWrap" style="display:none;">
+          <div class="field" id="captionTextWrap">
             <input type="text" id="captionText" placeholder="Skan et 👆" value="Skan et 👆">
           </div>
           <p class="muted" style="margin-bottom:12px;">QR-ı barmağınla / siçanla sürüşdürüb istədiyin yerə qoy.</p>
@@ -750,27 +750,47 @@ function buildQrChip() {
   if (!withCaption) return qrDataUrl;
 
   const captionText = document.getElementById('captionText').value || 'Skan et 👆';
-  const qrSize = 220;
-  const pad = 14;
-  const capH = 44;
+  const qrSize = 240;
+  const pad = 18;
+  const capH = 54;
   const canvas = document.createElement('canvas');
   canvas.width = qrSize + pad * 2;
   canvas.height = qrSize + pad * 2 + capH;
   const ctx = canvas.getContext('2d');
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
   ctx.fillStyle = '#ffffff';
-  roundRect(ctx, 0, 0, canvas.width, canvas.height, 16);
+  roundRect(ctx, 0, 0, canvas.width, canvas.height, 20);
   ctx.fill();
-  const qrImg = new Image();
+  ctx.restore();
+
   return new Promise((resolve) => {
+    const qrImg = new Image();
     qrImg.onload = () => {
       ctx.drawImage(qrImg, pad, pad, qrSize, qrSize);
+
+      // divider
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, qrSize + pad + 4);
+      ctx.lineTo(canvas.width - pad, qrSize + pad + 4);
+      ctx.stroke();
+
+      // caption pill
+      const pillY = qrSize + pad + 14;
+      const pillH = capH - 22;
       ctx.fillStyle = qrColor;
-      roundRect(ctx, pad, qrSize + pad + 6, qrSize, capH - 12, 10);
+      roundRect(ctx, pad, pillY, qrSize, pillH, pillH / 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 16px -apple-system, Arial';
+      ctx.font = '700 15px -apple-system, Arial';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(captionText, canvas.width / 2, qrSize + pad + 6 + (capH - 12) / 2 + 1);
+      ctx.fillText(captionText, canvas.width / 2, pillY + pillH / 2 + 1);
+
       resolve(canvas.toDataURL('image/png'));
     };
     qrImg.src = qrDataUrl;

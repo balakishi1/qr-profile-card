@@ -14,7 +14,21 @@ const ICONS = {
 };
 
 exports.handler = async (event) => {
-  const slug = event.queryStringParameters && event.queryStringParameters.slug;
+  let slug = event.queryStringParameters && event.queryStringParameters.slug;
+
+  if (!slug) {
+    // Fallback: birbaşa path-dan çıxar (redirect query ötürməsə belə işləsin)
+    const candidates = [event.path || ''];
+    if (event.rawUrl) {
+      try { candidates.push(new URL(event.rawUrl).pathname); } catch (e) {}
+    }
+    for (const rawPath of candidates) {
+      const parts = rawPath.split('/').filter(Boolean);
+      const idx = parts.indexOf('p');
+      if (idx !== -1 && parts[idx + 1]) { slug = parts[idx + 1]; break; }
+    }
+  }
+
   if (!slug) return { statusCode: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' }, body: '<h1>Tapılmadı</h1><p>Slug göndərilmədi.</p>' };
 
   const { data: license, error } = await supabase
