@@ -144,6 +144,10 @@
           <input type="text" id="ownerName" placeholder="Balakişi / Casa Eleganza">
         </div>
         <div class="field">
+          <label>Telefon nömrəsi (vizitkada göstəriləcək)</label>
+          <input type="text" id="phoneInput" placeholder="+994 XX XXX XX XX">
+        </div>
+        <div class="field">
           <label>Haqqımda (bio)</label>
           <textarea id="bioText" rows="3" placeholder="Qısa məlumat yaz..."></textarea>
         </div>
@@ -317,6 +321,7 @@ function enterApp(j) {
   currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
   currentSlug = j.profile_slug;
   document.getElementById('bioText').value = currentProfileData.bio || '';
+  document.getElementById('phoneInput').value = currentProfileData.phone || '';
   document.getElementById('taglineInput').value = currentProfileData.tagline || 'Bütün sosial şəbəkələrim üçün skan et';
   renderAvatarPreview();
   renderLinks();
@@ -409,6 +414,7 @@ function addLinkRow() {
 async function saveProfile() {
   currentProfileData.bio = document.getElementById('bioText').value;
   currentProfileData.tagline = document.getElementById('taglineInput').value;
+  currentProfileData.phone = document.getElementById('phoneInput').value;
   const owner_name = document.getElementById('ownerName').value;
   const r = await fetch(`${FN}/update-profile`, {
     method: 'POST',
@@ -470,30 +476,84 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function drawScanCorners(ctx, x, y, size, len, thick, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thick;
+  ctx.lineCap = 'round';
+  const corners = [
+    [[x, y + len], [x, y], [x + len, y]],
+    [[x + size - len, y], [x + size, y], [x + size, y + len]],
+    [[x, y + size - len], [x, y + size], [x + len, y + size]],
+    [[x + size - len, y + size], [x + size, y + size], [x + size, y + size - len]]
+  ];
+  corners.forEach(pts => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    ctx.lineTo(pts[1][0], pts[1][1]);
+    ctx.lineTo(pts[2][0], pts[2][1]);
+    ctx.stroke();
+  });
+}
+
 async function renderVizitka() {
   const box = document.getElementById('qrPreview');
   const qrEl = getQrCanvas(box);
   if (!qrEl) return;
   const qrDataUrl = qrEl.tagName === 'CANVAS' ? qrEl.toDataURL('image/png') : qrEl.src;
 
-  const W = 480, H = 700;
+  const W = 520, H = 800;
   const canvas = document.getElementById('vizitkaCanvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Background
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#141e33');
-  grad.addColorStop(1, '#0b1220');
-  ctx.fillStyle = grad;
-  roundRect(ctx, 0, 0, W, H, 28);
+  // Base background
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#0d1526');
+  bgGrad.addColorStop(1, '#141c33');
+  ctx.fillStyle = bgGrad;
+  roundRect(ctx, 0, 0, W, H, 32);
+  ctx.fill();
+
+  // Subtle radial glow accent (top)
+  const glow = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 320);
+  glow.addColorStop(0, 'rgba(99,102,241,0.28)');
+  glow.addColorStop(1, 'rgba(99,102,241,0)');
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 32);
+  ctx.clip();
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Outer border
+  ctx.save();
+  roundRect(ctx, 1.5, 1.5, W - 3, H - 3, 30);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // Top accent bar (brand line)
+  const barGrad = ctx.createLinearGradient(0, 0, W, 0);
+  barGrad.addColorStop(0, '#6366f1');
+  barGrad.addColorStop(1, '#8b5cf6');
+  ctx.fillStyle = barGrad;
+  roundRect(ctx, 40, 34, W - 80, 4, 2);
   ctx.fill();
 
   // Avatar
-  const avatarSize = 120;
+  const avatarSize = 128;
   const avatarX = W / 2 - avatarSize / 2;
-  const avatarY = 50;
+  const avatarY = 66;
   ctx.save();
+  ctx.shadowColor = 'rgba(99,102,241,0.5)';
+  ctx.shadowBlur = 24;
+  ctx.beginPath();
+  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2 + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
   ctx.beginPath();
   ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
   ctx.closePath();
@@ -513,7 +573,7 @@ async function renderVizitka() {
     ctx.fillStyle = g2;
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 52px -apple-system, Arial';
+    ctx.font = '600 54px -apple-system, Arial';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const initial = (document.getElementById('ownerName').value || '?').trim().slice(0, 1).toUpperCase();
     ctx.fillText(initial, W / 2, avatarY + avatarSize / 2 + 4);
@@ -521,45 +581,80 @@ async function renderVizitka() {
   ctx.restore();
 
   // Name
-  ctx.fillStyle = '#e7ecf7';
-  ctx.font = 'bold 30px -apple-system, Arial';
+  ctx.fillStyle = '#f3f5fb';
+  ctx.font = '700 32px -apple-system, Arial';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   const name = document.getElementById('ownerName').value || 'İsim';
-  ctx.fillText(name, W / 2, avatarY + avatarSize + 46);
+  ctx.fillText(name, W / 2, avatarY + avatarSize + 48);
 
   // Tagline
   const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
-  ctx.fillStyle = '#8b9bb8';
-  ctx.font = '16px -apple-system, Arial';
-  ctx.fillText(tagline, W / 2, avatarY + avatarSize + 76, W - 80);
+  ctx.fillStyle = '#94a3c4';
+  ctx.font = '400 16px -apple-system, Arial';
+  ctx.fillText(tagline, W / 2, avatarY + avatarSize + 78, W - 90);
 
-  // QR box
+  // Phone pill
+  const phone = document.getElementById('phoneInput').value;
+  let qrTop = avatarY + avatarSize + 108;
+  if (phone) {
+    ctx.font = '600 17px -apple-system, Arial';
+    const label = '📞  ' + phone;
+    const textW = ctx.measureText(label).width;
+    const pillW = textW + 44, pillH = 42;
+    const pillX = W / 2 - pillW / 2, pillY = qrTop;
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    roundRect(ctx, pillX, pillY, pillW, pillH, 21);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 21);
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f7';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
+    qrTop += pillH + 30;
+  } else {
+    qrTop += 6;
+  }
+
+  // QR white box with scan-corner frame
   const qrBoxSize = 260;
   const qrBoxX = W / 2 - qrBoxSize / 2;
-  const qrBoxY = avatarY + avatarSize + 110;
+  const qrBoxY = qrTop;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 12;
   ctx.fillStyle = '#ffffff';
-  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 18);
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
   ctx.fill();
+  ctx.restore();
+
   await new Promise((resolve) => {
     const qrImg = new Image();
     qrImg.onload = () => {
-      const pad = 18;
+      const pad = 20;
       ctx.drawImage(qrImg, qrBoxX + pad, qrBoxY + pad, qrBoxSize - pad * 2, qrBoxSize - pad * 2);
       resolve();
     };
     qrImg.src = qrDataUrl;
   });
 
+  drawScanCorners(ctx, qrBoxX - 14, qrBoxY - 14, qrBoxSize + 28, 26, 4, '#8b5cf6');
+
   // Footer
   ctx.fillStyle = '#5b6b8c';
-  ctx.font = '13px -apple-system, Arial';
-  ctx.fillText('📷 SKAN ET  •  QR PROFILE CARD', W / 2, H - 34);
+  ctx.font = '600 12px -apple-system, Arial';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('S K A N   E T   ·   Q R   P R O F I L E   C A R D', W / 2, H - 40);
 
   document.getElementById('vizitkaPreviewBox').innerHTML =
-    `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);">`;
+    `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:20px;box-shadow:0 16px 40px rgba(0,0,0,.5);">`;
 }
 
 document.getElementById('taglineInput').addEventListener('input', () => renderVizitka());
+document.getElementById('phoneInput').addEventListener('input', () => renderVizitka());
+document.getElementById('ownerName').addEventListener('input', () => renderVizitka());
 
 function downloadVizitka() {
   const canvas = document.getElementById('vizitkaCanvas');
