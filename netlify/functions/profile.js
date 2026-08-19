@@ -63,6 +63,26 @@ exports.handler = async (event) => {
     </a>`;
   }).join('');
 
+  const albums = (d.albums || []).filter(a => a.items && a.items.length);
+  const albumsHtml = albums.map((album) => {
+    const items = album.items.map((item) => {
+      if (item.type === 'video') {
+        return `<div class="media-cell" onclick="openLightbox('${esc(item.url)}','video')">
+          <video src="${esc(item.url)}" muted preload="metadata"></video>
+          <span class="play-icon">▶</span>
+        </div>`;
+      }
+      return `<div class="media-cell" onclick="openLightbox('${esc(item.url)}','image')">
+        <img src="${esc(item.url)}" loading="lazy">
+      </div>`;
+    }).join('');
+    return `
+    <div class="album-section">
+      <div class="album-title">${esc(album.name)}</div>
+      <div class="media-grid">${items}</div>
+    </div>`;
+  }).join('');
+
   const html = `<!DOCTYPE html>
 <html lang="az"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -72,11 +92,12 @@ exports.handler = async (event) => {
   body {
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: radial-gradient(circle at 50% -10%, #1e2a4a 0%, #0b1220 55%);
-    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    min-height:100vh; padding:24px; display:flex; justify-content:center;
   }
+  .page { width:100%; max-width:460px; }
   .card {
     position:relative; background:#101a30; border:1px solid rgba(255,255,255,.08);
-    border-radius:28px; max-width:420px; width:100%; padding:44px 30px 32px; text-align:center;
+    border-radius:28px; width:100%; padding:44px 30px 32px; text-align:center;
     box-shadow:0 30px 70px rgba(0,0,0,.55); overflow:hidden;
   }
   .accent-bar { position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,#6366f1,#8b5cf6); }
@@ -114,17 +135,66 @@ exports.handler = async (event) => {
   .arrow { color:#4b5a7a; font-size:14px; }
 
   .footer { margin-top:22px; font-size:10.5px; letter-spacing:1.5px; color:#3f4d6b; font-weight:600; }
+
+  .album-section { margin-top:22px; }
+  .album-title { color:#c7d0e8; font-weight:700; font-size:15px; margin-bottom:10px; text-align:left; padding-left:2px; }
+  .media-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .media-cell {
+    position:relative; aspect-ratio:1; border-radius:12px; overflow:hidden; cursor:pointer;
+    background:#0d1526; border:1px solid rgba(255,255,255,.06);
+  }
+  .media-cell img, .media-cell video { width:100%; height:100%; object-fit:cover; display:block; }
+  .play-icon {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:34px; height:34px; background:rgba(0,0,0,.55); color:#fff; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:13px;
+  }
+
+  .lightbox {
+    display:none; position:fixed; inset:0; background:rgba(5,8,16,.92); z-index:999;
+    align-items:center; justify-content:center; padding:24px;
+  }
+  .lightbox.open { display:flex; }
+  .lightbox img, .lightbox video { max-width:100%; max-height:90vh; border-radius:12px; }
+  .lightbox-close {
+    position:absolute; top:20px; right:20px; width:40px; height:40px; border-radius:50%;
+    background:rgba(255,255,255,.1); color:#fff; border:none; font-size:20px; cursor:pointer;
+  }
 </style></head>
 <body>
-  <div class="card">
-    <div class="accent-bar"></div>
-    <div class="avatar">${avatarHtml}</div>
-    <h1>${esc(license.owner_name || '')}</h1>
-    ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
-    ${phoneBlock}
-    <div class="links">${links || '<p style="color:#5b6b8c;font-size:13px;">Hələ link əlavə olunmayıb</p>'}</div>
-    <div class="footer">QR PROFILE CARD</div>
+  <div class="page">
+    <div class="card">
+      <div class="accent-bar"></div>
+      <div class="avatar">${avatarHtml}</div>
+      <h1>${esc(license.owner_name || '')}</h1>
+      ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
+      ${phoneBlock}
+      <div class="links">${links || '<p style="color:#5b6b8c;font-size:13px;">Hələ link əlavə olunmayıb</p>'}</div>
+      ${albumsHtml}
+      <div class="footer">QR PROFILE CARD</div>
+    </div>
   </div>
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox(event)">✕</button>
+    <div id="lightboxContent"></div>
+  </div>
+
+  <script>
+    function openLightbox(url, type) {
+      const box = document.getElementById('lightbox');
+      const content = document.getElementById('lightboxContent');
+      content.innerHTML = type === 'video'
+        ? '<video src="' + url + '" controls autoplay playsinline></video>'
+        : '<img src="' + url + '">';
+      box.classList.add('open');
+    }
+    function closeLightbox(e) {
+      if (e.target.tagName === 'VIDEO') return;
+      document.getElementById('lightbox').classList.remove('open');
+      document.getElementById('lightboxContent').innerHTML = '';
+    }
+  </script>
 </body></html>`;
 
   return { statusCode: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' }, body: html };

@@ -30,3 +30,8 @@ create table if not exists access_attempts (
 -- (default olaraq açıqdır, əlavə policy lazım deyil, çünki client birbaşa Supabase-ə qoşulmur)
 alter table licenses enable row level security;
 alter table access_attempts enable row level security;
+
+-- Şəkil/video fayllarını saxlamaq üçün ictimai (public) storage bucket
+insert into storage.buckets (id, name, public)
+values ('media', 'media', true)
+on conflict (id) do nothing;
