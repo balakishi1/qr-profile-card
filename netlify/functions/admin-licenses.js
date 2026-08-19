@@ -12,9 +12,17 @@ exports.handler = async (event) => {
   const action = event.queryStringParameters && event.queryStringParameters.action;
 
   if (event.httpMethod === 'GET' && action === 'list') {
-    const { data, error } = await supabase.from('licenses').select('*').order('created_at', { ascending: false });
+    const { data: licenses, error } = await supabase.from('licenses').select('*').order('created_at', { ascending: false });
     if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-    return { statusCode: 200, body: JSON.stringify({ licenses: data }) };
+
+    const { data: devices } = await supabase.from('license_devices').select('*').order('activated_at', { ascending: true });
+
+    const withDevices = (licenses || []).map((lic) => ({
+      ...lic,
+      devices: (devices || []).filter((d) => d.license_key === lic.license_key)
+    }));
+
+    return { statusCode: 200, body: JSON.stringify({ licenses: withDevices }) };
   }
 
   if (event.httpMethod === 'GET' && action === 'attempts') {
@@ -39,6 +47,7 @@ exports.handler = async (event) => {
       const generated = crypto.randomBytes(3).toString('hex').toUpperCase();
       const license_key = (body.license_key || generated).toUpperCase().replace(/\s+/g, '');
       const profile_slug = body.profile_slug || crypto.randomBytes(6).toString('hex');
+      const max_devices = Math.max(1, Math.min(10, parseInt(body.max_devices, 10) || 1));
       const { data, error } = await supabase
         .from('licenses')
         .insert({
@@ -46,6 +55,7 @@ exports.handler = async (event) => {
           owner_name: body.owner_name || '',
           is_active: true,
           profile_slug,
+          max_devices,
           profile_data: body.profile_data || { bio: '', links: [] }
         })
         .select()
@@ -64,15 +74,22 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }
 
+    if (action === 'set_max_devices') {
+      const max_devices = Math.max(1, Math.min(10, parseInt(body.max_devices, 10) || 1));
+      await supabase.from('licenses').update({ max_devices }).eq('license_key', body.license_key);
+      return { statusCode: 200, body: JSON.stringify({ success: true }) };
+    }
+
     if (action === 'reset_device') {
-      await supabase
-        .from('licenses')
-        .update({ device_fingerprint: null, device_info: null, activated_at: null })
-        .eq('license_key', body.license_key);
+      // body.device_fingerprint verilibsə - yalnız o cihazı sil, yoxdursa - bütün cihazları sil
+      let q = supabase.from('license_devices').delete().eq('license_key', body.license_key);
+      if (body.device_fingerprint) q = q.eq('device_fingerprint', body.device_fingerprint);
+      await q;
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }
 
     if (action === 'delete') {
+      await supabase.from('license_devices').delete().eq('license_key', body.license_key);
       await supabase.from('licenses').delete().eq('license_key', body.license_key);
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }

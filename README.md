@@ -1,14 +1,14 @@
 # QR Profile Card — Quraşdırma
 
 ## Necə işləyir
-- `index.html` — məhsulun özü (istifadəçi görür): lisenziya açarı ilə aktivləşir, bir dəfə hansı cihazda açılsa, o cihaza bağlanır.
-- `admin.html` (`/admin`) — sənin idarəetmə panelin: yeni açar yarat, cihazı sıfırla, kimin cəhd etdiyini gör.
+- `index.html` — məhsulun özü (istifadəçi görür): lisenziya açarı ilə aktivləşir. Admin hər lisenziya üçün icazə verilən **cihaz sayını** təyin edir (məs. 2 — telefon + kompyuter). O sayda cihaza qədər eyni açarla aktivləşmək olar, hamısında **eyni profil** (linklər, şəkillər, albomlar) görünür — heç birində məlumatı təkrar doldurmaq lazım deyil.
+- `admin.html` (`/admin`) — sənin idarəetmə panelin: yeni açar yarat (cihaz limiti ilə), ayrı-ayrı cihazları sil, kimin cəhd etdiyini məkanı ilə birlikdə gör.
 - `netlify/functions/*` — bütün yoxlama məntiqi burada işləyir (server-side, kimsə HTML-i açıb koda baxsa belə, cihaz məlumatı və şifrələmə açarı ora görünmür).
-- Verilənlər Supabase-də saxlanılır, icazəsiz cəhdlərdə Telegram bot vasitəsilə sənə mesaj gəlir.
+- Verilənlər Supabase-də saxlanılır, icazəsiz cəhdlərdə (yaxud yeni cihaz aktivləşəndə) Telegram bot vasitəsilə sənə mesaj gəlir — şəhər, region, ölkə və internet operatoru daxil olmaqla.
 
 ## 1. Supabase qur
 1. supabase.com-da yeni layihə yarat (əgər hazır varsa onu da istifadə edə bilərsən).
-2. **SQL Editor**-də `supabase-schema.sql` faylının içindəkiləri işə sal (bu, cədvəlləri VƏ şəkil/video saxlamaq üçün "media" adlı storage bucket-i də avtomatik yaradır).
+2. **SQL Editor**-də `supabase-schema.sql` faylının içindəkiləri işə sal (bu, cədvəlləri VƏ şəkil/video saxlamaq üçün "media" adlı storage bucket-i də avtomatik yaradır). ⚠️ Əgər `licenses` cədvəli artıq mövcuddursa, fayldakı `alter table` sətirləri onu təhlükəsiz şəkildə yeniləyəcək (mövcud məlumatlar silinmir).
 3. **Project Settings > API**-dan bunları götür:
    - `Project URL` → `SUPABASE_URL`
    - `service_role` key (⚠️ anon key yox, service_role) → `SUPABASE_SERVICE_KEY`
@@ -38,15 +38,21 @@
 
 ## 4. İstifadə axını
 1. Sən `/admin` səhifəsinə şifrənlə girirsən.
-2. "Yeni lisenziya yarat" düyməsi ilə müştəri/işçi üçün açar yaradırsan (məs. `A1B2C3D4`).
+2. "Yeni lisenziya yarat" hissəsində müştəri/işçi üçün açar yaradırsan (məs. `A1B2C3` — yaxud öz adını yaz), **"Cihaz sayı"** sahəsinə həmin adamın istifadə edəcəyi cihaz sayını yazırsan (məs. 2 — telefon + kompyuter).
 3. Açarı ona göndərirsən (Telegram/WhatsApp).
-4. O adam `index.html` linkini (əsas sayt ünvanını) açıb açarı daxil edir → cihazı avtomatik bağlanır.
-5. Başqa cihazdan həmin açarla girməyə cəhd etsə: rədd olunur, admin panelində "Cəhd logları"nda görünür və Telegram-a bildiriş gəlir.
-6. Sən istəsən "Cihazı sıfırla" düyməsi ilə o adama yeni cihazdan giriş icazəsi verə bilərsən (məs. telefonu dəyişəndə).
+4. O adam əsas sayt linkini telefonunda açıb açarı daxil edir → 1-ci cihaz bağlanır, profilini doldurur.
+5. **Eyni açarı kompyuterində də daxil edir** → limit dolmayıbsa (2/2-dən azdırsa) avtomatik 2-ci cihaz kimi bağlanır, **eyni profil məlumatları hər iki cihazda görünür** — heç nə təkrar doldurulmur.
+6. Limit dolandan sonra (3-cü cihazdan cəhd) — rədd olunur, admin panelində "Cəhd logları"nda şəhər/ölkə/operator məlumatı ilə görünür, Telegram-a bildiriş gəlir.
+7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Çox-cihaz dəstəyi** — hər lisenziya üçün admin icazə verilən cihaz sayını təyin edir (1-10 arası). Eyni açar o say qədər fərqli cihazda aktivləşə bilər, hamısında **ortaq profil** (linklər, albomlar, şəkillər) görünür. Admin panelində hər cihaz ayrıca idarə olunur (təkini sil, limiti dəyişdir).
+- **Detallı cəhd izləməsi** — indi hər aktivasiya/rədd cəhdində IP-ə əsasən şəhər, region, ölkə və internet operatoru avtomatik müəyyən olunur, həm admin panelində, həm Telegram bildirişində göstərilir.
+- **Ünvan/Məkan linki** — Profil bölməsində link tipi kimi "Ünvan/Məkan" seçib ünvan yaza bilərsən; QR skan olunanda bu, klikləndikdə birbaşa Google Maps-də həmin ünvanı açan düyməyə çevrilir. Vizitkada da ünvan pill şəklində göstərilir.
+- **Öz adını yaz** — hər link üçün indi tip seçməklə yanaşı, öz istədiyin adı da yaza bilərsən (məs. "TOT Təlimi", screenshot-dakı Linktree nümunəsi kimi).
+- **Tam yeni "Linktree" üslublu profil dizaynı** — daha iri, parlaq halolu avatar, xüsusi şrift (Baloo 2), yuxarıda sürətli sosial-şəbəkə ikon sırası, incə grid fon naxışı, yumşaq animasiyalar (fade-in, pulsasiya edən avatar həlqəsi) — daha canlı və "vay effekti" verən görünüş.
 - **QR keyfiyyəti düzəldildi** — əvvəllər post şəklinin üzərinə qoyulanda QR bulanıqlaşıb oxunmurdu (kiçik ekran ölçüsündən süni böyütmə səbəbindən). İndi QR həmişə yüksək çözünürlükdə (800-1000px) təzədən yaradılır — nə qədər böyütsən də iti/oxunaqlı qalır.
-- **Albomlar** — Profildə "Albomlar" adlı yeni bölmə: istədiyin qədər albom yarada bilərsən (məs. "Mətbəx layihələri", "Zal dizaynları"), hər albomda çoxlu şəkil VƏ video yükləyə bilərsən. QR skan olunanda açılan profil səhifəsində bu albomlar qalereya şəklində görünür, üstünə klikləyəndə tam ekranda açılır (video avtomatik oynayır).
+- **Albomlar** — Profildə "Albomlar" adlı bölmə: istədiyin qədər albom yarada bilərsən (məs. "Mətbəx layihələri", "Zal dizaynları"), hər albomda çoxlu şəkil VƏ video yükləyə bilərsən. QR skan olunanda açılan profil səhifəsində bu albomlar qalereya şəklində görünür, üstünə klikləyəndə tam ekranda açılır (video avtomatik oynayır).
 - QR skan edəndə "tapılmadı" xətası tam düzəldildi (üç fərqli üsulla slug oxunur, Netlify-ın redirect qeyri-sabitliyinə baxmayaraq işləyir)
 - Lisenziya açarları daha qısadır (6 simvol), admin istəsə özü də açar təyin edə bilər
 - Profil bölməsinə şəkil/loqo yükləmə əlavə olundu — ictimai profil səhifəsində və vizitkada görünür

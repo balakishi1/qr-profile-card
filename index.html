@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>QR Profile Card</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -62,7 +64,8 @@
   .field{margin-bottom:12px;}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
 
-  .link-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .link-row{display:flex;gap:8px;align-items:center;}
+  .link-edit-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;}
   .link-row select{flex:0 0 110px;}
   .link-row input{flex:1;}
   .link-row button{flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:10px 12px;cursor:pointer;}
@@ -133,7 +136,7 @@
   <div class="gate blocked" id="blocked">
     <div class="icon">⛔</div>
     <h2>Bu cihazda icazə yoxdur</h2>
-    <p>Bu lisenziya artıq başqa bir cihaza bağlıdır. Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.</p>
+    <p id="blockedText">Bu lisenziya artıq icazə verilən cihaz sayı qədər başqa cihazlara bağlıdır. Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.</p>
   </div>
 
   <!-- APP -->
@@ -328,6 +331,11 @@ async function doActivate() {
       const vr = await fetch(`${FN}/verify`, { method: 'POST', body: JSON.stringify({ license_key: key, device_id: deviceId, token: j.token }) });
       const vj = await vr.json();
       enterApp(vj);
+    } else if (j.reason === 'device_limit_reached') {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('blocked').style.display = 'block';
+      document.getElementById('blockedText').textContent =
+        `Bu lisenziya üçün icazə verilən cihaz limiti dolub (${j.current}/${j.max}). Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.`;
     } else if (j.reason === 'device_mismatch') {
       document.getElementById('gate').style.display = 'none';
       document.getElementById('blocked').style.display = 'block';
@@ -408,7 +416,8 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 const LINK_TYPES = [
   ['instagram','Instagram'],['facebook','Facebook'],['linkedin','LinkedIn'],
   ['telegram','Telegram'],['whatsapp','WhatsApp'],['tiktok','TikTok'],
-  ['youtube','YouTube'],['website','Vebsayt'],['email','E-mail'],['phone','Telefon'],['other','Digər']
+  ['youtube','YouTube'],['website','Vebsayt'],['email','E-mail'],['phone','Telefon'],
+  ['location','Ünvan / Məkan'],['other','Digər']
 ];
 
 function renderLinks() {
@@ -418,23 +427,51 @@ function renderLinks() {
 }
 
 function makeLinkRow(link, idx) {
-  const row = document.createElement('div');
-  row.className = 'link-row';
+  const card = document.createElement('div');
+  card.className = 'link-edit-card';
+
+  const topRow = document.createElement('div');
+  topRow.className = 'link-row';
   const sel = document.createElement('select');
   LINK_TYPES.forEach(([v, label]) => {
     const o = document.createElement('option'); o.value = v; o.textContent = label;
     if (link.type === v) o.selected = true;
     sel.appendChild(o);
   });
-  const input = document.createElement('input');
-  input.type = 'text'; input.placeholder = 'https://...'; input.value = link.url || '';
+  sel.style.flex = '0 0 130px';
+
+  const labelInput = document.createElement('input');
+  labelInput.type = 'text';
+  labelInput.placeholder = 'Özün ad yaz (məs: TOT Təlimi)';
+  labelInput.value = link.label || '';
+
   const del = document.createElement('button');
   del.textContent = '✕';
   del.onclick = () => { currentProfileData.links.splice(idx, 1); renderLinks(); };
-  sel.onchange = () => { currentProfileData.links[idx].type = sel.value; };
-  input.oninput = () => { currentProfileData.links[idx].url = input.value; currentProfileData.links[idx].label = LINK_TYPES.find(t=>t[0]===sel.value)[1]; };
-  row.appendChild(sel); row.appendChild(input); row.appendChild(del);
-  return row;
+
+  topRow.appendChild(sel);
+  topRow.appendChild(labelInput);
+  topRow.appendChild(del);
+
+  const urlInput = document.createElement('input');
+  urlInput.type = 'text';
+  urlInput.style.marginTop = '8px';
+  urlInput.value = link.url || '';
+  const isLocation = () => sel.value === 'location';
+  urlInput.placeholder = isLocation() ? 'Ünvan yaz (məs: Bakı, Nəsimi r., 28 May küç. 10)' : 'https://...';
+
+  sel.onchange = () => {
+    currentProfileData.links[idx].type = sel.value;
+    if (!labelInput.value) labelInput.value = LINK_TYPES.find(t => t[0] === sel.value)[1];
+    urlInput.placeholder = isLocation() ? 'Ünvan yaz (məs: Bakı, Nəsimi r., 28 May küç. 10)' : 'https://...';
+    currentProfileData.links[idx].label = labelInput.value;
+  };
+  labelInput.oninput = () => { currentProfileData.links[idx].label = labelInput.value; };
+  urlInput.oninput = () => { currentProfileData.links[idx].url = urlInput.value; };
+
+  card.appendChild(topRow);
+  card.appendChild(urlInput);
+  return card;
 }
 
 function addLinkRow() {
@@ -727,8 +764,9 @@ function drawScanCorners(ctx, x, y, size, len, thick, color) {
 
 async function renderVizitka() {
   const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
+  try { await document.fonts.load('800 34px "Baloo 2"'); } catch (e) {}
 
-  const W = 520, H = 800;
+  const W = 560, H = 860;
   const canvas = document.getElementById('vizitkaCanvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
@@ -738,15 +776,25 @@ async function renderVizitka() {
   bgGrad.addColorStop(0, '#0d1526');
   bgGrad.addColorStop(1, '#141c33');
   ctx.fillStyle = bgGrad;
-  roundRect(ctx, 0, 0, W, H, 32);
+  roundRect(ctx, 0, 0, W, H, 36);
   ctx.fill();
 
+  // Subtle grid pattern
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 36);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+  for (let gy = 0; gy < H; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+  ctx.restore();
+
   // Subtle radial glow accent (top)
-  const glow = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 320);
-  glow.addColorStop(0, 'rgba(99,102,241,0.28)');
+  const glow = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 340);
+  glow.addColorStop(0, 'rgba(99,102,241,0.30)');
   glow.addColorStop(1, 'rgba(99,102,241,0)');
   ctx.save();
-  roundRect(ctx, 0, 0, W, H, 32);
+  roundRect(ctx, 0, 0, W, H, 36);
   ctx.clip();
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
@@ -754,7 +802,7 @@ async function renderVizitka() {
 
   // Outer border
   ctx.save();
-  roundRect(ctx, 1.5, 1.5, W - 3, H - 3, 30);
+  roundRect(ctx, 1.5, 1.5, W - 3, H - 3, 34);
   ctx.strokeStyle = 'rgba(255,255,255,0.10)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
@@ -765,20 +813,20 @@ async function renderVizitka() {
   barGrad.addColorStop(0, '#6366f1');
   barGrad.addColorStop(1, '#8b5cf6');
   ctx.fillStyle = barGrad;
-  roundRect(ctx, 40, 34, W - 80, 4, 2);
+  roundRect(ctx, 44, 34, W - 88, 4, 2);
   ctx.fill();
 
-  // Avatar
-  const avatarSize = 128;
+  // Avatar — daha iri
+  const avatarSize = 168;
   const avatarX = W / 2 - avatarSize / 2;
-  const avatarY = 66;
+  const avatarY = 62;
   ctx.save();
-  ctx.shadowColor = 'rgba(99,102,241,0.5)';
-  ctx.shadowBlur = 24;
+  ctx.shadowColor = 'rgba(139,92,246,0.55)';
+  ctx.shadowBlur = 34;
   ctx.beginPath();
-  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2 + 4, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.lineWidth = 3;
+  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 4;
   ctx.stroke();
   ctx.shadowBlur = 0;
   ctx.beginPath();
@@ -800,29 +848,30 @@ async function renderVizitka() {
     ctx.fillStyle = g2;
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = '600 54px -apple-system, Arial';
+    ctx.font = '600 70px -apple-system, Arial';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const initial = (document.getElementById('ownerName').value || '?').trim().slice(0, 1).toUpperCase();
     ctx.fillText(initial, W / 2, avatarY + avatarSize / 2 + 4);
   }
   ctx.restore();
 
-  // Name
-  ctx.fillStyle = '#f3f5fb';
-  ctx.font = '700 32px -apple-system, Arial';
+  // Name — xüsusi şrift
+  ctx.fillStyle = '#f7f9ff';
+  ctx.font = '800 36px "Baloo 2", -apple-system, Arial';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   const name = document.getElementById('ownerName').value || 'İsim';
-  ctx.fillText(name, W / 2, avatarY + avatarSize + 48);
+  ctx.fillText(name, W / 2, avatarY + avatarSize + 54);
 
   // Tagline
   const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
-  ctx.fillStyle = '#94a3c4';
+  ctx.fillStyle = '#9aa8ca';
   ctx.font = '400 16px -apple-system, Arial';
-  ctx.fillText(tagline, W / 2, avatarY + avatarSize + 78, W - 90);
+  ctx.fillText(tagline, W / 2, avatarY + avatarSize + 84, W - 100);
+
+  let qrTop = avatarY + avatarSize + 112;
 
   // Phone pill
   const phone = document.getElementById('phoneInput').value;
-  let qrTop = avatarY + avatarSize + 108;
   if (phone) {
     ctx.font = '600 17px -apple-system, Arial';
     const label = '📞  ' + phone;
@@ -839,13 +888,35 @@ async function renderVizitka() {
     ctx.fillStyle = '#e2e8f7';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
-    qrTop += pillH + 30;
+    qrTop += pillH + 14;
+  }
+
+  // Ünvan pill (əgər linklərdə "location" tipi varsa)
+  const locationLink = (currentProfileData.links || []).find(l => l.type === 'location' && l.url);
+  if (locationLink) {
+    ctx.font = '600 15px -apple-system, Arial';
+    const shortAddr = locationLink.url.length > 34 ? locationLink.url.slice(0, 34) + '…' : locationLink.url;
+    const label = '📍  ' + shortAddr;
+    const textW = ctx.measureText(label).width;
+    const pillW = Math.min(textW + 40, W - 80), pillH = 38;
+    const pillX = W / 2 - pillW / 2, pillY = qrTop;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    roundRect(ctx, pillX, pillY, pillW, pillH, 19);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 19);
+    ctx.stroke();
+    ctx.fillStyle = '#c7d0e8';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
+    qrTop += pillH + 26;
   } else {
-    qrTop += 6;
+    qrTop += 10;
   }
 
   // QR white box with scan-corner frame
-  const qrBoxSize = 260;
+  const qrBoxSize = 264;
   const qrBoxX = W / 2 - qrBoxSize / 2;
   const qrBoxY = qrTop;
   ctx.save();
@@ -873,7 +944,7 @@ async function renderVizitka() {
   ctx.fillStyle = '#5b6b8c';
   ctx.font = '600 12px -apple-system, Arial';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('S K A N   E T   ·   Q R   P R O F I L E   C A R D', W / 2, H - 40);
+  ctx.fillText('S K A N   E T   ·   Q R   P R O F I L E   C A R D', W / 2, H - 38);
 
   document.getElementById('vizitkaPreviewBox').innerHTML =
     `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:20px;box-shadow:0 16px 40px rgba(0,0,0,.5);">`;

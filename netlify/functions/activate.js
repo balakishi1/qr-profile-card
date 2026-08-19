@@ -1,10 +1,19 @@
-const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { sign } = require('./lib/deviceAuth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-function sign(data) {
-  return crypto.createHmac('sha256', process.env.SESSION_SECRET).update(data).digest('hex');
+async function geoLookup(ip) {
+  try {
+    const cleanIp = (ip || '').split(',')[0].trim();
+    if (!cleanIp || cleanIp === 'unknown' || cleanIp.startsWith('127.') || cleanIp.startsWith('::1')) return null;
+    const r = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,isp,query`);
+    const j = await r.json();
+    if (j.status === 'success') {
+      return { country: j.country, region: j.regionName, city: j.city, isp: j.isp, ip: j.query };
+    }
+  } catch (e) { console.error('geo lookup error', e); }
+  return null;
 }
 
 async function notifyTelegram(text) {
@@ -51,53 +60,73 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'inactive' }) };
   }
 
-  // İlk aktivasiya - cihazı bu lisenziyaya bağla
-  if (!license.device_fingerprint) {
-    await supabase
-      .from('licenses')
-      .update({
-        device_fingerprint: device_id,
-        device_info: device_info || {},
-        activated_at: new Date().toISOString()
-      })
-      .eq('license_key', license_key);
+  const maxDevices = license.max_devices || 1;
 
+  // Bu cihaz artıq bağlıdırsa — birbaşa keç (geo axtarışı lazım deyil, sürətli yol)
+  const { data: existingDevice } = await supabase
+    .from('license_devices')
+    .select('id')
+    .eq('license_key', license_key)
+    .eq('device_fingerprint', device_id)
+    .maybeSingle();
+
+  if (existingDevice) {
+    const token = sign(`${license_key}:${device_id}`);
+    return { statusCode: 200, body: JSON.stringify({ success: true, token }) };
+  }
+
+  const geo = await geoLookup(ip);
+  const geoLine = geo
+    ? `📍 ${geo.city || '-'}, ${geo.region || '-'}, ${geo.country || '-'}\n🌐 ${geo.isp || '-'} (${geo.ip})`
+    : `IP: ${ip}`;
+
+  // Neçə cihaz artıq bağlıdır?
+  const { count } = await supabase
+    .from('license_devices')
+    .select('id', { count: 'exact', head: true })
+    .eq('license_key', license_key);
+
+  const currentCount = count || 0;
+
+  if (currentCount >= maxDevices) {
+    // Limit doludur - rədd et, logla, bildiriş göndər
     await supabase.from('access_attempts').insert({
-      license_key,
-      device_fingerprint: device_id,
-      device_info,
-      ip,
-      allowed: true,
-      note: 'first_activation'
+      license_key, device_fingerprint: device_id, device_info, ip, allowed: false, note: 'device_limit_reached', geo
     });
 
     await notifyTelegram(
-      `✅ <b>Yeni aktivasiya</b>\nLisenziya: <code>${license_key}</code>\nSahib: ${license.owner_name || '-'}\nIP: ${ip}\nCihaz: ${(device_info && device_info.userAgent) || '-'}`
+      `🚨 <b>İCAZƏSİZ CƏHD (cihaz limiti dolub)</b>\n` +
+      `Lisenziya: <code>${license_key}</code>\n` +
+      `Sahib: ${license.owner_name || '-'}\n` +
+      `Limit: ${currentCount}/${maxDevices}\n` +
+      `${geoLine}\n` +
+      `Cihaz: ${(device_info && device_info.platform) || '-'}\n` +
+      `Brauzer: ${(device_info && device_info.userAgent) || '-'}\n` +
+      `Ekran: ${(device_info && device_info.screen) || '-'}\n` +
+      `Dil: ${(device_info && device_info.language) || '-'}`
     );
 
-    const token = sign(`${license_key}:${device_id}`);
-    return { statusCode: 200, body: JSON.stringify({ success: true, token }) };
+    return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'device_limit_reached', current: currentCount, max: maxDevices }) };
   }
 
-  // Eyni cihaz - keç
-  if (license.device_fingerprint === device_id) {
-    const token = sign(`${license_key}:${device_id}`);
-    return { statusCode: 200, body: JSON.stringify({ success: true, token }) };
-  }
+  // Yeni cihazı bağla
+  await supabase.from('license_devices').insert({
+    license_key, device_fingerprint: device_id, device_info: device_info || {}
+  });
 
-  // Başqa cihaz - rədd et, logla, bildiriş göndər
   await supabase.from('access_attempts').insert({
-    license_key,
-    device_fingerprint: device_id,
-    device_info,
-    ip,
-    allowed: false,
-    note: 'device_mismatch'
+    license_key, device_fingerprint: device_id, device_info, ip, allowed: true, note: 'device_added', geo
   });
 
   await notifyTelegram(
-    `🚨 <b>İCAZƏSİZ CƏHD!</b>\nLisenziya: <code>${license_key}</code>\nSahib: ${license.owner_name || '-'}\nIP: ${ip}\nCihaz: ${(device_info && device_info.userAgent) || '-'}\nEkran: ${(device_info && device_info.screen) || '-'}\nPlatform: ${(device_info && device_info.platform) || '-'}`
+    `✅ <b>Yeni cihaz bağlandı (${currentCount + 1}/${maxDevices})</b>\n` +
+    `Lisenziya: <code>${license_key}</code>\n` +
+    `Sahib: ${license.owner_name || '-'}\n` +
+    `${geoLine}\n` +
+    `Cihaz: ${(device_info && device_info.platform) || '-'}\n` +
+    `Brauzer: ${(device_info && device_info.userAgent) || '-'}`
   );
 
-  return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'device_mismatch' }) };
+  const token = sign(`${license_key}:${device_id}`);
+  return { statusCode: 200, body: JSON.stringify({ success: true, token }) };
 };

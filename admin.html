@@ -65,13 +65,15 @@
         <div class="row">
           <input type="text" id="newOwner" placeholder="Sahibin adı (məs: Elvin - müştəri)">
           <input type="text" id="newKey" placeholder="Öz açarını yaz (boş saxlasan avtomatik yaranır)" style="text-transform:uppercase;">
+          <input type="number" id="newMaxDevices" placeholder="Cihaz sayı" value="1" min="1" max="10" style="width:90px;">
           <button class="btn" onclick="createLicense()">+ Yarat</button>
         </div>
+        <p class="sub" style="margin:6px 0 0;">"Cihaz sayı" — bu lisenziya neçə fərqli cihazda (telefon + kompyuter və s.) eyni vaxtda açıla bilər. Hamısında eyni profil (linklər, şəkillər) görünəcək.</p>
       </div>
 
       <div class="card">
         <table id="licTable">
-          <thead><tr><th>Açar</th><th>Sahib</th><th>Status</th><th>Cihaz</th><th>Profil</th><th>Əməliyyat</th></tr></thead>
+          <thead><tr><th>Açar</th><th>Sahib</th><th>Status</th><th>Cihazlar</th><th>Profil</th><th>Əməliyyat</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -80,7 +82,7 @@
     <div id="t-attempts" class="hidden">
       <div class="card">
         <table id="attTable">
-          <thead><tr><th>Vaxt</th><th>Açar</th><th>Nəticə</th><th>IP</th><th>Cihaz məlumatı</th></tr></thead>
+          <thead><tr><th>Vaxt</th><th>Açar</th><th>Nəticə</th><th>Məkan</th><th>Cihaz məlumatı</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -128,13 +130,15 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 async function createLicense() {
   const owner_name = document.getElementById('newOwner').value.trim();
   const license_key = document.getElementById('newKey').value.trim().toUpperCase();
-  const r = await fetch(`${FN}/admin-licenses?action=create`, { method: 'POST', headers: h(), body: JSON.stringify({ owner_name, license_key: license_key || undefined }) });
+  const max_devices = document.getElementById('newMaxDevices').value || 1;
+  const r = await fetch(`${FN}/admin-licenses?action=create`, { method: 'POST', headers: h(), body: JSON.stringify({ owner_name, license_key: license_key || undefined, max_devices }) });
   const j = await r.json();
   if (j.license) {
     document.getElementById('newOwner').value = '';
     document.getElementById('newKey').value = '';
+    document.getElementById('newMaxDevices').value = '1';
     loadLicenses();
-    alert(`Yaradıldı!\nAçar: ${j.license.license_key}\nBu açarı müştəriyə göndər — o özü öz cihazında aktivləşdirsin.`);
+    alert(`Yaradıldı!\nAçar: ${j.license.license_key}\nİcazəli cihaz sayı: ${j.license.max_devices}\nBu açarı müştəriyə göndər — o özü hər cihazda ayrıca aktivləşdirsin.`);
   } else {
     alert('Xəta: ' + (j.error || 'bilinməyən — bu açar artıq istifadə olunub ola bilər'));
   }
@@ -147,18 +151,38 @@ async function loadLicenses() {
   tbody.innerHTML = '';
   (j.licenses || []).forEach(l => {
     const tr = document.createElement('tr');
-    const deviceInfo = l.device_info ? `${(l.device_info.platform||'-')}<br><span style="color:var(--muted)">${(l.device_info.userAgent||'').slice(0,40)}...</span>` : '-';
+    const maxDev = l.max_devices || 1;
+    const devices = l.devices || [];
+
+    const devicesHtml = devices.length
+      ? devices.map(d => `
+          <div style="margin-bottom:6px;padding:6px;background:var(--card2);border-radius:6px;">
+            <div style="font-size:11px;">${(d.device_info && d.device_info.platform) || 'Naməlum'}</div>
+            <div style="font-size:10px;color:var(--muted);">${((d.device_info && d.device_info.userAgent) || '').slice(0, 34)}...</div>
+            <button class="btn red" style="margin-top:4px;font-size:10px;padding:3px 7px;" onclick="resetOneDevice('${l.license_key}','${d.device_fingerprint}')">Bu cihazı sil</button>
+          </div>`).join('')
+      : '<span class="pill free">Heç bir cihaz yoxdur</span>';
+
     tr.innerHTML = `
       <td><code>${l.license_key}</code></td>
       <td>${l.owner_name || '-'}</td>
       <td><span class="pill ${l.is_active ? 'active' : 'inactive'}">${l.is_active ? 'Aktiv' : 'Deaktiv'}</span></td>
-      <td><span class="pill ${l.device_fingerprint ? 'bound' : 'free'}">${l.device_fingerprint ? 'Bağlıdır' : 'Boşdur'}</span><br>${deviceInfo}</td>
+      <td style="min-width:200px;">
+        <div style="margin-bottom:6px;">
+          <span class="pill ${devices.length >= maxDev ? 'bound' : 'free'}">${devices.length}/${maxDev} cihaz</span>
+        </div>
+        ${devicesHtml}
+        <div class="row" style="margin-top:6px;">
+          <input type="number" min="1" max="10" value="${maxDev}" id="maxdev-${l.license_key}" style="width:60px;padding:5px;">
+          <button class="btn gray" style="font-size:11px;padding:5px 8px;" onclick="setMaxDevices('${l.license_key}')">Limiti yenilə</button>
+        </div>
+      </td>
       <td>${l.profile_slug ? `<a href="/p/${l.profile_slug}" target="_blank" style="color:var(--accent);font-size:11px;">/p/${l.profile_slug}</a>` : '-'}</td>
       <td class="actions">
         ${l.is_active
           ? `<button class="btn red" onclick="revoke('${l.license_key}')">Söndür</button>`
           : `<button class="btn gray" onclick="activate('${l.license_key}')">Aktivləşdir</button>`}
-        <button class="btn gray" onclick="resetDevice('${l.license_key}')">Cihazı sıfırla</button>
+        <button class="btn gray" onclick="resetDevice('${l.license_key}')">Bütün cihazları sıfırla</button>
         <button class="btn red" onclick="del('${l.license_key}')">Sil</button>
       </td>
     `;
@@ -168,7 +192,9 @@ async function loadLicenses() {
 
 async function revoke(key) { await fetch(`${FN}/admin-licenses?action=revoke`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
 async function activate(key) { await fetch(`${FN}/admin-licenses?action=activate`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
-async function resetDevice(key) { if(!confirm('Bu açarın cihaz bağlantısını sıfırlamaq istəyirsən? Növbəti açan cihaz avtomatik bağlanacaq.')) return; await fetch(`${FN}/admin-licenses?action=reset_device`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function resetDevice(key) { if(!confirm('Bu açarın BÜTÜN cihaz bağlantılarını sıfırlamaq istəyirsən? Bütün cihazlar yenidən açar daxil etməli olacaq.')) return; await fetch(`${FN}/admin-licenses?action=reset_device`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function resetOneDevice(key, deviceFingerprint) { if(!confirm('Yalnız bu cihazı silmək istəyirsən? Digər cihazlar toxunulmaz qalacaq.')) return; await fetch(`${FN}/admin-licenses?action=reset_device`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key, device_fingerprint: deviceFingerprint }) }); loadLicenses(); }
+async function setMaxDevices(key) { const val = document.getElementById(`maxdev-${key}`).value; await fetch(`${FN}/admin-licenses?action=set_max_devices`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key, max_devices: val }) }); loadLicenses(); }
 async function del(key) { if(!confirm('Silmək istədiyinə əminsən?')) return; await fetch(`${FN}/admin-licenses?action=delete`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
 
 async function loadAttempts() {
@@ -178,12 +204,15 @@ async function loadAttempts() {
   tbody.innerHTML = '';
   (j.attempts || []).forEach(a => {
     const tr = document.createElement('tr');
+    const geo = a.geo
+      ? `📍 ${a.geo.city || '-'}, ${a.geo.region || '-'}, ${a.geo.country || '-'}<br><span style="color:var(--muted)">${a.geo.isp || ''} (${a.geo.ip || a.ip})</span>`
+      : (a.ip || '-');
     tr.innerHTML = `
       <td>${new Date(a.attempted_at).toLocaleString('az-AZ')}</td>
       <td><code>${a.license_key}</code></td>
       <td><span class="pill ${a.allowed ? 'active' : 'inactive'}">${a.allowed ? 'İcazəli' : 'İCAZƏSİZ'}</span></td>
-      <td>${a.ip || '-'}</td>
-      <td style="font-size:11px;color:var(--muted);">${a.device_info ? JSON.stringify(a.device_info) : '-'}</td>
+      <td style="font-size:12px;">${geo}</td>
+      <td style="font-size:11px;color:var(--muted);">${a.device_info ? `${a.device_info.platform || ''}<br>${(a.device_info.userAgent || '').slice(0, 50)}...` : '-'}</td>
     `;
     tbody.appendChild(tr);
   });

@@ -1,11 +1,7 @@
-const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { sign, isDeviceAuthorized } = require('./lib/deviceAuth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-function sign(data) {
-  return crypto.createHmac('sha256', process.env.SESSION_SECRET).update(data).digest('hex');
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
@@ -32,13 +28,8 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'forbidden_path' }) };
   }
 
-  const { data: license, error } = await supabase
-    .from('licenses')
-    .select('*')
-    .eq('license_key', license_key)
-    .single();
-
-  if (error || !license || !license.is_active || license.device_fingerprint !== device_id) {
+  const { ok } = await isDeviceAuthorized(supabase, license_key, device_id);
+  if (!ok) {
     return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'revoked' }) };
   }
 
