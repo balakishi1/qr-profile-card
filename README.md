@@ -41,6 +41,13 @@
 5. Başqa cihazdan həmin açarla girməyə cəhd etsə: rədd olunur, admin panelində "Cəhd logları"nda görünür və Telegram-a bildiriş gəlir.
 6. Sən istəsən "Cihazı sıfırla" düyməsi ilə o adama yeni cihazdan giriş icazəsi verə bilərsən (məs. telefonu dəyişəndə).
 
+## Bu versiyada yenilənənlər
+- QR skan edəndə "tapılmadı" xətası düzəldildi (redirect + encoding bugı)
+- Lisenziya açarları daha qısadır (6 simvol), admin istəsə özü də açar təyin edə bilər
+- Profil bölməsinə şəkil/loqo yükləmə əlavə olundu — ictimai profil səhifəsində və vizitkada görünür
+- Yeni "Vizitka dizaynı" — QR sadə şəkil kimi deyil, ad + şəkil + izahlı mətn ilə peşəkar vizitka kartı kimi yüklənir/paylaşılır
+- Post üzərinə yerləşdirmə bölməsində QR-ın altına "Skan et" kimi alt yazı əlavə etmək mümkündür (istəyə görə aç/bağla)
+
 ## Vacib qeyd — real limitlər
 Cihaz tanınması brauzerin fingerprint-i (canvas + user agent + ekran + s.) əsasında olur. Bu, sənaye standartıdır, amma 100% qırılmaz deyil:
 - Brauzer məlumatlarını təmizləyəndə (cache/localStorage silinəndə) və ya **incognito/private** rejimdə açılanda sistem bunu "yeni cihaz" kimi görür və girişi rədd edir — bu halda admin paneldən "Cihazı sıfırla" lazımdır.

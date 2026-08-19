@@ -3,9 +3,10 @@
   publish = "."
 
 [[redirects]]
-  from = "/p/:slug"
-  to = "/.netlify/functions/profile?slug=:slug"
+  from = "/p/*"
+  to = "/.netlify/functions/profile?slug=:splat"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/admin"

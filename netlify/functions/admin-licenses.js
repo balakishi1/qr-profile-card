@@ -36,7 +36,8 @@ exports.handler = async (event) => {
     }
 
     if (action === 'create') {
-      const license_key = (body.license_key || crypto.randomBytes(8).toString('hex')).toUpperCase();
+      const generated = crypto.randomBytes(3).toString('hex').toUpperCase();
+      const license_key = (body.license_key || generated).toUpperCase().replace(/\s+/g, '');
       const profile_slug = body.profile_slug || crypto.randomBytes(6).toString('hex');
       const { data, error } = await supabase
         .from('licenses')

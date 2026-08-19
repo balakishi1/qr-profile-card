@@ -132,6 +132,13 @@
     <div class="panel active" id="panel-profile">
       <div class="card">
         <h3>Şəxsi məlumat</h3>
+        <div class="field" style="display:flex;align-items:center;gap:14px;">
+          <div id="avatarPreview" style="width:64px;height:64px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--muted);">📷</div>
+          <div style="flex:1;">
+            <label>Şəkil / Loqo</label>
+            <input type="file" id="avatarInput" accept="image/*" style="padding:8px;">
+          </div>
+        </div>
         <div class="field">
           <label>Ad / Brend adı</label>
           <input type="text" id="ownerName" placeholder="Balakişi / Casa Eleganza">
@@ -158,12 +165,26 @@
         <h3>QR rəngi</h3>
         <div class="swatches" id="colorSwatches"></div>
         <div class="qr-preview" id="qrPreview"></div>
-        <div class="row">
-          <button class="btn secondary" onclick="downloadQR()">📥 Şəkil kimi yüklə</button>
+        <div class="row" style="margin-bottom:10px;">
+          <button class="btn secondary" onclick="downloadQR()">📥 Sadə QR yüklə</button>
           <button class="btn secondary" onclick="shareQR()">📤 Paylaş</button>
         </div>
         <p class="muted" style="margin-top:10px;">Bu QR kodu skan edən hər kəs sənin ictimai profil səhifəni (bütün linklər + bio) görəcək.</p>
         <div id="profileLinkBox" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>Vizitka dizaynı</h3>
+        <div class="field">
+          <label>Alt yazı (QR-ın altında görünəcək)</label>
+          <input type="text" id="taglineInput" placeholder="Bütün sosial şəbəkələrim üçün skan et">
+        </div>
+        <canvas id="vizitkaCanvas" style="display:none;"></canvas>
+        <div id="vizitkaPreviewBox" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
+        <div class="row">
+          <button class="btn" onclick="downloadVizitka()">📥 Vizitka kimi yüklə</button>
+          <button class="btn secondary" onclick="shareVizitka()">📤 Paylaş</button>
+        </div>
       </div>
     </div>
 
@@ -184,6 +205,13 @@
           <div class="slider-row">
             <label>QR ölçü</label>
             <input type="range" id="qrSizeSlider" min="8" max="40" value="18">
+          </div>
+          <div class="field" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="captionToggle" style="width:auto;">
+            <label for="captionToggle" style="margin:0;">QR-ın altına alt yazı əlavə et</label>
+          </div>
+          <div class="field" id="captionTextWrap" style="display:none;">
+            <input type="text" id="captionText" placeholder="Skan et 👆" value="Skan et 👆">
           </div>
           <p class="muted" style="margin-bottom:12px;">QR-ı barmağınla / siçanla sürüşdürüb istədiyin yerə qoy.</p>
           <div class="row">
@@ -289,10 +317,45 @@ function enterApp(j) {
   currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
   currentSlug = j.profile_slug;
   document.getElementById('bioText').value = currentProfileData.bio || '';
+  document.getElementById('taglineInput').value = currentProfileData.tagline || 'Bütün sosial şəbəkələrim üçün skan et';
+  renderAvatarPreview();
   renderLinks();
   buildColorSwatches();
   renderQR();
 }
+
+function renderAvatarPreview() {
+  const box = document.getElementById('avatarPreview');
+  if (currentProfileData.avatar) {
+    box.innerHTML = `<img src="${currentProfileData.avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    box.innerHTML = '📷';
+  }
+}
+
+document.getElementById('avatarInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const dataUrl = await new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result);
+    reader.readAsDataURL(file);
+  });
+  const img = new Image();
+  img.onload = () => {
+    const size = 300;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const scale = Math.max(size / img.width, size / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+    currentProfileData.avatar = canvas.toDataURL('image/jpeg', 0.85);
+    renderAvatarPreview();
+    renderQR();
+  };
+  img.src = dataUrl;
+});
 
 /* ---------- TABS ---------- */
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
@@ -301,6 +364,7 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   t.classList.add('active');
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'qr') renderQR();
+  if (t.dataset.tab === 'compose') prepareHandleQR();
 }));
 
 /* ---------- LINKS ---------- */
@@ -344,6 +408,7 @@ function addLinkRow() {
 
 async function saveProfile() {
   currentProfileData.bio = document.getElementById('bioText').value;
+  currentProfileData.tagline = document.getElementById('taglineInput').value;
   const owner_name = document.getElementById('ownerName').value;
   const r = await fetch(`${FN}/update-profile`, {
     method: 'POST',
@@ -392,7 +457,127 @@ function renderQR() {
   });
   document.getElementById('profileLinkBox').innerHTML =
     `<span class="muted">Profil linki: </span><a class="share-link" href="${getProfileUrl()}" target="_blank">${getProfileUrl()}</a>`;
-  setTimeout(() => prepareHandleQR(), 150);
+  setTimeout(() => { prepareHandleQR(); renderVizitka(); }, 150);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function renderVizitka() {
+  const box = document.getElementById('qrPreview');
+  const qrEl = getQrCanvas(box);
+  if (!qrEl) return;
+  const qrDataUrl = qrEl.tagName === 'CANVAS' ? qrEl.toDataURL('image/png') : qrEl.src;
+
+  const W = 480, H = 700;
+  const canvas = document.getElementById('vizitkaCanvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#141e33');
+  grad.addColorStop(1, '#0b1220');
+  ctx.fillStyle = grad;
+  roundRect(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+
+  // Avatar
+  const avatarSize = 120;
+  const avatarX = W / 2 - avatarSize / 2;
+  const avatarY = 50;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  if (currentProfileData.avatar) {
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clip();
+        ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
+        resolve();
+      };
+      img.src = currentProfileData.avatar;
+    });
+  } else {
+    const g2 = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
+    g2.addColorStop(0, '#6366f1'); g2.addColorStop(1, '#8b5cf6');
+    ctx.fillStyle = g2;
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 52px -apple-system, Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const initial = (document.getElementById('ownerName').value || '?').trim().slice(0, 1).toUpperCase();
+    ctx.fillText(initial, W / 2, avatarY + avatarSize / 2 + 4);
+  }
+  ctx.restore();
+
+  // Name
+  ctx.fillStyle = '#e7ecf7';
+  ctx.font = 'bold 30px -apple-system, Arial';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  const name = document.getElementById('ownerName').value || 'İsim';
+  ctx.fillText(name, W / 2, avatarY + avatarSize + 46);
+
+  // Tagline
+  const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
+  ctx.fillStyle = '#8b9bb8';
+  ctx.font = '16px -apple-system, Arial';
+  ctx.fillText(tagline, W / 2, avatarY + avatarSize + 76, W - 80);
+
+  // QR box
+  const qrBoxSize = 260;
+  const qrBoxX = W / 2 - qrBoxSize / 2;
+  const qrBoxY = avatarY + avatarSize + 110;
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 18);
+  ctx.fill();
+  await new Promise((resolve) => {
+    const qrImg = new Image();
+    qrImg.onload = () => {
+      const pad = 18;
+      ctx.drawImage(qrImg, qrBoxX + pad, qrBoxY + pad, qrBoxSize - pad * 2, qrBoxSize - pad * 2);
+      resolve();
+    };
+    qrImg.src = qrDataUrl;
+  });
+
+  // Footer
+  ctx.fillStyle = '#5b6b8c';
+  ctx.font = '13px -apple-system, Arial';
+  ctx.fillText('📷 SKAN ET  •  QR PROFILE CARD', W / 2, H - 34);
+
+  document.getElementById('vizitkaPreviewBox').innerHTML =
+    `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);">`;
+}
+
+document.getElementById('taglineInput').addEventListener('input', () => renderVizitka());
+
+function downloadVizitka() {
+  const canvas = document.getElementById('vizitkaCanvas');
+  const link = document.createElement('a');
+  link.download = 'vizitka-qr.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function shareVizitka() {
+  const canvas = document.getElementById('vizitkaCanvas');
+  const dataUrl = canvas.toDataURL('image/png');
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], 'vizitka-qr.png', { type: 'image/png' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: document.getElementById('ownerName').value || 'Vizitka' }); return; } catch (e) {}
+  }
+  downloadVizitka();
 }
 
 function getQrCanvas(sourceBox) {
@@ -461,24 +646,67 @@ function loadComposer() {
   bg.onload = () => { prepareHandleQR(); positionHandle(); };
 }
 
-function prepareHandleQR() {
-  const stage = document.getElementById('composerStage');
-  if (!stage || document.getElementById('composerStageWrap').classList.contains('hidden')) return;
+function buildQrChip() {
   const box = document.getElementById('qrPreview');
   const el = getQrCanvas(box);
-  if (!el) return;
-  const dataUrl = el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src;
+  if (!el) return null;
+  const qrDataUrl = el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src;
+  const withCaption = document.getElementById('captionToggle').checked;
+  if (!withCaption) return qrDataUrl;
+
+  const captionText = document.getElementById('captionText').value || 'Skan et 👆';
+  const qrSize = 220;
+  const pad = 14;
+  const capH = 44;
+  const canvas = document.createElement('canvas');
+  canvas.width = qrSize + pad * 2;
+  canvas.height = qrSize + pad * 2 + capH;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, 0, 0, canvas.width, canvas.height, 16);
+  ctx.fill();
+  const qrImg = new Image();
+  return new Promise((resolve) => {
+    qrImg.onload = () => {
+      ctx.drawImage(qrImg, pad, pad, qrSize, qrSize);
+      ctx.fillStyle = qrColor;
+      roundRect(ctx, pad, qrSize + pad + 6, qrSize, capH - 12, 10);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px -apple-system, Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(captionText, canvas.width / 2, qrSize + pad + 6 + (capH - 12) / 2 + 1);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    qrImg.src = qrDataUrl;
+  });
+}
+
+async function prepareHandleQR() {
+  const stage = document.getElementById('composerStage');
+  if (!stage || document.getElementById('composerStageWrap').classList.contains('hidden')) return;
+  const dataUrl = await buildQrChip();
+  if (!dataUrl) return;
   document.getElementById('qrHandleImg').src = dataUrl;
   positionHandle();
 }
 
+document.getElementById('captionToggle').addEventListener('change', (e) => {
+  document.getElementById('captionTextWrap').style.display = e.target.checked ? 'block' : 'none';
+  prepareHandleQR();
+});
+document.getElementById('captionText').addEventListener('input', () => prepareHandleQR());
+
 function positionHandle() {
   const stage = document.getElementById('composerStage');
   const handle = document.getElementById('qrHandle');
+  const img = document.getElementById('qrHandleImg');
+  const ratio = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : 1;
   const w = stage.clientWidth * (handleSizePct / 100);
+  const hgt = w * ratio;
   handle.style.width = w + 'px';
   handle.style.left = (stage.clientWidth * handlePos.xPct / 100 - w / 2) + 'px';
-  handle.style.top = (stage.clientHeight * handlePos.yPct / 100 - w / 2) + 'px';
+  handle.style.top = (stage.clientHeight * handlePos.yPct / 100 - hgt / 2) + 'px';
 }
 
 document.getElementById('qrSizeSlider').addEventListener('input', (e) => {
@@ -524,10 +752,12 @@ function renderComposedCanvas() {
       ctx.drawImage(bgImg, 0, 0, naturalW, naturalH);
       const qrImg = new Image();
       qrImg.onload = () => {
-        const qrSize = naturalW * (handleSizePct / 100);
+        const ratio = qrImg.naturalHeight / qrImg.naturalWidth;
+        const qrW = naturalW * (handleSizePct / 100);
+        const qrH = qrW * ratio;
         const cx = naturalW * (handlePos.xPct / 100);
         const cy = naturalH * (handlePos.yPct / 100);
-        ctx.drawImage(qrImg, cx - qrSize / 2, cy - qrSize / 2, qrSize, qrSize);
+        ctx.drawImage(qrImg, cx - qrW / 2, cy - qrH / 2, qrW, qrH);
         resolve(canvas);
       };
       qrImg.src = document.getElementById('qrHandleImg').src;

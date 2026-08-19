@@ -64,6 +64,7 @@
         <h3 style="margin-bottom:10px;">Yeni lisenziya yarat</h3>
         <div class="row">
           <input type="text" id="newOwner" placeholder="Sahibin adı (məs: Elvin - müştəri)">
+          <input type="text" id="newKey" placeholder="Öz açarını yaz (boş saxlasan avtomatik yaranır)" style="text-transform:uppercase;">
           <button class="btn" onclick="createLicense()">+ Yarat</button>
         </div>
       </div>
@@ -126,14 +127,16 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 
 async function createLicense() {
   const owner_name = document.getElementById('newOwner').value.trim();
-  const r = await fetch(`${FN}/admin-licenses?action=create`, { method: 'POST', headers: h(), body: JSON.stringify({ owner_name }) });
+  const license_key = document.getElementById('newKey').value.trim().toUpperCase();
+  const r = await fetch(`${FN}/admin-licenses?action=create`, { method: 'POST', headers: h(), body: JSON.stringify({ owner_name, license_key: license_key || undefined }) });
   const j = await r.json();
   if (j.license) {
     document.getElementById('newOwner').value = '';
+    document.getElementById('newKey').value = '';
     loadLicenses();
     alert(`Yaradıldı!\nAçar: ${j.license.license_key}\nBu açarı müştəriyə göndər — o özü öz cihazında aktivləşdirsin.`);
   } else {
-    alert('Xəta: ' + (j.error || 'bilinməyən'));
+    alert('Xəta: ' + (j.error || 'bilinməyən — bu açar artıq istifadə olunub ola bilər'));
   }
 }
 
