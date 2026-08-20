@@ -61,9 +61,12 @@
 - Telefon nömrəsi ayrıca sahədə saxlanılır, profil səhifəsində birbaşa zəng/WhatsApp düyməsi kimi görünür
 
 ## Vacib qeyd — real limitlər
-Cihaz tanınması brauzerin fingerprint-i (canvas + user agent + ekran + s.) əsasında olur. Bu, sənaye standartıdır, amma 100% qırılmaz deyil:
-- Brauzer məlumatlarını təmizləyəndə (cache/localStorage silinəndə) və ya **incognito/private** rejimdə açılanda sistem bunu "yeni cihaz" kimi görür və girişi rədd edir — bu halda admin paneldən "Cihazı sıfırla" lazımdır.
+Cihaz tanınması brauzerin fingerprint-i (canvas + user agent + ekran + s.) əsasında olur və nəticə localStorage-də saxlanılır. Bu, sənaye standartıdır, amma 100% qırılmaz deyil:
+- **Ən çox rast gəlinən problem:** Safari (xüsusən iOS-da) və WhatsApp/Instagram-ın daxili brauzeri ("in-app browser") müəyyən müddətdən sonra və ya tətbiqi bağlayanda saytın yaddaşını (localStorage) avtomatik təmizləyir. Bu halda sistem eyni fiziki telefonu "yeni cihaz" kimi görür və artıq dolmuş limitə görə rədd edir.
+  - **Tövsiyə:** Linki WhatsApp/Instagram-ın öz daxili brauzerində deyil, **Safari və ya Chrome**-da aç (linkin üstünə uzun bas → "Open in Browser" / "Safari-də aç" seçimi). iOS-da bundan sonra "Add to Home Screen" (Ana ekrana əlavə et) etsən, yaddaş daha etibarlı saxlanılır.
+- **Özünə-xidmət həll:** Bu problem yaşandıqda istifadəçi artıq admin gözləməli deyil — bloklanma ekranında **"♻️ Cihazlarımı sıfırla və yenidən cəhd et"** düyməsi var, ora basıb öz açarını yenidən daxil edən kimi bütün köhnə cihaz qeydləri təmizlənir və dərhal yenidən aktivləşir. Bu əməliyyat sənə (admin) Telegram-a bildiriş kimi gəlir ki, kim edibsə xəbərin olsun (əgər bu sən deyilsənsə, açarı dərhal söndürə bilərsən).
 - Çox təcrübəli istifadəçi developer tools ilə fingerprint-i saxtalaşdıra bilər — amma bu, adi istifadəçi üçün maneədir, tam hərbi səviyyəli qorunma deyil.
+- Tez-tez bu problemlə qarşılaşan müştərilər üçün admin paneldən "Cihaz sayı"nı 1-2 əlavə artırmaq (məs. 2 yerinə 3) əlavə təhlükəsizlik boşluğu yaradır.
 - Əgər tam bağlanmış mühit lazımdırsa (məs. native mobil tətbiq və ya browser extension), bu ayrı layihədir — mənə de, onu da qura bilərəm.
 
 ## Albom (şəkil/video) limitləri

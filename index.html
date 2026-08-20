@@ -139,6 +139,9 @@
     <div class="icon">⛔</div>
     <h2>Bu cihazda icazə yoxdur</h2>
     <p id="blockedText">Bu lisenziya artıq icazə verilən cihaz sayı qədər başqa cihazlara bağlıdır. Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.</p>
+    <p class="muted" style="margin-top:14px;font-size:12px;">Bu, əslində sənin öz cihazındırsa (brauzer yaddaşı təmizlənib), aşağıdan özün sıfırlaya bilərsən:</p>
+    <button class="btn secondary" style="margin-top:10px;" onclick="selfResetAndRetry()">♻️ Cihazlarımı sıfırla və yenidən cəhd et</button>
+    <div class="err" id="selfResetMsg" style="color:var(--green);"></div>
   </div>
 
   <!-- APP -->
@@ -349,6 +352,34 @@ async function doActivate() {
   } catch (e) {
     errBox.textContent = 'Şəbəkə xətası.';
     errBox.style.display = 'block';
+  }
+}
+
+async function selfResetAndRetry() {
+  const key = document.getElementById('licenseInput').value.trim().toUpperCase();
+  const msg = document.getElementById('selfResetMsg');
+  if (!key) {
+    msg.style.color = 'var(--red)'; msg.textContent = 'Açar tapılmadı — səhifəni yenidən yüklə və açarı yenidən yaz.';
+    msg.style.display = 'block';
+    return;
+  }
+  msg.style.color = 'var(--accent)';
+  msg.textContent = 'Sıfırlanır...';
+  msg.style.display = 'block';
+  try {
+    const r = await fetch(`${FN}/self-reset-devices`, { method: 'POST', body: JSON.stringify({ license_key: key }) });
+    const j = await r.json();
+    if (j.success) {
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✅ Sıfırlandı! Yenidən aktivləşdirilir...';
+      setTimeout(() => doActivate(), 900);
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = j.reason === 'not_found' ? 'Bu açar tapılmadı.' : 'Xəta: sıfırlanmadı.';
+    }
+  } catch (e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Şəbəkə xətası.';
   }
 }
 
