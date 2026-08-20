@@ -8,14 +8,36 @@ function esc(s) {
   }[c]));
 }
 
-const ICONS = {
-  instagram: '📷', facebook: '📘', linkedin: '💼', telegram: '✈️', whatsapp: '💬',
-  tiktok: '🎵', youtube: '▶️', website: '🌐', twitter: '🐦', x: '✕', email: '✉️',
-  phone: '📞', location: '📍', other: '🔗'
+// Real, rəngli, tanınan ikonlar (emoji deyil) — index.html-dəki ICON_DEFS ilə eynidir
+const ICON_DEFS = {
+  instagram: { gradient: 'linear-gradient(135deg,#f58529,#dd2a7b,#8134af)', color: '#fff',
+    path: 'M12 15.2c1.77 0 3.2-1.43 3.2-3.2s-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2 1.43 3.2 3.2 3.2zM9 2l-1.83 2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-2.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z' },
+  facebook: { bg: '#1877F2', color: '#fff', letter: 'f' },
+  whatsapp: { bg: '#25D366', color: '#fff',
+    path: 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+  telegram: { bg: '#229ED9', color: '#fff', path: 'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z' },
+  tiktok: { bg: '#000000', color: '#fff', path: 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' },
+  youtube: { bg: '#FF0000', color: '#fff', path: 'M9.5 8.5v7l6-3.5-6-3.5z' },
+  linkedin: { bg: '#0A66C2', color: '#fff', letter: 'in' },
+  twitter: { bg: '#000000', color: '#fff', letter: 'X' },
+  x: { bg: '#000000', color: '#fff', letter: 'X' },
+  email: { bg: '#64748b', color: '#fff', path: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
+  phone: { bg: '#6366f1', color: '#fff',
+    path: 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+  location: { bg: '#ef4444', color: '#fff', path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
+  website: { bg: '#0891b2', color: '#fff',
+    path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.9 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z' },
+  other: { bg: '#94a3b8', color: '#fff', path: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z' }
 };
 
-// Sürətli baxış üçün üst sırada göstərilən "əlaqə" tipli ikonlar
-const QUICK_TYPES = ['whatsapp', 'instagram', 'facebook', 'linkedin', 'telegram', 'tiktok', 'youtube', 'twitter'];
+function iconBadge(type, size) {
+  const def = ICON_DEFS[type] || ICON_DEFS.other;
+  const bg = def.gradient ? `background:${def.gradient};` : `background:${def.bg};`;
+  const inner = def.letter
+    ? `<span style="color:${def.color};font-weight:800;font-size:${size * 0.42}px;font-family:-apple-system,Arial;">${def.letter}</span>`
+    : `<svg viewBox="0 0 24 24" width="${size * 0.56}" height="${size * 0.56}" fill="${def.color}"><path d="${def.path}"/></svg>`;
+  return `<span class="ibadge" style="width:${size}px;height:${size}px;${bg}">${inner}</span>`;
+}
 
 exports.handler = async (event) => {
   let slug = event.queryStringParameters && event.queryStringParameters.slug;
@@ -52,26 +74,20 @@ exports.handler = async (event) => {
   const phoneDigits = (d.phone || '').replace(/[^\d+]/g, '');
   const phoneBlock = d.phone ? `
     <div class="phone-row">
-      <a class="phone-btn" href="tel:${esc(phoneDigits)}">📞 <span>${esc(d.phone)}</span></a>
-      <a class="phone-icon-btn" href="https://wa.me/${esc(phoneDigits.replace('+', ''))}" target="_blank" rel="noopener" title="WhatsApp">💬</a>
+      <a class="phone-btn" href="tel:${esc(phoneDigits)}">${iconBadge('phone', 30)} <span>${esc(d.phone)}</span></a>
+      <a class="phone-icon-btn" href="https://wa.me/${esc(phoneDigits.replace('+', ''))}" target="_blank" rel="noopener" title="WhatsApp">${iconBadge('whatsapp', 30)}</a>
     </div>` : '';
 
   const allLinks = d.links || [];
 
-  // Sürətli ikon sırası (yalnız url dolu olanlar)
-  const quickIcons = allLinks
-    .filter(l => QUICK_TYPES.includes(l.type) && l.url)
-    .map(l => `<a class="quick-icon" href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.label || l.type)}">${ICONS[l.type] || '🔗'}</a>`)
-    .join('');
-
-  // Aşağıdakı tam link siyahısı (location xüsusi işlənir)
+  // Tək link siyahısı — real rəngli ikonlarla (dublikat sıra yoxdur)
   const links = allLinks.map((l) => {
     let href = esc(l.url);
     if (l.type === 'phone') href = `tel:${esc((l.url || '').replace(/[^\d+]/g, ''))}`;
     if (l.type === 'location') href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.url || '')}`;
     return `
     <a class="link-card" href="${href}" target="_blank" rel="noopener">
-      <span class="icon">${ICONS[l.type] || '🔗'}</span>
+      ${iconBadge(l.type, 38)}
       <span class="label">${esc(l.label || l.type)}</span>
       <span class="arrow">${l.type === 'location' ? '🧭' : '→'}</span>
     </a>`;
@@ -136,36 +152,29 @@ exports.handler = async (event) => {
   }
   .bio { color:#9aa8ca; font-size:14px; line-height:1.55; margin-bottom:18px; white-space:pre-wrap; max-width:340px; margin-left:auto; margin-right:auto; }
 
-  .quick-icons { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
-  .quick-icon {
-    width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); font-size:19px;
-    text-decoration:none; transition:.15s;
-  }
-  .quick-icon:active { background:rgba(139,92,246,.25); transform:scale(.94); }
+  .ibadge { border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
 
-  .phone-row { display:flex; gap:10px; margin-bottom:18px; }
+  .phone-row { display:flex; gap:10px; margin-bottom:18px; align-items:center; }
   .phone-btn {
-    flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+    flex:1; display:flex; align-items:center; justify-content:center; gap:10px;
     background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; text-decoration:none;
-    font-weight:700; font-size:15px; padding:15px 16px; border-radius:16px;
+    font-weight:700; font-size:15px; padding:12px 16px; border-radius:16px;
     box-shadow:0 10px 26px rgba(99,102,241,.4);
   }
   .phone-icon-btn {
-    width:52px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    width:52px; height:52px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
     background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:16px;
-    text-decoration:none; font-size:20px;
+    text-decoration:none;
   }
 
   .links { margin-bottom:6px; }
   .link-card {
-    display:flex; align-items:center; gap:13px; background:rgba(255,255,255,.045);
-    border:1px solid rgba(255,255,255,.09); border-radius:18px; padding:16px 18px; margin-bottom:11px;
+    display:flex; align-items:center; gap:14px; background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.09); border-radius:18px; padding:13px 16px; margin-bottom:11px;
     text-decoration:none; color:#eef1fb; font-weight:600; font-size:15px; transition:.15s;
     backdrop-filter: blur(6px);
   }
   .link-card:active { background:rgba(139,92,246,.18); border-color:#8b5cf6; transform:scale(.985); }
-  .icon { font-size:20px; width:24px; text-align:center; flex-shrink:0; }
   .label { flex:1; text-align:left; }
   .arrow { color:#5b6b8c; font-size:15px; flex-shrink:0; }
 
@@ -202,7 +211,6 @@ exports.handler = async (event) => {
       <div class="avatar-wrap"><div class="avatar">${avatarHtml}</div></div>
       <h1>${esc(license.owner_name || '')}</h1>
       ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
-      ${quickIcons ? `<div class="quick-icons">${quickIcons}</div>` : ''}
     </div>
     ${phoneBlock}
     <div class="links">${links || '<p style="color:#5b6b8c;font-size:13px;text-align:center;">Hələ link əlavə olunmayıb</p>'}</div>

@@ -6,7 +6,7 @@
 <title>QR Profile Card</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -65,7 +65,9 @@
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
 
   .link-row{display:flex;gap:8px;align-items:center;}
+  .link-row select{flex:1;}
   .link-edit-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;}
+  .icon-preview{flex-shrink:0;}
   .link-row select{flex:0 0 110px;}
   .link-row input{flex:1;}
   .link-row button{flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:10px 12px;cursor:pointer;}
@@ -420,6 +422,70 @@ const LINK_TYPES = [
   ['location','Ünvan / Məkan'],['other','Digər']
 ];
 
+/* ---------- İKON SİSTEMİ (real, rəngli, tanınan ikonlar) ---------- */
+const ICON_DEFS = {
+  instagram: { gradient: [[0,'#f58529'],[0.5,'#dd2a7b'],[1,'#8134af']], color:'#fff',
+    path:'M12 15.2c1.77 0 3.2-1.43 3.2-3.2s-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2 1.43 3.2 3.2 3.2zM9 2l-1.83 2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-2.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z' },
+  facebook: { bg:'#1877F2', color:'#fff', letter:'f' },
+  whatsapp: { bg:'#25D366', color:'#fff',
+    path:'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+  telegram: { bg:'#229ED9', color:'#fff', path:'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z' },
+  tiktok: { bg:'#000000', color:'#fff', path:'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' },
+  youtube: { bg:'#FF0000', color:'#fff', path:'M9.5 8.5v7l6-3.5-6-3.5z' },
+  linkedin: { bg:'#0A66C2', color:'#fff', letter:'in' },
+  twitter: { bg:'#000000', color:'#fff', letter:'X' },
+  x: { bg:'#000000', color:'#fff', letter:'X' },
+  email: { bg:'#64748b', color:'#fff', path:'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
+  phone: { bg:'#6366f1', color:'#fff',
+    path:'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+  location: { bg:'#ef4444', color:'#fff', path:'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
+  website: { bg:'#0891b2', color:'#fff',
+    path:'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.9 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z' },
+  other: { bg:'#94a3b8', color:'#fff', path:'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z' }
+};
+
+function iconBadgeSvgHtml(type, size) {
+  const def = ICON_DEFS[type] || ICON_DEFS.other;
+  const bg = def.gradient
+    ? `background:linear-gradient(135deg, ${def.gradient.map(g => g[1]).join(',')});`
+    : `background:${def.bg};`;
+  const inner = def.letter
+    ? `<span style="color:${def.color};font-weight:800;font-size:${size * 0.42}px;font-family:-apple-system,Arial;">${def.letter}</span>`
+    : `<svg viewBox="0 0 24 24" width="${size * 0.56}" height="${size * 0.56}" fill="${def.color}"><path d="${def.path}"/></svg>`;
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;${bg}">${inner}</div>`;
+}
+
+function drawIconBadge(ctx, cx, cy, r, type) {
+  const def = ICON_DEFS[type] || ICON_DEFS.other;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  if (def.gradient) {
+    const g = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    def.gradient.forEach(([stop, color]) => g.addColorStop(stop, color));
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = def.bg;
+  }
+  ctx.fill();
+  ctx.restore();
+
+  if (def.letter) {
+    ctx.fillStyle = def.color;
+    ctx.font = `800 ${Math.round(r * 0.95)}px -apple-system, Arial`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(def.letter, cx, cy + 1);
+  } else if (def.path) {
+    const scale = (r * 1.15) / 24;
+    ctx.save();
+    ctx.translate(cx - 12 * scale, cy - 12 * scale);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = def.color;
+    ctx.fill(new Path2D(def.path));
+    ctx.restore();
+  }
+}
+
 function renderLinks() {
   const box = document.getElementById('linksList');
   box.innerHTML = '';
@@ -432,25 +498,23 @@ function makeLinkRow(link, idx) {
 
   const topRow = document.createElement('div');
   topRow.className = 'link-row';
+
+  const iconPreview = document.createElement('div');
+  iconPreview.className = 'icon-preview';
+
   const sel = document.createElement('select');
   LINK_TYPES.forEach(([v, label]) => {
     const o = document.createElement('option'); o.value = v; o.textContent = label;
     if (link.type === v) o.selected = true;
     sel.appendChild(o);
   });
-  sel.style.flex = '0 0 130px';
-
-  const labelInput = document.createElement('input');
-  labelInput.type = 'text';
-  labelInput.placeholder = 'Özün ad yaz (məs: TOT Təlimi)';
-  labelInput.value = link.label || '';
 
   const del = document.createElement('button');
   del.textContent = '✕';
   del.onclick = () => { currentProfileData.links.splice(idx, 1); renderLinks(); };
 
+  topRow.appendChild(iconPreview);
   topRow.appendChild(sel);
-  topRow.appendChild(labelInput);
   topRow.appendChild(del);
 
   const urlInput = document.createElement('input');
@@ -460,13 +524,17 @@ function makeLinkRow(link, idx) {
   const isLocation = () => sel.value === 'location';
   urlInput.placeholder = isLocation() ? 'Ünvan yaz (məs: Bakı, Nəsimi r., 28 May küç. 10)' : 'https://...';
 
+  function refreshIconPreview() {
+    iconPreview.innerHTML = iconBadgeSvgHtml(sel.value, 34);
+  }
+  refreshIconPreview();
+
   sel.onchange = () => {
     currentProfileData.links[idx].type = sel.value;
-    if (!labelInput.value) labelInput.value = LINK_TYPES.find(t => t[0] === sel.value)[1];
+    currentProfileData.links[idx].label = LINK_TYPES.find(t => t[0] === sel.value)[1];
     urlInput.placeholder = isLocation() ? 'Ünvan yaz (məs: Bakı, Nəsimi r., 28 May küç. 10)' : 'https://...';
-    currentProfileData.links[idx].label = labelInput.value;
+    refreshIconPreview();
   };
-  labelInput.oninput = () => { currentProfileData.links[idx].label = labelInput.value; };
   urlInput.oninput = () => { currentProfileData.links[idx].url = urlInput.value; };
 
   card.appendChild(topRow);
@@ -765,8 +833,29 @@ function drawScanCorners(ctx, x, y, size, len, thick, color) {
 async function renderVizitka() {
   const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
   try { await document.fonts.load('800 34px "Baloo 2"'); } catch (e) {}
+  try { await document.fonts.load('700 44px "Caveat"'); } catch (e) {}
 
-  const W = 560, H = 860;
+  const name = document.getElementById('ownerName').value || 'İsim';
+  const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
+  const phone = document.getElementById('phoneInput').value;
+  const locationLink = (currentProfileData.links || []).find(l => l.type === 'location' && l.url);
+  const iconLinks = (currentProfileData.links || []).filter(l => l.url && l.type !== 'location');
+
+  const W = 560;
+  const avatarSize = 168;
+  const avatarY = 62;
+
+  // ---- Mərhələ 1: şaquli layout-u əvvəlcədən hesabla (boş yer qalmasın deyə) ----
+  let y = avatarY + avatarSize + 112;
+  if (phone) y += 42 + 14;
+  if (locationLink) y += 38 + 26; else y += 10;
+  if (iconLinks.length) y += 58 + 26;
+  const qrBoxY = y;
+  const qrBoxSize = 264;
+  const scanMeY = qrBoxY + qrBoxSize + 62;
+  const footerY = scanMeY + 46;
+  const H = footerY + 34;
+
   const canvas = document.getElementById('vizitkaCanvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
@@ -817,9 +906,7 @@ async function renderVizitka() {
   ctx.fill();
 
   // Avatar — daha iri
-  const avatarSize = 168;
   const avatarX = W / 2 - avatarSize / 2;
-  const avatarY = 62;
   ctx.save();
   ctx.shadowColor = 'rgba(139,92,246,0.55)';
   ctx.shadowBlur = 34;
@@ -850,7 +937,7 @@ async function renderVizitka() {
     ctx.fillStyle = '#fff';
     ctx.font = '600 70px -apple-system, Arial';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const initial = (document.getElementById('ownerName').value || '?').trim().slice(0, 1).toUpperCase();
+    const initial = (name || '?').trim().slice(0, 1).toUpperCase();
     ctx.fillText(initial, W / 2, avatarY + avatarSize / 2 + 4);
   }
   ctx.restore();
@@ -859,11 +946,9 @@ async function renderVizitka() {
   ctx.fillStyle = '#f7f9ff';
   ctx.font = '800 36px "Baloo 2", -apple-system, Arial';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  const name = document.getElementById('ownerName').value || 'İsim';
   ctx.fillText(name, W / 2, avatarY + avatarSize + 54);
 
   // Tagline
-  const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
   ctx.fillStyle = '#9aa8ca';
   ctx.font = '400 16px -apple-system, Arial';
   ctx.fillText(tagline, W / 2, avatarY + avatarSize + 84, W - 100);
@@ -871,7 +956,6 @@ async function renderVizitka() {
   let qrTop = avatarY + avatarSize + 112;
 
   // Phone pill
-  const phone = document.getElementById('phoneInput').value;
   if (phone) {
     ctx.font = '600 17px -apple-system, Arial';
     const label = '📞  ' + phone;
@@ -891,8 +975,7 @@ async function renderVizitka() {
     qrTop += pillH + 14;
   }
 
-  // Ünvan pill (əgər linklərdə "location" tipi varsa)
-  const locationLink = (currentProfileData.links || []).find(l => l.type === 'location' && l.url);
+  // Ünvan pill
   if (locationLink) {
     ctx.font = '600 15px -apple-system, Arial';
     const shortAddr = locationLink.url.length > 34 ? locationLink.url.slice(0, 34) + '…' : locationLink.url;
@@ -915,10 +998,22 @@ async function renderVizitka() {
     qrTop += 10;
   }
 
+  // Sosial şəbəkə ikon sırası — real, rəngli, tanınan ikonlar
+  if (iconLinks.length) {
+    const badgeR = 26;
+    const gap = 14;
+    const rowW = iconLinks.length * (badgeR * 2) + (iconLinks.length - 1) * gap;
+    let bx = W / 2 - rowW / 2 + badgeR;
+    const by = qrTop + badgeR;
+    iconLinks.forEach((l) => {
+      drawIconBadge(ctx, bx, by, badgeR, l.type);
+      bx += badgeR * 2 + gap;
+    });
+    qrTop += badgeR * 2 + 26;
+  }
+
   // QR white box with scan-corner frame
-  const qrBoxSize = 264;
   const qrBoxX = W / 2 - qrBoxSize / 2;
-  const qrBoxY = qrTop;
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.35)';
   ctx.shadowBlur = 30;
@@ -940,11 +1035,60 @@ async function renderVizitka() {
 
   drawScanCorners(ctx, qrBoxX - 14, qrBoxY - 14, qrBoxSize + 28, 26, 4, '#8b5cf6');
 
+  // QR-ın mərkəzinə şəkil (avatar) yerləşdir — QR "H" səviyyəsi 30%-ə qədər örtülməyə dözür
+  if (currentProfileData.avatar) {
+    const centerR = qrBoxSize * 0.16;
+    const centerX = qrBoxX + qrBoxSize / 2, centerY = qrBoxY + qrBoxSize / 2;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, centerR + 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, centerR, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, centerX - centerR, centerY - centerR, centerR * 2, centerR * 2);
+        resolve();
+      };
+      img.src = currentProfileData.avatar;
+    });
+    ctx.restore();
+  }
+
+  // "Scan me!" effekti - əyri ox + cursive mətn
+  ctx.save();
+  ctx.strokeStyle = 'rgba(199,208,232,0.85)';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  const arrowStartX = qrBoxX + 18, arrowStartY = scanMeY - 4;
+  const arrowEndX = qrBoxX + 54, arrowEndY = qrBoxY + qrBoxSize + 4;
+  ctx.beginPath();
+  ctx.moveTo(arrowStartX, arrowStartY);
+  ctx.quadraticCurveTo(arrowStartX + 6, arrowStartY - 34, arrowEndX, arrowEndY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(arrowEndX, arrowEndY);
+  ctx.lineTo(arrowEndX - 11, arrowEndY + 8);
+  ctx.moveTo(arrowEndX, arrowEndY);
+  ctx.lineTo(arrowEndX + 3, arrowEndY + 13);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = '#eef1fb';
+  ctx.font = '700 40px "Caveat", cursive';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Scan me!', qrBoxX + 66, scanMeY + 10);
+
   // Footer
   ctx.fillStyle = '#5b6b8c';
   ctx.font = '600 12px -apple-system, Arial';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText('S K A N   E T   ·   Q R   P R O F I L E   C A R D', W / 2, H - 38);
+  ctx.textAlign = 'center';
+  ctx.fillText('Q R   P R O F I L E   C A R D', W / 2, footerY);
 
   document.getElementById('vizitkaPreviewBox').innerHTML =
     `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:20px;box-shadow:0 16px 40px rgba(0,0,0,.5);">`;
