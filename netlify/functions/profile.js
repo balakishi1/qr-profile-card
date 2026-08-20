@@ -71,9 +71,15 @@ exports.handler = async (event) => {
     ? `<img src="${esc(d.avatar)}" class="avatar-img" alt="avatar">`
     : (license.owner_name || '?').slice(0, 1).toUpperCase();
 
+  const coverHtml = d.avatar ? `
+    <div class="cover">
+      <img src="${esc(d.avatar)}" class="cover-img" id="coverImg">
+      <div class="cover-fade"></div>
+    </div>` : '';
+
   const phoneDigits = (d.phone || '').replace(/[^\d+]/g, '');
   const phoneBlock = d.phone ? `
-    <div class="phone-row">
+    <div class="phone-row reveal">
       <a class="phone-btn" href="tel:${esc(phoneDigits)}">${iconBadge('phone', 30)} <span>${esc(d.phone)}</span></a>
       <a class="phone-icon-btn" href="https://wa.me/${esc(phoneDigits.replace('+', ''))}" target="_blank" rel="noopener" title="WhatsApp">${iconBadge('whatsapp', 30)}</a>
     </div>` : '';
@@ -81,12 +87,12 @@ exports.handler = async (event) => {
   const allLinks = d.links || [];
 
   // Tək link siyahısı — real rəngli ikonlarla (dublikat sıra yoxdur)
-  const links = allLinks.map((l) => {
+  const links = allLinks.map((l, idx) => {
     let href = esc(l.url);
     if (l.type === 'phone') href = `tel:${esc((l.url || '').replace(/[^\d+]/g, ''))}`;
     if (l.type === 'location') href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.url || '')}`;
     return `
-    <a class="link-card" href="${href}" target="_blank" rel="noopener">
+    <a class="link-card reveal" style="transition-delay:${Math.min(idx * 60, 400)}ms" href="${href}" target="_blank" rel="noopener">
       ${iconBadge(l.type, 38)}
       <span class="label">${esc(l.label || l.type)}</span>
       <span class="arrow">${l.type === 'location' ? '🧭' : '→'}</span>
@@ -95,14 +101,14 @@ exports.handler = async (event) => {
 
   const albums = (d.albums || []).filter(a => a.items && a.items.length);
   const albumsHtml = albums.map((album) => {
-    const items = album.items.map((item) => {
+    const items = album.items.map((item, idx) => {
       if (item.type === 'video') {
-        return `<div class="media-cell" onclick="openLightbox('${esc(item.url)}','video')">
+        return `<div class="media-cell reveal" style="transition-delay:${Math.min(idx * 40, 300)}ms" onclick="openLightbox('${esc(item.url)}','video')">
           <video src="${esc(item.url)}" muted preload="metadata"></video>
           <span class="play-icon">▶</span>
         </div>`;
       }
-      return `<div class="media-cell" onclick="openLightbox('${esc(item.url)}','image')">
+      return `<div class="media-cell reveal" style="transition-delay:${Math.min(idx * 40, 300)}ms" onclick="openLightbox('${esc(item.url)}','image')">
         <img src="${esc(item.url)}" loading="lazy">
       </div>`;
     }).join('');
@@ -135,6 +141,13 @@ exports.handler = async (event) => {
   @keyframes fadeUp { from { opacity:0; transform:translateY(16px);} to { opacity:1; transform:translateY(0);} }
   @keyframes pop { 0%{transform:scale(.9);opacity:0;} 100%{transform:scale(1);opacity:1;} }
   @keyframes ringPulse { 0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.35);} 50%{box-shadow:0 0 0 10px rgba(139,92,246,0);} }
+
+  .cover { position:relative; width:100%; height:270px; border-radius:28px 28px 0 0; overflow:hidden; }
+  .cover-img { width:100%; height:100%; object-fit:cover; display:block; transform:scale(1.02); will-change:transform; }
+  .cover-fade { position:absolute; left:0; right:0; bottom:0; height:130px; background:linear-gradient(to bottom, rgba(13,21,38,0) 0%, #0d1526 88%); }
+
+  .reveal { opacity:0; transform:translateY(18px); transition:opacity .55s ease, transform .55s ease; }
+  .reveal.in { opacity:1; transform:translateY(0); }
 
   .top { text-align:center; margin-bottom:8px; }
   .avatar-wrap { position:relative; width:150px; height:150px; margin:0 auto 18px; animation: pop .5s ease .05s both; }
@@ -207,7 +220,8 @@ exports.handler = async (event) => {
 </style></head>
 <body>
   <div class="page">
-    <div class="top">
+    ${coverHtml}
+    <div class="top" style="${d.avatar ? 'margin-top:-72px;' : ''}">
       <div class="avatar-wrap"><div class="avatar">${avatarHtml}</div></div>
       <h1>${esc(license.owner_name || '')}</h1>
       ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
@@ -236,6 +250,23 @@ exports.handler = async (event) => {
       if (e.target.tagName === 'VIDEO') return;
       document.getElementById('lightbox').classList.remove('open');
       document.getElementById('lightboxContent').innerHTML = '';
+    }
+
+    // Scroll ilə görünən elementlərin canlanması
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+    // Üst şəklə yüngül parallax effekti
+    const coverImg = document.getElementById('coverImg');
+    if (coverImg) {
+      window.addEventListener('scroll', () => {
+        const y = Math.min(window.scrollY, 260);
+        coverImg.style.transform = 'translateY(' + (y * 0.22) + 'px) scale(' + (1.02 + y * 0.0006) + ')';
+      }, { passive: true });
     }
   </script>
 </body></html>`;

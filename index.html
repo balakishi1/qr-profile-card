@@ -190,6 +190,7 @@
       <div class="card">
         <h3>QR rəngi</h3>
         <div class="swatches" id="colorSwatches"></div>
+        <canvas id="simpleQrCanvas" style="display:none;"></canvas>
         <div class="qr-preview" id="qrPreview"></div>
         <div class="row" style="margin-bottom:10px;">
           <button class="btn secondary" onclick="downloadQR()">📥 Sadə QR yüklə</button>
@@ -766,18 +767,85 @@ function getProfileUrl() {
   return `${location.origin}/p/${currentSlug}`;
 }
 
-function renderQR() {
-  const box = document.getElementById('qrPreview');
-  box.innerHTML = '';
-  new QRCode(box, {
-    text: getProfileUrl(),
-    width: 220, height: 220,
-    colorDark: qrColor, colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.H
-  });
+let lastSimpleQrDataUrl = null;
+
+async function renderQR() {
+  const dataUrl = await renderSimpleQrCard();
+  lastSimpleQrDataUrl = dataUrl;
   document.getElementById('profileLinkBox').innerHTML =
     `<span class="muted">Profil linki: </span><a class="share-link" href="${getProfileUrl()}" target="_blank">${getProfileUrl()}</a>`;
-  setTimeout(() => { prepareHandleQR(); renderVizitka(); }, 150);
+  setTimeout(() => { prepareHandleQR(); renderVizitka(); }, 80);
+}
+
+async function renderSimpleQrCard() {
+  const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
+  try { await document.fonts.load('700 46px "Caveat"'); } catch (e) {}
+
+  const qrSize = 640;
+  const pad = 40;
+  const scanH = 100;
+  const W = qrSize + pad * 2;
+  const H = qrSize + pad * 2 + scanH;
+
+  const canvas = document.getElementById('simpleQrCanvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+
+  const qrBoxX = pad, qrBoxY = pad;
+  await new Promise((resolve) => {
+    const qrImg = new Image();
+    qrImg.onload = () => { ctx.drawImage(qrImg, qrBoxX, qrBoxY, qrSize, qrSize); resolve(); };
+    qrImg.src = qrDataUrl;
+  });
+
+  drawScanCorners(ctx, qrBoxX - 12, qrBoxY - 12, qrSize + 24, 34, 5, qrColor);
+
+  // QR-ın mərkəzinə şəkil (avatar) yerləşdir
+  if (currentProfileData.avatar) {
+    const centerR = qrSize * 0.15;
+    const cx = qrBoxX + qrSize / 2, cy = qrBoxY + qrSize / 2;
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx, cy, centerR + 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, centerR, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, cx - centerR, cy - centerR, centerR * 2, centerR * 2); resolve(); };
+      img.src = currentProfileData.avatar;
+    });
+    ctx.restore();
+  }
+
+  // "Scan me!" effekti — əyri ox + cursive mətn
+  const scanY = qrBoxY + qrSize + 56;
+  ctx.save();
+  ctx.strokeStyle = qrColor;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  const asx = qrBoxX + 30, asy = scanY - 6;
+  const aex = qrBoxX + 78, aey = qrBoxY + qrSize + 10;
+  ctx.beginPath();
+  ctx.moveTo(asx, asy);
+  ctx.quadraticCurveTo(asx + 10, asy - 44, aex, aey);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(aex, aey); ctx.lineTo(aex - 13, aey + 9);
+  ctx.moveTo(aex, aey); ctx.lineTo(aex + 4, aey + 16);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 48px "Caveat", cursive';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Scan me!', qrBoxX + 94, scanY + 14);
+
+  const dataUrl = canvas.toDataURL('image/png');
+  document.getElementById('qrPreview').innerHTML = `<img src="${dataUrl}" style="max-width:100%;border-radius:14px;">`;
+  return dataUrl;
 }
 
 function generateHighResQr(text, color, sizePx) {
@@ -839,7 +907,6 @@ async function renderVizitka() {
   const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
   const phone = document.getElementById('phoneInput').value;
   const locationLink = (currentProfileData.links || []).find(l => l.type === 'location' && l.url);
-  const iconLinks = (currentProfileData.links || []).filter(l => l.url && l.type !== 'location');
 
   const W = 560;
   const avatarSize = 168;
@@ -849,7 +916,6 @@ async function renderVizitka() {
   let y = avatarY + avatarSize + 112;
   if (phone) y += 42 + 14;
   if (locationLink) y += 38 + 26; else y += 10;
-  if (iconLinks.length) y += 58 + 26;
   const qrBoxY = y;
   const qrBoxSize = 264;
   const scanMeY = qrBoxY + qrBoxSize + 62;
@@ -998,20 +1064,6 @@ async function renderVizitka() {
     qrTop += 10;
   }
 
-  // Sosial şəbəkə ikon sırası — real, rəngli, tanınan ikonlar
-  if (iconLinks.length) {
-    const badgeR = 26;
-    const gap = 14;
-    const rowW = iconLinks.length * (badgeR * 2) + (iconLinks.length - 1) * gap;
-    let bx = W / 2 - rowW / 2 + badgeR;
-    const by = qrTop + badgeR;
-    iconLinks.forEach((l) => {
-      drawIconBadge(ctx, bx, by, badgeR, l.type);
-      bx += badgeR * 2 + gap;
-    });
-    qrTop += badgeR * 2 + 26;
-  }
-
   // QR white box with scan-corner frame
   const qrBoxX = W / 2 - qrBoxSize / 2;
   ctx.save();
@@ -1034,30 +1086,6 @@ async function renderVizitka() {
   });
 
   drawScanCorners(ctx, qrBoxX - 14, qrBoxY - 14, qrBoxSize + 28, 26, 4, '#8b5cf6');
-
-  // QR-ın mərkəzinə şəkil (avatar) yerləşdir — QR "H" səviyyəsi 30%-ə qədər örtülməyə dözür
-  if (currentProfileData.avatar) {
-    const centerR = qrBoxSize * 0.16;
-    const centerX = qrBoxX + qrBoxSize / 2, centerY = qrBoxY + qrBoxSize / 2;
-    ctx.save();
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, centerR + 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, centerR, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, centerX - centerR, centerY - centerR, centerR * 2, centerR * 2);
-        resolve();
-      };
-      img.src = currentProfileData.avatar;
-    });
-    ctx.restore();
-  }
 
   // "Scan me!" effekti - əyri ox + cursive mətn
   ctx.save();
@@ -1124,7 +1152,7 @@ function getQrCanvas(sourceBox) {
 }
 
 async function downloadQR() {
-  const dataUrl = await generateHighResQr(getProfileUrl(), qrColor, 1000);
+  const dataUrl = await renderSimpleQrCard();
   const link = document.createElement('a');
   link.download = 'qr-kod.png';
   link.href = dataUrl;
@@ -1132,7 +1160,7 @@ async function downloadQR() {
 }
 
 async function shareQR() {
-  const dataUrl = await generateHighResQr(getProfileUrl(), qrColor, 1000);
+  const dataUrl = await renderSimpleQrCard();
   const blob = await (await fetch(dataUrl)).blob();
   const file = new File([blob], 'qr-kod.png', { type: 'image/png' });
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
