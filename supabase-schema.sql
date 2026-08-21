@@ -50,10 +50,21 @@ create table if not exists access_attempts (
 
 alter table access_attempts add column if not exists geo jsonb;
 
+-- Profil səhifəsindəki "Bizimlə əlaqə" formasından gələn mesajlar
+create table if not exists contact_messages (
+  id uuid primary key default gen_random_uuid(),
+  license_key text,
+  name text,
+  email text,
+  message text,
+  created_at timestamptz default now()
+);
+
 -- Netlify Functions service_role key ilə işlədiyi üçün RLS-i bağlı saxlamaq kifayətdir
 -- (default olaraq açıqdır, əlavə policy lazım deyil, çünki client birbaşa Supabase-ə qoşulmur)
 alter table licenses enable row level security;
 alter table access_attempts enable row level security;
+alter table contact_messages enable row level security;
 
 -- Şəkil/video fayllarını saxlamaq üçün ictimai (public) storage bucket
 insert into storage.buckets (id, name, public)

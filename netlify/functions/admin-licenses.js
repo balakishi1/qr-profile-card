@@ -35,6 +35,16 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: JSON.stringify({ attempts: data }) };
   }
 
+  if (event.httpMethod === 'GET' && action === 'messages') {
+    const { data, error } = await supabase
+      .from('contact_messages')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(300);
+    if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    return { statusCode: 200, body: JSON.stringify({ messages: data }) };
+  }
+
   if (event.httpMethod === 'POST') {
     let body;
     try {

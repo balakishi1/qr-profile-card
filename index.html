@@ -184,6 +184,27 @@
         <button class="btn secondary small" onclick="addLinkRow()">+ Link əlavə et</button>
       </div>
 
+      <div class="card">
+        <h3>Haqqımda bölməsi (peşəkar təcrübə)</h3>
+        <p class="muted" style="margin-bottom:12px;">Bu bölmə QR skan olunanda ayrıca "Haqqımda" hissəsi kimi görünür — təcrübə illəri, seminar sayı və s. statistika ilə birlikdə.</p>
+        <div class="field" style="display:flex;align-items:center;gap:14px;">
+          <div id="aboutPhotoPreview" style="width:64px;height:64px;border-radius:14px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--muted);">📷</div>
+          <div style="flex:1;">
+            <label>Ayrıca iri şəkil (güvənli portret)</label>
+            <input type="file" id="aboutPhotoInput" accept="image/*" style="padding:8px;">
+          </div>
+        </div>
+        <div class="field">
+          <label>Ətraflı haqqımda mətni</label>
+          <textarea id="aboutText" rows="5" placeholder="Mən [Ad] — 2005-ci ildən bu sahədə fəaliyyət göstərirəm..."></textarea>
+        </div>
+        <div class="field">
+          <label>Statistika (məs: "15+" / "İl peşəkar təcrübə")</label>
+          <div id="statsList"></div>
+          <button class="btn secondary small" onclick="addStatRow()">+ Statistika əlavə et</button>
+        </div>
+      </div>
+
       <button class="btn" onclick="saveProfile()">Yadda saxla</button>
       <div class="err" id="profileMsg" style="color:var(--green);"></div>
     </div>
@@ -391,11 +412,15 @@ function enterApp(j) {
   document.getElementById('ownerLabel').textContent = j.owner_name || 'Sosial şəbəkə & QR alətin';
   currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
   if (!currentProfileData.albums) currentProfileData.albums = [];
+  if (!currentProfileData.stats) currentProfileData.stats = [];
   currentSlug = j.profile_slug;
   document.getElementById('bioText').value = currentProfileData.bio || '';
   document.getElementById('phoneInput').value = currentProfileData.phone || '';
+  document.getElementById('aboutText').value = currentProfileData.aboutText || '';
   document.getElementById('taglineInput').value = currentProfileData.tagline || 'Bütün sosial şəbəkələrim üçün skan et';
   renderAvatarPreview();
+  renderAboutPhotoPreview();
+  renderStats();
   renderLinks();
   renderAlbums();
   buildColorSwatches();
@@ -435,6 +460,69 @@ document.getElementById('avatarInput').addEventListener('change', async (e) => {
   };
   img.src = dataUrl;
 });
+
+/* ---------- HAQQIMDA: ayrıca şəkil + statistika ---------- */
+function renderAboutPhotoPreview() {
+  const box = document.getElementById('aboutPhotoPreview');
+  if (currentProfileData.aboutPhoto) {
+    box.innerHTML = `<img src="${currentProfileData.aboutPhoto}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    box.innerHTML = '📷';
+  }
+}
+
+document.getElementById('aboutPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const dataUrl = await new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result);
+    reader.readAsDataURL(file);
+  });
+  const img = new Image();
+  img.onload = () => {
+    // Portret formatda (3:4), yüksək keyfiyyətdə saxlanılır
+    const targetW = 600, targetH = 800;
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW; canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+    const scale = Math.max(targetW / img.width, targetH / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    ctx.drawImage(img, (targetW - w) / 2, (targetH - h) / 2, w, h);
+    currentProfileData.aboutPhoto = canvas.toDataURL('image/jpeg', 0.88);
+    renderAboutPhotoPreview();
+  };
+  img.src = dataUrl;
+});
+
+function renderStats() {
+  const box = document.getElementById('statsList');
+  box.innerHTML = '';
+  (currentProfileData.stats || []).forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'link-row';
+    row.style.marginBottom = '8px';
+    const numInput = document.createElement('input');
+    numInput.type = 'text'; numInput.placeholder = '15+'; numInput.value = s.number || '';
+    numInput.style.flex = '0 0 90px';
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text'; labelInput.placeholder = 'İl peşəkar təcrübə'; labelInput.value = s.label || '';
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.onclick = () => { currentProfileData.stats.splice(idx, 1); renderStats(); };
+    numInput.oninput = () => { currentProfileData.stats[idx].number = numInput.value; };
+    labelInput.oninput = () => { currentProfileData.stats[idx].label = labelInput.value; };
+    row.appendChild(numInput); row.appendChild(labelInput); row.appendChild(del);
+    box.appendChild(row);
+  });
+}
+
+function addStatRow() {
+  if (!currentProfileData.stats) currentProfileData.stats = [];
+  if (currentProfileData.stats.length >= 4) { alert('Maksimum 4 statistika əlavə edə bilərsən.'); return; }
+  currentProfileData.stats.push({ number: '', label: '' });
+  renderStats();
+}
 
 /* ---------- TABS ---------- */
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
@@ -761,6 +849,7 @@ async function saveProfile() {
   currentProfileData.bio = document.getElementById('bioText').value;
   currentProfileData.tagline = document.getElementById('taglineInput').value;
   currentProfileData.phone = document.getElementById('phoneInput').value;
+  currentProfileData.aboutText = document.getElementById('aboutText').value;
   const owner_name = document.getElementById('ownerName').value;
   const r = await fetch(`${FN}/update-profile`, {
     method: 'POST',

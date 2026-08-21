@@ -57,6 +57,7 @@
     <div class="tabbar">
       <div class="tab active" data-t="licenses">Lisenziyalar</div>
       <div class="tab" data-t="attempts">Cəhd logları</div>
+      <div class="tab" data-t="messages">Mesajlar</div>
     </div>
 
     <div id="t-licenses">
@@ -83,6 +84,15 @@
       <div class="card">
         <table id="attTable">
           <thead><tr><th>Vaxt</th><th>Açar</th><th>Nəticə</th><th>Məkan</th><th>Cihaz məlumatı</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="t-messages" class="hidden">
+      <div class="card">
+        <table id="msgTable">
+          <thead><tr><th>Vaxt</th><th>Açar</th><th>Ad</th><th>Email</th><th>Mesaj</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -124,8 +134,31 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   t.classList.add('active');
   document.getElementById('t-licenses').classList.toggle('hidden', t.dataset.t !== 'licenses');
   document.getElementById('t-attempts').classList.toggle('hidden', t.dataset.t !== 'attempts');
+  document.getElementById('t-messages').classList.toggle('hidden', t.dataset.t !== 'messages');
   if (t.dataset.t === 'attempts') loadAttempts();
+  if (t.dataset.t === 'messages') loadMessages();
 }));
+
+async function loadMessages() {
+  const r = await fetch(`${FN}/admin-licenses?action=messages`, { headers: h() });
+  const j = await r.json();
+  const tbody = document.querySelector('#msgTable tbody');
+  tbody.innerHTML = '';
+  (j.messages || []).forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(m.created_at).toLocaleString('az-AZ')}</td>
+      <td><code>${m.license_key || '-'}</code></td>
+      <td>${m.name || '-'}</td>
+      <td>${m.email || '-'}</td>
+      <td style="max-width:320px;white-space:pre-wrap;">${m.message || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  if (!(j.messages || []).length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">Hələ mesaj yoxdur</td></tr>';
+  }
+}
 
 async function createLicense() {
   const owner_name = document.getElementById('newOwner').value.trim();

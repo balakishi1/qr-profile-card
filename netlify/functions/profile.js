@@ -8,7 +8,7 @@ function esc(s) {
   }[c]));
 }
 
-// Real, rəngli, tanınan ikonlar (emoji deyil) — index.html-dəki ICON_DEFS ilə eynidir
+// Real, rəngli, tanınan ikonlar (emoji deyil)
 const ICON_DEFS = {
   instagram: { gradient: 'linear-gradient(135deg,#f58529,#dd2a7b,#8134af)', color: '#fff',
     path: 'M12 15.2c1.77 0 3.2-1.43 3.2-3.2s-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2 1.43 3.2 3.2 3.2zM9 2l-1.83 2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-2.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z' },
@@ -67,15 +67,16 @@ exports.handler = async (event) => {
   }
 
   const d = license.profile_data || {};
-  const avatarHtml = d.avatar
-    ? `<img src="${esc(d.avatar)}" class="avatar-img" alt="avatar">`
-    : (license.owner_name || '?').slice(0, 1).toUpperCase();
 
-  const coverHtml = d.avatar ? `
+  // Böyük örtük şəkil VARSA — kiçik dairəvi avatar TƏKRAR göstərilmir (dublikat problemi həll edildi)
+  const hasCover = !!d.avatar;
+  const coverHtml = hasCover ? `
     <div class="cover">
       <img src="${esc(d.avatar)}" class="cover-img" id="coverImg">
       <div class="cover-fade"></div>
     </div>` : '';
+  const fallbackAvatarHtml = !hasCover ? `
+    <div class="avatar-wrap"><div class="avatar">${(license.owner_name || '?').slice(0, 1).toUpperCase()}</div></div>` : '';
 
   const phoneDigits = (d.phone || '').replace(/[^\d+]/g, '');
   const phoneBlock = d.phone ? `
@@ -86,18 +87,36 @@ exports.handler = async (event) => {
 
   const allLinks = d.links || [];
 
-  // Tək link siyahısı — real rəngli ikonlarla (dublikat sıra yoxdur)
+  // Sosial şəbəkələr — 2 sütunlu düymə şəbəkəsi
   const links = allLinks.map((l, idx) => {
     let href = esc(l.url);
     if (l.type === 'phone') href = `tel:${esc((l.url || '').replace(/[^\d+]/g, ''))}`;
     if (l.type === 'location') href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.url || '')}`;
     return `
-    <a class="link-card reveal" style="transition-delay:${Math.min(idx * 60, 400)}ms" href="${href}" target="_blank" rel="noopener">
-      ${iconBadge(l.type, 38)}
+    <a class="link-tile reveal" style="transition-delay:${Math.min(idx * 50, 400)}ms" href="${href}" target="_blank" rel="noopener">
+      ${iconBadge(l.type, 32)}
       <span class="label">${esc(l.label || l.type)}</span>
-      <span class="arrow">${l.type === 'location' ? '🧭' : '→'}</span>
     </a>`;
   }).join('');
+
+  // Öz haqqımda / statistika bölməsi
+  const stats = (d.stats || []).filter(s => s.number || s.label);
+  const hasAbout = !!(d.aboutText || d.aboutPhoto || stats.length);
+  const aboutPhotoImg = d.aboutPhoto || d.avatar;
+  const statsHtml = stats.map(s => `
+    <div class="stat-item reveal">
+      <div class="stat-number">${esc(s.number)}</div>
+      <div class="stat-label">${esc(s.label)}</div>
+    </div>`).join('');
+  const aboutHtml = hasAbout ? `
+    <div class="about-section">
+      <div class="about-title reveal">ÖZ HAQQIMDA</div>
+      <div class="about-flex">
+        ${aboutPhotoImg ? `<div class="about-photo reveal"><img src="${esc(aboutPhotoImg)}" loading="lazy"></div>` : ''}
+        ${statsHtml ? `<div class="stats-col">${statsHtml}</div>` : ''}
+      </div>
+      ${d.aboutText ? `<div class="about-text reveal">${esc(d.aboutText)}</div>` : ''}
+    </div>` : '';
 
   const albums = (d.albums || []).filter(a => a.items && a.items.length);
   const albumsHtml = albums.map((album) => {
@@ -114,7 +133,7 @@ exports.handler = async (event) => {
     }).join('');
     return `
     <div class="album-section">
-      <div class="album-title">${esc(album.name)}</div>
+      <div class="album-title reveal">${esc(album.name)}</div>
       <div class="media-grid">${items}</div>
     </div>`;
   }).join('');
@@ -142,32 +161,31 @@ exports.handler = async (event) => {
   @keyframes pop { 0%{transform:scale(.9);opacity:0;} 100%{transform:scale(1);opacity:1;} }
   @keyframes ringPulse { 0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.35);} 50%{box-shadow:0 0 0 10px rgba(139,92,246,0);} }
 
-  .cover { position:relative; width:100%; height:270px; border-radius:28px 28px 0 0; overflow:hidden; }
+  .cover { position:relative; width:100%; height:280px; border-radius:28px; overflow:hidden; margin-bottom:20px; }
   .cover-img { width:100%; height:100%; object-fit:cover; display:block; transform:scale(1.02); will-change:transform; }
-  .cover-fade { position:absolute; left:0; right:0; bottom:0; height:130px; background:linear-gradient(to bottom, rgba(13,21,38,0) 0%, #0d1526 88%); }
+  .cover-fade { position:absolute; left:0; right:0; bottom:0; height:110px; background:linear-gradient(to bottom, rgba(13,21,38,0) 0%, rgba(13,21,38,.55) 100%); }
 
   .reveal { opacity:0; transform:translateY(18px); transition:opacity .55s ease, transform .55s ease; }
   .reveal.in { opacity:1; transform:translateY(0); }
 
-  .top { text-align:center; margin-bottom:8px; }
-  .avatar-wrap { position:relative; width:150px; height:150px; margin:0 auto 18px; animation: pop .5s ease .05s both; }
+  .top { text-align:center; margin-bottom:20px; }
+  .avatar-wrap { position:relative; width:140px; height:140px; margin:0 auto 18px; animation: pop .5s ease .05s both; }
   .avatar {
-    width:150px; height:150px; border-radius:50%; overflow:hidden;
+    width:140px; height:140px; border-radius:50%; overflow:hidden;
     background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center;
-    color:#fff; font-size:52px; font-weight:700; border:4px solid rgba(255,255,255,.14);
+    color:#fff; font-size:48px; font-weight:700; border:4px solid rgba(255,255,255,.14);
     animation: ringPulse 2.6s ease-in-out infinite;
   }
-  .avatar-img { width:100%; height:100%; object-fit:cover; }
 
   h1 {
-    font-family:'Baloo 2', -apple-system, sans-serif; font-size:28px; color:#f7f9ff; font-weight:800;
+    font-family:'Baloo 2', -apple-system, sans-serif; font-size:27px; color:#f7f9ff; font-weight:800;
     letter-spacing:.3px; margin-bottom:6px; text-shadow:0 2px 18px rgba(99,102,241,.35);
   }
-  .bio { color:#9aa8ca; font-size:14px; line-height:1.55; margin-bottom:18px; white-space:pre-wrap; max-width:340px; margin-left:auto; margin-right:auto; }
+  .bio { color:#9aa8ca; font-size:14px; line-height:1.55; white-space:pre-wrap; max-width:340px; margin:0 auto; }
 
   .ibadge { border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
 
-  .phone-row { display:flex; gap:10px; margin-bottom:18px; align-items:center; }
+  .phone-row { display:flex; gap:10px; margin-bottom:20px; align-items:center; }
   .phone-btn {
     flex:1; display:flex; align-items:center; justify-content:center; gap:10px;
     background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; text-decoration:none;
@@ -180,20 +198,31 @@ exports.handler = async (event) => {
     text-decoration:none;
   }
 
-  .links { margin-bottom:6px; }
-  .link-card {
-    display:flex; align-items:center; gap:14px; background:rgba(255,255,255,.045);
-    border:1px solid rgba(255,255,255,.09); border-radius:18px; padding:13px 16px; margin-bottom:11px;
-    text-decoration:none; color:#eef1fb; font-weight:600; font-size:15px; transition:.15s;
-    backdrop-filter: blur(6px);
+  .links-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px; }
+  .link-tile {
+    display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:13px 14px;
+    text-decoration:none; color:#eef1fb; font-weight:600; font-size:13.5px; transition:.15s;
   }
-  .link-card:active { background:rgba(139,92,246,.18); border-color:#8b5cf6; transform:scale(.985); }
-  .label { flex:1; text-align:left; }
-  .arrow { color:#5b6b8c; font-size:15px; flex-shrink:0; }
+  .link-tile:active { background:rgba(139,92,246,.18); border-color:#8b5cf6; transform:scale(.97); }
+  .link-tile .label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  .footer { margin-top:26px; text-align:center; font-size:10.5px; letter-spacing:2px; color:#3f4d6b; font-weight:700; }
+  .about-section { margin-top:30px; }
+  .about-title {
+    font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:#f7f9ff;
+    text-align:center; margin-bottom:18px; letter-spacing:.5px;
+  }
+  .about-flex { display:flex; gap:16px; align-items:stretch; margin-bottom:16px; }
+  .about-photo { width:38%; flex-shrink:0; border-radius:20px; overflow:hidden; box-shadow:0 16px 34px rgba(0,0,0,.45); aspect-ratio:3/4; }
+  .about-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .stats-col { flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; }
+  .stat-number { font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:28px; color:#a78bfa; line-height:1; }
+  .stat-label { font-size:12px; color:#9aa8ca; margin-top:3px; }
+  .about-text { color:#9aa8ca; font-size:13.5px; line-height:1.65; white-space:pre-wrap; }
 
-  .album-section { margin-top:24px; }
+  .footer { margin-top:30px; text-align:center; font-size:10.5px; letter-spacing:2px; color:#3f4d6b; font-weight:700; }
+
+  .album-section { margin-top:26px; }
   .album-title { color:#c7d0e8; font-weight:700; font-size:15px; margin-bottom:10px; padding-left:2px; }
   .media-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .media-cell {
@@ -206,6 +235,26 @@ exports.handler = async (event) => {
     width:34px; height:34px; background:rgba(0,0,0,.6); color:#fff; border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-size:13px;
   }
+
+  .contact-section {
+    margin-top:32px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.09);
+    border-radius:22px; padding:24px 20px;
+  }
+  .contact-title { font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:#f7f9ff; margin-bottom:6px; text-align:center; }
+  .contact-sub { font-size:12.5px; color:#8b9bb8; margin-bottom:18px; text-align:center; line-height:1.5; }
+  .contact-input, .contact-textarea {
+    width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:13px;
+    padding:13px 15px; color:#eef1fb; font-size:14px; margin-bottom:11px; font-family:inherit; outline:none;
+  }
+  .contact-input:focus, .contact-textarea:focus { border-color:#8b5cf6; }
+  .contact-textarea { resize:vertical; min-height:90px; }
+  .contact-submit {
+    width:100%; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none;
+    padding:14px; border-radius:13px; font-weight:700; font-size:15px; cursor:pointer;
+    box-shadow:0 10px 26px rgba(99,102,241,.35);
+  }
+  .contact-submit:active { transform:scale(.98); }
+  .contact-feedback { margin-top:12px; font-size:13px; text-align:center; min-height:18px; }
 
   .lightbox {
     display:none; position:fixed; inset:0; background:rgba(5,8,16,.94); z-index:999;
@@ -221,14 +270,26 @@ exports.handler = async (event) => {
 <body>
   <div class="page">
     ${coverHtml}
-    <div class="top" style="${d.avatar ? 'margin-top:-72px;' : ''}">
-      <div class="avatar-wrap"><div class="avatar">${avatarHtml}</div></div>
+    <div class="top">
+      ${fallbackAvatarHtml}
       <h1>${esc(license.owner_name || '')}</h1>
       ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
     </div>
     ${phoneBlock}
-    <div class="links">${links || '<p style="color:#5b6b8c;font-size:13px;text-align:center;">Hələ link əlavə olunmayıb</p>'}</div>
+    <div class="links-grid">${links || ''}</div>
+    ${aboutHtml}
     ${albumsHtml}
+
+    <div class="contact-section reveal">
+      <div class="contact-title">Bizimlə əlaqə</div>
+      <div class="contact-sub">Sual və ya təklifinizi qeyd edə bilərsiniz. Sizə ən qısa zamanda cavab verək.</div>
+      <input type="text" id="cName" class="contact-input" placeholder="Adınız">
+      <input type="email" id="cEmail" class="contact-input" placeholder="E-poçt ünvanınız">
+      <textarea id="cMsg" class="contact-textarea" placeholder="Mesajınızı yazın"></textarea>
+      <button class="contact-submit" onclick="submitContact()">Göndər</button>
+      <div class="contact-feedback" id="contactFeedback"></div>
+    </div>
+
     <div class="footer">QR PROFILE CARD</div>
   </div>
 
@@ -238,6 +299,8 @@ exports.handler = async (event) => {
   </div>
 
   <script>
+    const PROFILE_SLUG = ${JSON.stringify(slug)};
+
     function openLightbox(url, type) {
       const box = document.getElementById('lightbox');
       const content = document.getElementById('lightboxContent');
@@ -250,6 +313,40 @@ exports.handler = async (event) => {
       if (e.target.tagName === 'VIDEO') return;
       document.getElementById('lightbox').classList.remove('open');
       document.getElementById('lightboxContent').innerHTML = '';
+    }
+
+    async function submitContact() {
+      const name = document.getElementById('cName').value.trim();
+      const email = document.getElementById('cEmail').value.trim();
+      const message = document.getElementById('cMsg').value.trim();
+      const feedback = document.getElementById('contactFeedback');
+      if (!name || !message) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Zəhmət olmasa ad və mesaj yazın.';
+        return;
+      }
+      feedback.style.color = '#9aa8ca';
+      feedback.textContent = 'Göndərilir...';
+      try {
+        const r = await fetch('/.netlify/functions/contact-submit', {
+          method: 'POST',
+          body: JSON.stringify({ slug: PROFILE_SLUG, name, email, message })
+        });
+        const j = await r.json();
+        if (j.success) {
+          feedback.style.color = '#22c55e';
+          feedback.textContent = '✅ Mesajınız göndərildi! Tezliklə sizinlə əlaqə saxlanılacaq.';
+          document.getElementById('cName').value = '';
+          document.getElementById('cEmail').value = '';
+          document.getElementById('cMsg').value = '';
+        } else {
+          feedback.style.color = '#ef4444';
+          feedback.textContent = 'Xəta baş verdi, bir az sonra cəhd edin.';
+        }
+      } catch (e) {
+        feedback.style.color = '#ef4444';
+        feedback.textContent = 'Şəbəkə xətası.';
+      }
     }
 
     // Scroll ilə görünən elementlərin canlanması
@@ -265,7 +362,7 @@ exports.handler = async (event) => {
     if (coverImg) {
       window.addEventListener('scroll', () => {
         const y = Math.min(window.scrollY, 260);
-        coverImg.style.transform = 'translateY(' + (y * 0.22) + 'px) scale(' + (1.02 + y * 0.0006) + ')';
+        coverImg.style.transform = 'translateY(' + (y * 0.18) + 'px) scale(' + (1.02 + y * 0.0005) + ')';
       }, { passive: true });
     }
   </script>

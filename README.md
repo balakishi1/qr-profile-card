@@ -46,6 +46,12 @@
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Dublikat şəkil problemi düzəldildi** — əvvəllər böyük örtük şəkil ilə kiçik dairəvi avatar eyni fotonu iki dəfə göstərirdi. İndi böyük şəkil yükləyəndə kiçik dairə tam götürülür, sadəcə bir dəfə, təmiz görünür.
+- **"Öz haqqımda" statistika bölməsi** — Profil bölməsində ayrıca iri (portret formatlı) şəkil yükləyə bilərsən, ətraflı "haqqımda" mətni yaza bilərsən və "15+ İl təcrübə", "300+ Seminar" kimi statistika sətirləri (maks. 4 ədəd) əlavə edə bilərsən. QR skan olunanda bu, foto + statistika + mətn şəklində peşəkar bölmə kimi görünür.
+- **Sosial şəbəkələr 2-sütunlu düymə şəbəkəsi** — hər link indi kompakt, rəngli ikonlu düymə kimi görünür, 2 sütunda düzülür, üzərinə basan kimi həmin şəbəkə açılır.
+- **İşləyən "Bizimlə əlaqə" forması** — hər profil səhifəsinin sonunda Ad/Email/Mesaj sahələri və "Göndər" düyməsi var. Göndərilən mesajlar Supabase-də saxlanılır VƏ sənə (admin) Telegram-a bildiriş kimi gəlir. Admin panelində yeni **"Mesajlar"** tabından bütün gələn mesajları görə bilərsən.
+- Özünə-xidmət "Cihazlarımı sıfırla" düyməsi (əvvəlki versiyadan)
+- QR keyfiyyəti, çox-cihaz dəstəyi, albom sistemi (əvvəlki versiyalardan)
 - **Çox-cihaz dəstəyi** — hər lisenziya üçün admin icazə verilən cihaz sayını təyin edir (1-10 arası). Eyni açar o say qədər fərqli cihazda aktivləşə bilər, hamısında **ortaq profil** (linklər, albomlar, şəkillər) görünür. Admin panelində hər cihaz ayrıca idarə olunur (təkini sil, limiti dəyişdir).
 - **Detallı cəhd izləməsi** — indi hər aktivasiya/rədd cəhdində IP-ə əsasən şəhər, region, ölkə və internet operatoru avtomatik müəyyən olunur, həm admin panelində, həm Telegram bildirişində göstərilir.
 - **Ünvan/Məkan linki** — Profil bölməsində link tipi kimi "Ünvan/Məkan" seçib ünvan yaza bilərsən; QR skan olunanda bu, klikləndikdə birbaşa Google Maps-də həmin ünvanı açan düyməyə çevrilir. Vizitkada da ünvan pill şəklində göstərilir.
