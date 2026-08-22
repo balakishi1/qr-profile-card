@@ -177,6 +177,11 @@
           <input type="text" id="whatsappMsgInput" placeholder="Salam, sizin profildən yazıram, xidmətləriniz haqqında məlumat almaq istəyirəm">
         </div>
         <div class="field">
+          <label>"Bizimlə əlaqə" formundan gələn mesajların göndəriləcəyi email</label>
+          <input type="email" id="contactEmailInput" placeholder="sənin.email@gmail.com">
+          <p class="muted" style="margin-top:6px;">Profil səhifəndəki əlaqə formundan kimsə yazanda, mesaj bura göndəriləcək. Boş saxlasan, linklərində "E-mail" tipli link varsa ora göndərilir.</p>
+        </div>
+        <div class="field">
           <label>Haqqımda (bio)</label>
           <textarea id="bioText" rows="3" placeholder="Qısa məlumat yaz..."></textarea>
         </div>
@@ -279,6 +284,10 @@
 
       <div class="card">
         <h3>Vizitka dizaynı</h3>
+        <div class="field">
+          <label>Üslub</label>
+          <div id="themeSwatches" style="display:flex;gap:10px;"></div>
+        </div>
         <div class="field">
           <label>Alt yazı (QR-ın altında görünəcək)</label>
           <input type="text" id="taglineInput" placeholder="Bütün sosial şəbəkələrim üçün skan et">
@@ -474,6 +483,7 @@ function enterApp(j) {
   document.getElementById('bioText').value = currentProfileData.bio || '';
   document.getElementById('phoneInput').value = currentProfileData.phone || '';
   document.getElementById('whatsappMsgInput').value = currentProfileData.whatsappMessage || '';
+  document.getElementById('contactEmailInput').value = currentProfileData.contactEmail || '';
   document.getElementById('aboutText').value = currentProfileData.aboutText || '';
   document.getElementById('otherProfileLabel').value = currentProfileData.otherProfile.label || '';
   document.getElementById('otherProfileUrl').value = currentProfileData.otherProfile.url || '';
@@ -489,6 +499,7 @@ function enterApp(j) {
   renderHoursDays();
   renderTestimonials();
   buildColorSwatches();
+  buildThemeSwatches();
   renderQR();
   initSupabaseClient();
 }
@@ -1059,6 +1070,7 @@ async function saveProfile() {
   currentProfileData.tagline = document.getElementById('taglineInput').value;
   currentProfileData.phone = document.getElementById('phoneInput').value;
   currentProfileData.whatsappMessage = document.getElementById('whatsappMsgInput').value;
+  currentProfileData.contactEmail = document.getElementById('contactEmailInput').value;
   currentProfileData.aboutText = document.getElementById('aboutText').value;
   currentProfileData.otherProfile = {
     label: document.getElementById('otherProfileLabel').value,
@@ -1234,7 +1246,51 @@ function drawScanCorners(ctx, x, y, size, len, thick, color) {
   });
 }
 
+const THEME_PRESETS = {
+  default: {
+    label: 'Standart', swatch: '#6366f1',
+    bg1: '#0d1526', bg2: '#141c33', glow: 'rgba(99,102,241,0.30)',
+    accent1: '#6366f1', accent2: '#8b5cf6', avatarShadow: 'rgba(139,92,246,0.55)',
+    nameColor: '#f7f9ff', taglineColor: '#9aa8ca',
+    pillBg: 'rgba(255,255,255,0.06)', pillBorder: 'rgba(255,255,255,0.14)', pillText: '#e2e8f7',
+    pillBg2: 'rgba(255,255,255,0.05)', pillBorder2: 'rgba(255,255,255,0.12)', pillText2: '#c7d0e8',
+    scanCorner: '#8b5cf6', scanArrow: 'rgba(199,208,232,0.85)', scanText: '#eef1fb', footer: '#5b6b8c'
+  },
+  luxury: {
+    label: 'Lüks (qara-qızılı)', swatch: '#d4af37',
+    bg1: '#0a0a0a', bg2: '#1a1408', glow: 'rgba(212,175,55,0.22)',
+    accent1: '#d4af37', accent2: '#f4e5a1', avatarShadow: 'rgba(212,175,55,0.5)',
+    nameColor: '#f8f1dc', taglineColor: '#c9b98a',
+    pillBg: 'rgba(212,175,55,0.08)', pillBorder: 'rgba(212,175,55,0.28)', pillText: '#f0e2b8',
+    pillBg2: 'rgba(212,175,55,0.05)', pillBorder2: 'rgba(212,175,55,0.2)', pillText2: '#d8c98f',
+    scanCorner: '#d4af37', scanArrow: 'rgba(212,175,55,0.85)', scanText: '#f8f1dc', footer: '#8a7b4f'
+  },
+  vibrant: {
+    label: 'Rəngli / Yaradıcı', swatch: '#ec4899',
+    bg1: '#1a0f2e', bg2: '#2d1b4e', glow: 'rgba(236,72,153,0.32)',
+    accent1: '#f59e0b', accent2: '#ec4899', avatarShadow: 'rgba(236,72,153,0.55)',
+    nameColor: '#ffffff', taglineColor: '#d8b4e2',
+    pillBg: 'rgba(255,255,255,0.08)', pillBorder: 'rgba(236,72,153,0.3)', pillText: '#ffe8f5',
+    pillBg2: 'rgba(255,255,255,0.06)', pillBorder2: 'rgba(236,72,153,0.22)', pillText2: '#f3d9ec',
+    scanCorner: '#ec4899', scanArrow: 'rgba(245,158,11,0.85)', scanText: '#ffffff', footer: '#a78bda'
+  }
+};
+
+function buildThemeSwatches() {
+  const box = document.getElementById('themeSwatches');
+  box.innerHTML = '';
+  Object.entries(THEME_PRESETS).forEach(([key, t]) => {
+    const btn = document.createElement('div');
+    const active = (currentProfileData.vizitkaTheme || 'default') === key;
+    btn.title = t.label;
+    btn.style.cssText = `width:44px;height:44px;border-radius:12px;cursor:pointer;background:linear-gradient(135deg,${t.accent1},${t.accent2});border:2px solid ${active ? '#fff' : 'transparent'};`;
+    btn.onclick = () => { currentProfileData.vizitkaTheme = key; buildThemeSwatches(); renderVizitka(); };
+    box.appendChild(btn);
+  });
+}
+
 async function renderVizitka() {
+  const theme = THEME_PRESETS[currentProfileData.vizitkaTheme] || THEME_PRESETS.default;
   const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
   try { await document.fonts.load('800 34px "Baloo 2"'); } catch (e) {}
   try { await document.fonts.load('700 44px "Caveat"'); } catch (e) {}
@@ -1264,8 +1320,8 @@ async function renderVizitka() {
 
   // Base background
   const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-  bgGrad.addColorStop(0, '#0d1526');
-  bgGrad.addColorStop(1, '#141c33');
+  bgGrad.addColorStop(0, theme.bg1);
+  bgGrad.addColorStop(1, theme.bg2);
   ctx.fillStyle = bgGrad;
   roundRect(ctx, 0, 0, W, H, 36);
   ctx.fill();
@@ -1282,8 +1338,8 @@ async function renderVizitka() {
 
   // Subtle radial glow accent (top)
   const glow = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 340);
-  glow.addColorStop(0, 'rgba(99,102,241,0.30)');
-  glow.addColorStop(1, 'rgba(99,102,241,0)');
+  glow.addColorStop(0, theme.glow);
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.save();
   roundRect(ctx, 0, 0, W, H, 36);
   ctx.clip();
@@ -1301,8 +1357,8 @@ async function renderVizitka() {
 
   // Top accent bar (brand line)
   const barGrad = ctx.createLinearGradient(0, 0, W, 0);
-  barGrad.addColorStop(0, '#6366f1');
-  barGrad.addColorStop(1, '#8b5cf6');
+  barGrad.addColorStop(0, theme.accent1);
+  barGrad.addColorStop(1, theme.accent2);
   ctx.fillStyle = barGrad;
   roundRect(ctx, 44, 34, W - 88, 4, 2);
   ctx.fill();
@@ -1310,7 +1366,7 @@ async function renderVizitka() {
   // Avatar — daha iri
   const avatarX = W / 2 - avatarSize / 2;
   ctx.save();
-  ctx.shadowColor = 'rgba(139,92,246,0.55)';
+  ctx.shadowColor = theme.avatarShadow;
   ctx.shadowBlur = 34;
   ctx.beginPath();
   ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
@@ -1333,7 +1389,7 @@ async function renderVizitka() {
     });
   } else {
     const g2 = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
-    g2.addColorStop(0, '#6366f1'); g2.addColorStop(1, '#8b5cf6');
+    g2.addColorStop(0, theme.accent1); g2.addColorStop(1, theme.accent2);
     ctx.fillStyle = g2;
     ctx.fill();
     ctx.fillStyle = '#fff';
@@ -1345,13 +1401,13 @@ async function renderVizitka() {
   ctx.restore();
 
   // Name — xüsusi şrift
-  ctx.fillStyle = '#f7f9ff';
+  ctx.fillStyle = theme.nameColor;
   ctx.font = '800 36px "Baloo 2", -apple-system, Arial';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.fillText(name, W / 2, avatarY + avatarSize + 54);
 
   // Tagline
-  ctx.fillStyle = '#9aa8ca';
+  ctx.fillStyle = theme.taglineColor;
   ctx.font = '400 16px -apple-system, Arial';
   ctx.fillText(tagline, W / 2, avatarY + avatarSize + 84, W - 100);
 
@@ -1364,14 +1420,14 @@ async function renderVizitka() {
     const textW = ctx.measureText(label).width;
     const pillW = textW + 44, pillH = 42;
     const pillX = W / 2 - pillW / 2, pillY = qrTop;
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillStyle = theme.pillBg;
     roundRect(ctx, pillX, pillY, pillW, pillH, 21);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.strokeStyle = theme.pillBorder;
     ctx.lineWidth = 1;
     roundRect(ctx, pillX, pillY, pillW, pillH, 21);
     ctx.stroke();
-    ctx.fillStyle = '#e2e8f7';
+    ctx.fillStyle = theme.pillText;
     ctx.textBaseline = 'middle';
     ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
     qrTop += pillH + 14;
@@ -1385,14 +1441,14 @@ async function renderVizitka() {
     const textW = ctx.measureText(label).width;
     const pillW = Math.min(textW + 40, W - 80), pillH = 38;
     const pillX = W / 2 - pillW / 2, pillY = qrTop;
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillStyle = theme.pillBg2;
     roundRect(ctx, pillX, pillY, pillW, pillH, 19);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.strokeStyle = theme.pillBorder2;
     ctx.lineWidth = 1;
     roundRect(ctx, pillX, pillY, pillW, pillH, 19);
     ctx.stroke();
-    ctx.fillStyle = '#c7d0e8';
+    ctx.fillStyle = theme.pillText2;
     ctx.textBaseline = 'middle';
     ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
     qrTop += pillH + 26;
@@ -1421,11 +1477,11 @@ async function renderVizitka() {
     qrImg.src = qrDataUrl;
   });
 
-  drawScanCorners(ctx, qrBoxX - 14, qrBoxY - 14, qrBoxSize + 28, 26, 4, '#8b5cf6');
+  drawScanCorners(ctx, qrBoxX - 14, qrBoxY - 14, qrBoxSize + 28, 26, 4, theme.scanCorner);
 
   // "Scan me!" effekti - əyri ox + cursive mətn
   ctx.save();
-  ctx.strokeStyle = 'rgba(199,208,232,0.85)';
+  ctx.strokeStyle = theme.scanArrow;
   ctx.lineWidth = 3;
   ctx.lineCap = 'round';
   const arrowStartX = qrBoxX + 18, arrowStartY = scanMeY - 4;
@@ -1442,14 +1498,14 @@ async function renderVizitka() {
   ctx.stroke();
   ctx.restore();
 
-  ctx.fillStyle = '#eef1fb';
+  ctx.fillStyle = theme.scanText;
   ctx.font = '700 40px "Caveat", cursive';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   ctx.fillText('Scan me!', qrBoxX + 66, scanMeY + 10);
 
   // Footer
-  ctx.fillStyle = '#5b6b8c';
+  ctx.fillStyle = theme.footer;
   ctx.font = '600 12px -apple-system, Arial';
   ctx.textAlign = 'center';
   ctx.fillText('Q R   P R O F I L E   C A R D', W / 2, footerY);

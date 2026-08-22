@@ -68,6 +68,9 @@ exports.handler = async (event) => {
 
   const d = license.profile_data || {};
 
+  const host = event.headers['x-forwarded-host'] || event.headers.host || 'qrprofilcard.netlify.app';
+  const fullProfileUrl = `https://${host}/p/${slug}`;
+
   // Böyük örtük şəkil VARSA — kiçik dairəvi avatar TƏKRAR göstərilmir (dublikat problemi həll edildi)
   const hasCover = !!d.avatar;
   const coverHtml = hasCover ? `
@@ -210,6 +213,12 @@ exports.handler = async (event) => {
 <html lang="az"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(license.owner_name || 'Profil')}</title>
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="/.netlify/functions/site-manifest?slug=${encodeURIComponent(slug)}">
+${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
+<link rel="icon" href="${esc(d.avatar)}">` : ''}
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="${esc(license.owner_name || 'Profil')}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -373,6 +382,16 @@ exports.handler = async (event) => {
   .contact-submit:active { transform:scale(.98); }
   .contact-feedback { margin-top:12px; font-size:13px; text-align:center; min-height:18px; }
 
+  .share-row { display:flex; gap:10px; margin-top:24px; align-items:center; }
+  .share-btn {
+    flex:1; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:15px;
+    padding:13px; color:#eef1fb; font-weight:700; font-size:13.5px; cursor:pointer;
+  }
+  .share-icon-btn {
+    width:48px; height:48px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:15px; text-decoration:none;
+  }
+
   .lightbox {
     display:none; position:fixed; inset:0; background:rgba(5,8,16,.94); z-index:999;
     align-items:center; justify-content:center; padding:24px;
@@ -413,6 +432,12 @@ exports.handler = async (event) => {
       <div class="contact-feedback" id="contactFeedback"></div>
     </div>
 
+    <div class="share-row reveal">
+      <button class="share-btn" onclick="shareProfile()">📤 Bu profili paylaş</button>
+      <a class="share-icon-btn" href="https://wa.me/?text=${encodeURIComponent((license.owner_name || 'Bu profilə bax') + ': ' + fullProfileUrl)}" target="_blank" rel="noopener" title="WhatsApp-da paylaş">${iconBadge('whatsapp', 30)}</a>
+      <a class="share-icon-btn" href="https://t.me/share/url?url=${encodeURIComponent(fullProfileUrl)}&text=${encodeURIComponent(license.owner_name || '')}" target="_blank" rel="noopener" title="Telegram-da paylaş">${iconBadge('telegram', 30)}</a>
+    </div>
+
     <div class="footer">QR PROFILE CARD</div>
   </div>
 
@@ -423,6 +448,20 @@ exports.handler = async (event) => {
 
   <script>
     const PROFILE_SLUG = ${JSON.stringify(slug)};
+    const PROFILE_URL = ${JSON.stringify(fullProfileUrl)};
+    const OWNER_NAME = ${JSON.stringify(license.owner_name || 'Profil')};
+
+    async function shareProfile() {
+      if (navigator.share) {
+        try { await navigator.share({ title: OWNER_NAME, url: PROFILE_URL }); return; } catch (e) {}
+      }
+      try {
+        await navigator.clipboard.writeText(PROFILE_URL);
+        alert('Link kopyalandı: ' + PROFILE_URL);
+      } catch (e) {
+        prompt('Linki kopyala:', PROFILE_URL);
+      }
+    }
 
     function openLightbox(url, type) {
       const box = document.getElementById('lightbox');

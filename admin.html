@@ -58,6 +58,7 @@
       <div class="tab active" data-t="licenses">Lisenziyalar</div>
       <div class="tab" data-t="attempts">Cəhd logları</div>
       <div class="tab" data-t="messages">Mesajlar</div>
+      <div class="tab" data-t="broadcast">Elan göndər</div>
     </div>
 
     <div id="t-licenses">
@@ -95,6 +96,19 @@
           <thead><tr><th>Vaxt</th><th>Açar</th><th>Ad</th><th>Email</th><th>Mesaj</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </div>
+
+    <div id="t-broadcast" class="hidden">
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Bütün aktiv müştərilərə elan göndər</h3>
+        <p class="sub" style="margin-bottom:14px;">Yeni funksiya, yenilik və ya vacib məlumat olduqda, bunu bütün aktiv lisenziya sahiblərinin email ünvanına (Profil bölməsindəki "əlaqə email"inə, yoxdursa linklərindəki email-ə) avtomatik göndər. Email ünvanı olmayan müştərilər "keçildi" siyahısında görünəcək — onlara özün əlaqə saxlamalısan.</p>
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="bcSubject" placeholder="Mövzu (məs: Yeni funksiya: Sertifikatlar bölməsi)" style="flex:1;">
+        </div>
+        <textarea id="bcMessage" rows="6" placeholder="Mesajın mətni..." style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;"></textarea>
+        <button class="btn" onclick="sendBroadcast()">📤 Bütün müştərilərə göndər</button>
+        <div id="bcResult" style="margin-top:14px;font-size:13px;color:var(--muted);"></div>
       </div>
     </div>
   </div>
@@ -135,9 +149,41 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('t-licenses').classList.toggle('hidden', t.dataset.t !== 'licenses');
   document.getElementById('t-attempts').classList.toggle('hidden', t.dataset.t !== 'attempts');
   document.getElementById('t-messages').classList.toggle('hidden', t.dataset.t !== 'messages');
+  document.getElementById('t-broadcast').classList.toggle('hidden', t.dataset.t !== 'broadcast');
   if (t.dataset.t === 'attempts') loadAttempts();
   if (t.dataset.t === 'messages') loadMessages();
 }));
+
+async function sendBroadcast() {
+  const subject = document.getElementById('bcSubject').value.trim();
+  const message = document.getElementById('bcMessage').value.trim();
+  const resultBox = document.getElementById('bcResult');
+  if (!subject || !message) {
+    resultBox.style.color = '#ef4444';
+    resultBox.textContent = 'Mövzu və mətn doldurulmalıdır.';
+    return;
+  }
+  if (!confirm('Bu mesaj BÜTÜN aktiv müştərilərə göndəriləcək. Davam edilsin?')) return;
+  resultBox.style.color = 'var(--muted)';
+  resultBox.textContent = 'Göndərilir...';
+  try {
+    const r = await fetch(`${FN}/broadcast-announcement`, {
+      method: 'POST', headers: h(), body: JSON.stringify({ subject, message })
+    });
+    const j = await r.json();
+    if (j.success) {
+      resultBox.style.color = '#22c55e';
+      resultBox.textContent = `✅ ${j.sent}/${j.total} müştəriyə göndərildi.` +
+        (j.skipped ? ` ${j.skipped} müştəriyə göndərilmədi (email yoxdur): ${j.skippedList.join(', ')}` : '');
+    } else {
+      resultBox.style.color = '#ef4444';
+      resultBox.textContent = 'Xəta: ' + (j.reason || j.error || 'bilinməyən');
+    }
+  } catch (e) {
+    resultBox.style.color = '#ef4444';
+    resultBox.textContent = 'Şəbəkə xətası.';
+  }
+}
 
 async function loadMessages() {
   const r = await fetch(`${FN}/admin-licenses?action=messages`, { headers: h() });

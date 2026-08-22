@@ -33,6 +33,8 @@
 | `ADMIN_PASSWORD` | admin panelə giriş şifrən |
 | `TELEGRAM_BOT_TOKEN` | (opsional) bot tokenin |
 | `TELEGRAM_CHAT_ID` | (opsional) chat id-n |
+| `RESEND_API_KEY` | (opsional, amma tövsiyə olunur) — "Bizimlə əlaqə" mesajlarının müştərilərin öz email-inə getməsi VƏ "Elan göndər" funksiyası üçün lazımdır. resend.com-da pulsuz hesab aç, API key götür |
+| `RESEND_FROM` | (opsional) göndərən ünvan, məs. `QR Profile Card <bildiris@sendomeni.com>`. Boş saxlasan, `onboarding@resend.dev`-dən göndərilir (Resend-in test ünvanı, işləyir amma "resend.dev" göstərir) |
 
 4. Deploy et. Netlify avtomatik `npm install` işlədib `@supabase/supabase-js`-i quracaq.
 
@@ -46,6 +48,14 @@
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **"Bizimlə əlaqə" mesajları artıq düzgün ünvana gedir** — əvvəllər hamısı sənin Telegram-ına düşürdü (bu, başqasına satdığın məhsul üçün düzgün deyildi). İndi hər lisenziya sahibi Profil bölməsində öz email-ini təyin edir, mesajlar birbaşa ORA göndərilir (Resend vasitəsilə). Sən yenə də Telegram-a nəzarət bildirişi alırsan.
+- **Vizitka üslubları** — indi 3 hazır dizayn arasından seçim var: Standart (indiqo), Lüks (qara-qızılı), Rəngli/Yaradıcı.
+- **Profili paylaş düymələri** — QR skan olunanda açılan səhifədə "Paylaş", WhatsApp və Telegram düymələri ilə istənilən ziyarətçi profili başqasına göndərə bilər.
+- **"Ana ekrana əlavə et" (PWA)** — profil səhifəsi indi telefonun "Ana ekrana əlavə et" funksiyasını dəstəkləyir, öz loqonla tətbiq ikonu kimi əlavə olunur. (Qeyd: bu, əsl Apple/Google Wallet kartı deyil — o, ödənişli developer hesabı və sertifikat tələb edir; bunun əvəzinə vCard funksiyası "yadda saxla" ehtiyacını real şəkildə ödəyir.)
+- **Özünə-xidmət qeydiyyat səhifəsi** (`/register`) — müştərilərin özləri ad yazıb sorğu göndərə bilər, sənə Telegram bildirişi gəlir, admin paneldən sadəcə "Aktivləşdir" düyməsinə basmaqla təsdiqləyirsən — açar əvvəlcədən yaranıb, sənin əl ilə yazmağına ehtiyac qalmır.
+- **"Elan göndər" (broadcast)** — admin panelində yeni tab: bir mesaj yazıb bütün aktiv müştərilərinə eyni anda email göndərə bilərsən (yeni funksiya, yenilik və s. barədə).
+
+## Əvvəlki versiyalardan
 - **Kontaktı yadda saxla (vCard)** — profil səhifəsində "📇 Kontaktı yadda saxla" düyməsi ilə, adı/telefonu/email-i birbaşa telefonun kontaktlarına əlavə etmək mümkündür.
 - **WhatsApp-a hazır mesajla keçid** — Profil bölməsində WhatsApp üçün hazır mətn yaza bilərsən, düymə basılanda həmin mesaj artıq yazılmış şəkildə açılır.
 - **Sertifikatlar / nailiyyətlər bölməsi** — diplom, sertifikat şəkillərini ayrıca yükləyib, profil səhifəndə üfüqi sürüşdürülən "🏆 Sertifikatlar" zolağı kimi göstərə bilərsən.
