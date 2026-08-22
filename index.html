@@ -173,6 +173,10 @@
           <input type="text" id="phoneInput" placeholder="+994 XX XXX XX XX">
         </div>
         <div class="field">
+          <label>WhatsApp-a hazır mesaj (istəyə görə)</label>
+          <input type="text" id="whatsappMsgInput" placeholder="Salam, sizin profildən yazıram, xidmətləriniz haqqında məlumat almaq istəyirəm">
+        </div>
+        <div class="field">
           <label>Haqqımda (bio)</label>
           <textarea id="bioText" rows="3" placeholder="Qısa məlumat yaz..."></textarea>
         </div>
@@ -203,6 +207,55 @@
           <div id="statsList"></div>
           <button class="btn secondary small" onclick="addStatRow()">+ Statistika əlavə et</button>
         </div>
+      </div>
+
+      <div class="card">
+        <h3>Sertifikatlar / nailiyyətlər</h3>
+        <p class="muted" style="margin-bottom:12px;">Diplom, sertifikat və s. şəkillərini əlavə et — profil səhifəndə xüsusi bir bölmə kimi göstəriləcək.</p>
+        <div id="certGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;"></div>
+        <div id="certStatus" class="muted" style="display:none;margin-bottom:8px;"></div>
+        <label class="btn secondary small" style="display:inline-block;cursor:pointer;">
+          📜 Sertifikat şəkli əlavə et
+          <input type="file" id="certInput" accept="image/*" multiple style="display:none;">
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Digər biznesim / profilim</h3>
+        <p class="muted" style="margin-bottom:12px;">Əgər başqa bir QR Profile Card lisenziyan varsa (məs. ikinci biznesin üçün), ora keçid düyməsi əlavə edə bilərsən.</p>
+        <div class="field">
+          <label>Düymə mətni</label>
+          <input type="text" id="otherProfileLabel" placeholder="Casa Eleganza dizaynlarına bax">
+        </div>
+        <div class="field">
+          <label>Link</label>
+          <input type="text" id="otherProfileUrl" placeholder="https://qrprofilcard.netlify.app/p/xxxxxx">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>İş saatları</h3>
+        <div class="field">
+          <label>İşlək günlər</label>
+          <div id="hoursDays" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex:1;">
+            <label>Açılış</label>
+            <input type="time" id="hoursOpen" value="09:00">
+          </div>
+          <div class="field" style="flex:1;">
+            <label>Bağlanış</label>
+            <input type="time" id="hoursClose" value="18:00">
+          </div>
+        </div>
+        <p class="muted">Profil səhifəndə "🟢 Açıqdır" / "🔴 Bağlıdır" statusu avtomatik (Bakı vaxtı ilə) hesablanacaq.</p>
+      </div>
+
+      <div class="card">
+        <h3>Müştəri rəyləri</h3>
+        <div id="testimonialsList"></div>
+        <button class="btn secondary small" onclick="addTestimonialRow()">+ Rəy əlavə et</button>
       </div>
 
       <button class="btn" onclick="saveProfile()">Yadda saxla</button>
@@ -413,16 +466,28 @@ function enterApp(j) {
   currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
   if (!currentProfileData.albums) currentProfileData.albums = [];
   if (!currentProfileData.stats) currentProfileData.stats = [];
+  if (!currentProfileData.certificates) currentProfileData.certificates = [];
+  if (!currentProfileData.testimonials) currentProfileData.testimonials = [];
+  if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
+  if (!currentProfileData.otherProfile) currentProfileData.otherProfile = { label: '', url: '' };
   currentSlug = j.profile_slug;
   document.getElementById('bioText').value = currentProfileData.bio || '';
   document.getElementById('phoneInput').value = currentProfileData.phone || '';
+  document.getElementById('whatsappMsgInput').value = currentProfileData.whatsappMessage || '';
   document.getElementById('aboutText').value = currentProfileData.aboutText || '';
+  document.getElementById('otherProfileLabel').value = currentProfileData.otherProfile.label || '';
+  document.getElementById('otherProfileUrl').value = currentProfileData.otherProfile.url || '';
+  document.getElementById('hoursOpen').value = currentProfileData.hours.open || '09:00';
+  document.getElementById('hoursClose').value = currentProfileData.hours.close || '18:00';
   document.getElementById('taglineInput').value = currentProfileData.tagline || 'Bütün sosial şəbəkələrim üçün skan et';
   renderAvatarPreview();
   renderAboutPhotoPreview();
   renderStats();
   renderLinks();
   renderAlbums();
+  renderCertGrid();
+  renderHoursDays();
+  renderTestimonials();
   buildColorSwatches();
   renderQR();
   initSupabaseClient();
@@ -656,6 +721,13 @@ function makeLinkRow(link, idx) {
     refreshIconPreview();
   };
   urlInput.oninput = () => { currentProfileData.links[idx].url = urlInput.value; };
+  if (isLocation()) {
+    urlInput.addEventListener('blur', () => geocodeLocationLink(idx, urlInput.value));
+  } else {
+    sel.addEventListener('change', () => {
+      if (isLocation() && urlInput.value) geocodeLocationLink(idx, urlInput.value);
+    });
+  }
 
   card.appendChild(topRow);
   card.appendChild(urlInput);
@@ -666,6 +738,21 @@ function addLinkRow() {
   if (!currentProfileData.links) currentProfileData.links = [];
   currentProfileData.links.push({ type: 'instagram', url: '', label: 'Instagram' });
   renderLinks();
+}
+
+async function geocodeLocationLink(idx, address) {
+  if (!address || address.trim().length < 4) return;
+  try {
+    const r = await fetch(`${FN}/geocode-address`, {
+      method: 'POST',
+      body: JSON.stringify({ address })
+    });
+    const j = await r.json();
+    if (j.success && currentProfileData.links[idx]) {
+      currentProfileData.links[idx].lat = j.lat;
+      currentProfileData.links[idx].lng = j.lng;
+    }
+  } catch (e) { /* xəritə olmadan da işləyir, problem deyil */ }
 }
 
 /* ---------- ALBUMS (şəkil/video) ---------- */
@@ -845,11 +932,140 @@ async function deleteAlbum(albumId) {
   await saveProfileSilent();
 }
 
+/* ---------- SERTİFİKATLAR ---------- */
+function renderCertGrid() {
+  const box = document.getElementById('certGrid');
+  box.innerHTML = '';
+  (currentProfileData.certificates || []).forEach((cert, idx) => {
+    const cell = document.createElement('div');
+    cell.style.cssText = 'position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--card2);';
+    cell.innerHTML = `<img src="${cert.url}" style="width:100%;height:100%;object-fit:cover;">
+      <button onclick="deleteCertificate(${idx})" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;">✕</button>`;
+    box.appendChild(cell);
+  });
+}
+
+document.getElementById('certInput').addEventListener('change', async (e) => {
+  const client = await initSupabaseClient();
+  if (!client) { alert('Yükləmə sistemi hazır deyil.'); return; }
+  if (!currentProfileData.certificates) currentProfileData.certificates = [];
+  const statusEl = document.getElementById('certStatus');
+  const files = Array.from(e.target.files);
+  statusEl.style.display = 'block';
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    statusEl.textContent = `Yüklənir (${i + 1}/${files.length})...`;
+    try {
+      const r = await fetch(`${FN}/get-upload-url`, {
+        method: 'POST',
+        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+      });
+      const j = await r.json();
+      if (!j.success) continue;
+      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+      if (upErr) continue;
+      currentProfileData.certificates.push({ url: j.publicUrl, path: j.path });
+      renderCertGrid();
+      await saveProfileSilent();
+    } catch (err) { /* keep going */ }
+  }
+  statusEl.textContent = '✅ Tamamlandı';
+  setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+  e.target.value = '';
+});
+
+async function deleteCertificate(idx) {
+  if (!confirm('Bu sertifikatı silmək istəyirsən?')) return;
+  const cert = currentProfileData.certificates[idx];
+  if (cert.path) {
+    await fetch(`${FN}/delete-media`, {
+      method: 'POST',
+      body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, path: cert.path })
+    });
+  }
+  currentProfileData.certificates.splice(idx, 1);
+  renderCertGrid();
+  await saveProfileSilent();
+}
+
+/* ---------- İŞ SAATLARI ---------- */
+const WEEKDAYS = [['mon','B.e'],['tue','Ç.a'],['wed','Ç'],['thu','C.a'],['fri','C'],['sat','Ş'],['sun','B']];
+
+function renderHoursDays() {
+  const box = document.getElementById('hoursDays');
+  box.innerHTML = '';
+  if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
+  WEEKDAYS.forEach(([key, label]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    const active = currentProfileData.hours.days.includes(key);
+    btn.textContent = label;
+    btn.className = 'btn small ' + (active ? '' : 'secondary');
+    btn.style.padding = '7px 12px';
+    btn.onclick = () => {
+      const days = currentProfileData.hours.days;
+      const i = days.indexOf(key);
+      if (i === -1) days.push(key); else days.splice(i, 1);
+      renderHoursDays();
+    };
+    box.appendChild(btn);
+  });
+}
+
+/* ---------- MÜŞTƏRİ RƏYLƏRİ ---------- */
+function renderTestimonials() {
+  const box = document.getElementById('testimonialsList');
+  box.innerHTML = '';
+  (currentProfileData.testimonials || []).forEach((t, idx) => {
+    const card = document.createElement('div');
+    card.className = 'link-edit-card';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text'; nameInput.placeholder = 'Müştərinin adı'; nameInput.value = t.name || '';
+    nameInput.style.marginBottom = '8px';
+    const starsSel = document.createElement('select');
+    [5, 4, 3, 2, 1].forEach(n => {
+      const o = document.createElement('option'); o.value = n; o.textContent = '⭐'.repeat(n);
+      if ((t.stars || 5) === n) o.selected = true;
+      starsSel.appendChild(o);
+    });
+    starsSel.style.marginBottom = '8px';
+    const textArea = document.createElement('textarea');
+    textArea.rows = 2; textArea.placeholder = 'Rəyin mətni...'; textArea.value = t.text || '';
+    const del = document.createElement('button');
+    del.textContent = '✕ Sil'; del.className = 'btn danger small'; del.style.marginTop = '8px';
+    del.onclick = () => { currentProfileData.testimonials.splice(idx, 1); renderTestimonials(); };
+
+    nameInput.oninput = () => { t.name = nameInput.value; };
+    starsSel.onchange = () => { t.stars = parseInt(starsSel.value, 10); };
+    textArea.oninput = () => { t.text = textArea.value; };
+
+    card.appendChild(nameInput);
+    card.appendChild(starsSel);
+    card.appendChild(textArea);
+    card.appendChild(del);
+    box.appendChild(card);
+  });
+}
+
+function addTestimonialRow() {
+  if (!currentProfileData.testimonials) currentProfileData.testimonials = [];
+  currentProfileData.testimonials.push({ name: '', stars: 5, text: '' });
+  renderTestimonials();
+}
+
 async function saveProfile() {
   currentProfileData.bio = document.getElementById('bioText').value;
   currentProfileData.tagline = document.getElementById('taglineInput').value;
   currentProfileData.phone = document.getElementById('phoneInput').value;
+  currentProfileData.whatsappMessage = document.getElementById('whatsappMsgInput').value;
   currentProfileData.aboutText = document.getElementById('aboutText').value;
+  currentProfileData.otherProfile = {
+    label: document.getElementById('otherProfileLabel').value,
+    url: document.getElementById('otherProfileUrl').value
+  };
+  currentProfileData.hours.open = document.getElementById('hoursOpen').value;
+  currentProfileData.hours.close = document.getElementById('hoursClose').value;
   const owner_name = document.getElementById('ownerName').value;
   const r = await fetch(`${FN}/update-profile`, {
     method: 'POST',

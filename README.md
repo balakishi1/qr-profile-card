@@ -46,6 +46,15 @@
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Kontaktı yadda saxla (vCard)** — profil səhifəsində "📇 Kontaktı yadda saxla" düyməsi ilə, adı/telefonu/email-i birbaşa telefonun kontaktlarına əlavə etmək mümkündür.
+- **WhatsApp-a hazır mesajla keçid** — Profil bölməsində WhatsApp üçün hazır mətn yaza bilərsən, düymə basılanda həmin mesaj artıq yazılmış şəkildə açılır.
+- **Sertifikatlar / nailiyyətlər bölməsi** — diplom, sertifikat şəkillərini ayrıca yükləyib, profil səhifəndə üfüqi sürüşdürülən "🏆 Sertifikatlar" zolağı kimi göstərə bilərsən.
+- **Digər biznes/profilə keçid düyməsi** — əgər başqa lisenziyaların (başqa biznesin) varsa, ora aparan xüsusi düymə əlavə edə bilərsən.
+- **İş saatları statusu** — işlək günləri və saatları təyin et, profil səhifəsində avtomatik (Bakı vaxtı ilə hesablanan) "🟢 Hazırda açıqdır / 🔴 Hazırda bağlıdır" nişanı görünəcək.
+- **Xəritə önizləməsi** — Profil bölməsində ünvan yazanda arxa planda avtomatik koordinat tapılır (OpenStreetMap, ödənişsiz), profil səhifəsində kiçik xəritə kartı kimi göstərilir, üstünə basanda tam xəritə açılır.
+- **Müştəri rəyləri bölməsi** — ad, ulduz reytinqi (1-5) və rəy mətni ilə testimonial kartları əlavə edə bilərsən.
+
+## Əvvəlki versiyalardan
 - **Dublikat şəkil problemi düzəldildi** — əvvəllər böyük örtük şəkil ilə kiçik dairəvi avatar eyni fotonu iki dəfə göstərirdi. İndi böyük şəkil yükləyəndə kiçik dairə tam götürülür, sadəcə bir dəfə, təmiz görünür.
 - **"Öz haqqımda" statistika bölməsi** — Profil bölməsində ayrıca iri (portret formatlı) şəkil yükləyə bilərsən, ətraflı "haqqımda" mətni yaza bilərsən və "15+ İl təcrübə", "300+ Seminar" kimi statistika sətirləri (maks. 4 ədəd) əlavə edə bilərsən. QR skan olunanda bu, foto + statistika + mətn şəklində peşəkar bölmə kimi görünür.
 - **Sosial şəbəkələr 2-sütunlu düymə şəbəkəsi** — hər link indi kompakt, rəngli ikonlu düymə kimi görünür, 2 sütunda düzülür, üzərinə basan kimi həmin şəbəkə açılır.

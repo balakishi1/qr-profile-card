@@ -79,16 +79,51 @@ exports.handler = async (event) => {
     <div class="avatar-wrap"><div class="avatar">${(license.owner_name || '?').slice(0, 1).toUpperCase()}</div></div>` : '';
 
   const phoneDigits = (d.phone || '').replace(/[^\d+]/g, '');
+  const waText = d.whatsappMessage ? `?text=${encodeURIComponent(d.whatsappMessage)}` : '';
   const phoneBlock = d.phone ? `
     <div class="phone-row reveal">
       <a class="phone-btn" href="tel:${esc(phoneDigits)}">${iconBadge('phone', 30)} <span>${esc(d.phone)}</span></a>
-      <a class="phone-icon-btn" href="https://wa.me/${esc(phoneDigits.replace('+', ''))}" target="_blank" rel="noopener" title="WhatsApp">${iconBadge('whatsapp', 30)}</a>
+      <a class="phone-icon-btn" href="https://wa.me/${esc(phoneDigits.replace('+', ''))}${waText}" target="_blank" rel="noopener" title="WhatsApp">${iconBadge('whatsapp', 30)}</a>
+    </div>` : '';
+
+  // vCard (kontaktı telefona yadda saxla)
+  const emailLink = (d.links || []).find(l => l.type === 'email' && l.url);
+  const websiteLink = (d.links || []).find(l => l.type === 'website' && l.url);
+  const vcardLines = [
+    'BEGIN:VCARD', 'VERSION:3.0',
+    `FN:${(license.owner_name || '').replace(/\n/g, ' ')}`,
+    d.phone ? `TEL;TYPE=CELL:${d.phone}` : '',
+    emailLink ? `EMAIL:${emailLink.url}` : '',
+    websiteLink ? `URL:${websiteLink.url}` : '',
+    d.bio ? `NOTE:${d.bio.replace(/\n/g, ' ')}` : '',
+    'END:VCARD'
+  ].filter(Boolean).join('\n');
+  const vcardDataUri = 'data:text/vcard;charset=utf-8,' + encodeURIComponent(vcardLines);
+  const vcardBlock = `
+    <a class="vcard-btn reveal" href="${vcardDataUri}" download="${esc((license.owner_name || 'kontakt').replace(/\s+/g, '_'))}.vcf">
+      📇 Kontaktı yadda saxla
+    </a>`;
+
+  // Digər profil / biznes keçidi
+  const otherProfileBlock = (d.otherProfile && d.otherProfile.url) ? `
+    <a class="other-profile-btn reveal" href="${esc(d.otherProfile.url)}" target="_blank" rel="noopener">
+      <span>${esc(d.otherProfile.label || 'Digər profilimə bax')}</span>
+      <span class="arrow-circle">→</span>
+    </a>` : '';
+
+  // İş saatları (klient tərəfdə Bakı vaxtı ilə hesablanacaq)
+  const hoursBlock = (d.hours && d.hours.days && d.hours.days.length) ? `
+    <div class="hours-badge reveal" id="hoursBadge" data-days="${(d.hours.days || []).join(',')}" data-open="${esc(d.hours.open || '')}" data-close="${esc(d.hours.close || '')}">
+      <span id="hoursDot">●</span> <span id="hoursText">Yoxlanılır...</span>
     </div>` : '';
 
   const allLinks = d.links || [];
 
-  // Sosial şəbəkələr — 2 sütunlu düymə şəbəkəsi
-  const links = allLinks.map((l, idx) => {
+  // Xəritəsi olan ünvan linkini ayrıca (böyük xəritə kartı kimi) göstəririk
+  const mapLocationLink = allLinks.find(l => l.type === 'location' && l.lat && l.lng);
+
+  // Sosial şəbəkələr — 2 sütunlu düymə şəbəkəsi (xəritəli ünvan buraya düşmür, ayrıca kart kimi göstərilir)
+  const links = allLinks.filter(l => l !== mapLocationLink).map((l, idx) => {
     let href = esc(l.url);
     if (l.type === 'phone') href = `tel:${esc((l.url || '').replace(/[^\d+]/g, ''))}`;
     if (l.type === 'location') href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.url || '')}`;
@@ -98,6 +133,13 @@ exports.handler = async (event) => {
       <span class="label">${esc(l.label || l.type)}</span>
     </a>`;
   }).join('');
+
+  // Xəritə kartı
+  const mapHtml = mapLocationLink ? `
+    <a class="map-card reveal" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapLocationLink.url)}" target="_blank" rel="noopener">
+      <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=${mapLocationLink.lng - 0.01}%2C${mapLocationLink.lat - 0.008}%2C${mapLocationLink.lng + 0.01}%2C${mapLocationLink.lat + 0.008}&marker=${mapLocationLink.lat}%2C${mapLocationLink.lng}&layer=mapnik" loading="lazy"></iframe>
+      <div class="map-card-label">🧭 ${esc(mapLocationLink.label || 'Ünvan')}: ${esc(mapLocationLink.url)}</div>
+    </a>` : '';
 
   // Öz haqqımda / statistika bölməsi
   const stats = (d.stats || []).filter(s => s.number || s.label);
@@ -137,6 +179,32 @@ exports.handler = async (event) => {
       <div class="media-grid">${items}</div>
     </div>`;
   }).join('');
+
+  // Sertifikatlar / nailiyyətlər
+  const certificates = d.certificates || [];
+  const certHtml = certificates.length ? `
+    <div class="cert-section">
+      <div class="cert-title reveal">🏆 SERTİFİKATLAR</div>
+      <div class="cert-strip">
+        ${certificates.map((c, idx) => `
+          <div class="cert-badge reveal" style="transition-delay:${Math.min(idx * 50, 300)}ms" onclick="openLightbox('${esc(c.url)}','image')">
+            <img src="${esc(c.url)}" loading="lazy">
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Müştəri rəyləri
+  const testimonials = (d.testimonials || []).filter(t => t.text);
+  const testimonialsHtml = testimonials.length ? `
+    <div class="testimonials-section">
+      <div class="testimonials-title reveal">💬 MÜŞTƏRİ RƏYLƏRİ</div>
+      ${testimonials.map((t) => `
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">${'⭐'.repeat(t.stars || 5)}</div>
+          <div class="testimonial-text">"${esc(t.text)}"</div>
+          ${t.name ? `<div class="testimonial-name">— ${esc(t.name)}</div>` : ''}
+        </div>`).join('')}
+    </div>` : '';
 
   const html = `<!DOCTYPE html>
 <html lang="az"><head><meta charset="UTF-8">
@@ -207,6 +275,55 @@ exports.handler = async (event) => {
   .link-tile:active { background:rgba(139,92,246,.18); border-color:#8b5cf6; transform:scale(.97); }
   .link-tile .label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+  .vcard-btn {
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-radius:15px;
+    padding:13px; color:#eef1fb; font-weight:700; font-size:14px; text-decoration:none; margin-bottom:14px;
+  }
+  .vcard-btn:active { background:rgba(255,255,255,.1); }
+
+  .other-profile-btn {
+    display:flex; align-items:center; justify-content:space-between; width:100%;
+    background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(139,92,246,.18));
+    border:1px solid rgba(139,92,246,.4); border-radius:16px; padding:15px 18px;
+    color:#eef1fb; font-weight:700; font-size:14px; text-decoration:none; margin-bottom:16px;
+  }
+  .arrow-circle {
+    width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.12);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+
+  .hours-badge {
+    display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:8px 16px; font-size:12.5px;
+    color:#c7d0e8; margin:0 auto 18px; width:fit-content; font-weight:600;
+  }
+  .hours-badge.open #hoursDot { color:#22c55e; }
+  .hours-badge.closed #hoursDot { color:#ef4444; }
+
+  .map-card { display:block; text-decoration:none; margin-bottom:16px; border-radius:18px; overflow:hidden; border:1px solid rgba(255,255,255,.1); }
+  .map-card iframe { width:100%; height:160px; border:none; display:block; filter:grayscale(.2) invert(.92) contrast(.9) brightness(.95); pointer-events:none; }
+  .map-card-label { background:rgba(255,255,255,.04); color:#c7d0e8; font-size:12.5px; padding:10px 14px; font-weight:600; }
+
+  .cert-section { margin-top:28px; }
+  .cert-title { font-size:14px; font-weight:700; color:#c7d0e8; letter-spacing:1px; margin-bottom:12px; text-align:center; }
+  .cert-strip { display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
+  .cert-badge {
+    flex:0 0 90px; height:110px; border-radius:12px; overflow:hidden; cursor:pointer;
+    border:2px solid rgba(255,255,255,.15); box-shadow:0 8px 18px rgba(0,0,0,.3);
+  }
+  .cert-badge img { width:100%; height:100%; object-fit:cover; }
+
+  .testimonials-section { margin-top:28px; }
+  .testimonials-title { font-size:14px; font-weight:700; color:#c7d0e8; letter-spacing:1px; margin-bottom:14px; text-align:center; }
+  .testimonial-card {
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px;
+    padding:16px 18px; margin-bottom:12px;
+  }
+  .testimonial-stars { font-size:13px; margin-bottom:8px; }
+  .testimonial-text { color:#dbe1f3; font-size:13.5px; line-height:1.55; font-style:italic; }
+  .testimonial-name { color:#8b9bb8; font-size:12.5px; margin-top:8px; text-align:right; }
+
   .about-section { margin-top:30px; }
   .about-title {
     font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:#f7f9ff;
@@ -275,9 +392,15 @@ exports.handler = async (event) => {
       <h1>${esc(license.owner_name || '')}</h1>
       ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
     </div>
+    ${hoursBlock ? `<div style="text-align:center;">${hoursBlock}</div>` : ''}
+    ${vcardBlock}
+    ${otherProfileBlock}
     ${phoneBlock}
+    ${mapHtml}
     <div class="links-grid">${links || ''}</div>
     ${aboutHtml}
+    ${certHtml}
+    ${testimonialsHtml}
     ${albumsHtml}
 
     <div class="contact-section reveal">
@@ -364,6 +487,29 @@ exports.handler = async (event) => {
         const y = Math.min(window.scrollY, 260);
         coverImg.style.transform = 'translateY(' + (y * 0.18) + 'px) scale(' + (1.02 + y * 0.0005) + ')';
       }, { passive: true });
+    }
+
+    // İş saatları statusu — Bakı vaxtı ilə hesablanır
+    const hoursBadge = document.getElementById('hoursBadge');
+    if (hoursBadge) {
+      const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+      const workDays = (hoursBadge.dataset.days || '').split(',').filter(Boolean).map(d => dayMap[d]);
+      const openTime = hoursBadge.dataset.open || '09:00';
+      const closeTime = hoursBadge.dataset.close || '18:00';
+      try {
+        const bakuStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Baku', hour12: false });
+        const bakuNow = new Date(bakuStr);
+        const day = bakuNow.getDay();
+        const minutesNow = bakuNow.getHours() * 60 + bakuNow.getMinutes();
+        const [oh, om] = openTime.split(':').map(Number);
+        const [ch, cm] = closeTime.split(':').map(Number);
+        const openMinutes = oh * 60 + om, closeMinutes = ch * 60 + cm;
+        const isOpen = workDays.includes(day) && minutesNow >= openMinutes && minutesNow < closeMinutes;
+        hoursBadge.classList.add(isOpen ? 'open' : 'closed');
+        document.getElementById('hoursText').textContent = isOpen
+          ? 'Hazırda açıqdır'
+          : 'Hazırda bağlıdır';
+      } catch (e) {}
     }
   </script>
 </body></html>`;
