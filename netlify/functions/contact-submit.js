@@ -2,17 +2,6 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-async function notifyTelegram(text) {
-  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text, parse_mode: 'HTML' })
-    });
-  } catch (e) { console.error('telegram error', e); }
-}
-
 async function sendEmail({ to, replyTo, subject, text }) {
   if (!process.env.RESEND_API_KEY || !to) return { sent: false, reason: !to ? 'no_destination' : 'no_api_key' };
   try {
@@ -40,10 +29,6 @@ async function sendEmail({ to, replyTo, subject, text }) {
     console.error('resend exception', e);
     return { sent: false, reason: 'exception' };
   }
-}
-
-function esc(s) {
-  return String(s || '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 }
 
 exports.handler = async (event) => {
@@ -78,7 +63,7 @@ exports.handler = async (event) => {
     message: String(message).slice(0, 2000)
   });
 
-  // Mesajın kimə göndəriləcəyini müəyyən et:
+  // Mesajın kimə göndəriləcəyini müəyyən et — YALNIZ profil sahibinə gedir, admin-ə bildiriş göndərilmir:
   // 1) Profil sahibinin özünün təyin etdiyi "əlaqə email"i
   // 2) Yoxdursa, linklər arasında əlavə etdiyi "E-mail" tipli link
   const d = license.profile_data || {};
@@ -92,19 +77,11 @@ exports.handler = async (event) => {
     to: destinationEmail,
     replyTo: email || undefined,
     subject: `Yeni mesaj — ${license.owner_name || 'Profiliniz'} (QR Profile Card)`,
-    text: `Ad: ${name}\nEmail: ${email || '-'}\n\nMesaj:\n${message}\n\n---\nBu mesaj sizin QR Profile Card profilinizdəki "Bizimlə əlaqə" formundan göndərilib.`
+    text: `Ad: ${name}\nEmail: ${email || '-'}\n\nMesaj:\n${message}\n\n---\nBu mesaj sizin QR Profile Card profilinizdəki "Mənimlə əlaqə et" formundan göndərilib.`
   });
 
-  // Admin (Balakişi) həmişə Telegram-a bildiriş alır — nəzarət üçün
-  await notifyTelegram(
-    `📩 <b>Yeni mesaj — "${esc(license.owner_name || license.license_key)}" profilindən</b>\n\n` +
-    `👤 Ad: ${esc(name)}\n` +
-    `✉️ Email: ${esc(email || '-')}\n` +
-    `💬 Mesaj: ${esc(message)}\n\n` +
-    (emailResult.sent
-      ? `✅ Mesaj sahibin öz email-inə (${esc(destinationEmail)}) göndərildi.`
-      : `⚠️ Email göndərilmədi (${emailResult.reason}). Sahibin email ünvanı təyin olunmayıb və ya RESEND_API_KEY yoxdur — bu mesajı özün ötür.`)
-  );
+  // Qeyd: mesaj bazada saxlanılır (admin panelində "Mesajlar" tabından görünür),
+  // amma artıq admin-ə Telegram bildirişi GÖNDƏRİLMİR — mesaj yalnız profil sahibinin email-inə gedir.
 
   return { statusCode: 200, body: JSON.stringify({ success: true, emailSent: emailResult.sent }) };
 };

@@ -71,6 +71,19 @@ exports.handler = async (event) => {
   const host = event.headers['x-forwarded-host'] || event.headers.host || 'qrprofilcard.netlify.app';
   const fullProfileUrl = `https://${host}/p/${slug}`;
 
+  // Bu QR Profile Card məhsulunun özünü reklam edən kiçik bölmə — admin əlaqə nömrəsi env-dən gəlir
+  const adminPhone = process.env.ADMIN_CONTACT_PHONE || '';
+  const adminPhoneDigits = adminPhone.replace(/[^\d+]/g, '');
+  const promoBlock = adminPhone ? `
+    <a class="promo-card reveal" href="https://wa.me/${esc(adminPhoneDigits.replace('+', ''))}?text=${encodeURIComponent('Salam, mən də QR Profile Card istəyirəm')}" target="_blank" rel="noopener">
+      <div class="promo-icon">🔗</div>
+      <div class="promo-text">
+        <div class="promo-title">Siz də belə profil istəyirsiniz?</div>
+        <div class="promo-sub">Bizimlə əlaqə saxlayın: ${esc(adminPhone)}</div>
+      </div>
+      <div class="promo-arrow">→</div>
+    </a>` : '';
+
   // Böyük örtük şəkil VARSA — kiçik dairəvi avatar TƏKRAR göstərilmir (dublikat problemi həll edildi)
   const hasCover = !!d.avatar;
   const coverHtml = hasCover ? `
@@ -392,6 +405,17 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:15px; text-decoration:none;
   }
 
+  .promo-card {
+    display:flex; align-items:center; gap:14px; margin-top:26px; padding:16px 18px;
+    background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(99,102,241,.1));
+    border:1px dashed rgba(255,255,255,.2); border-radius:18px; text-decoration:none;
+  }
+  .promo-icon { font-size:24px; flex-shrink:0; }
+  .promo-text { flex:1; }
+  .promo-title { color:#eef1fb; font-weight:700; font-size:13.5px; margin-bottom:2px; }
+  .promo-sub { color:#9aa8ca; font-size:12px; }
+  .promo-arrow { color:#8b9bb8; font-size:16px; flex-shrink:0; }
+
   .lightbox {
     display:none; position:fixed; inset:0; background:rgba(5,8,16,.94); z-index:999;
     align-items:center; justify-content:center; padding:24px;
@@ -423,7 +447,7 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     ${albumsHtml}
 
     <div class="contact-section reveal">
-      <div class="contact-title">Bizimlə əlaqə</div>
+      <div class="contact-title">Mənimlə əlaqə et</div>
       <div class="contact-sub">Sual və ya təklifinizi qeyd edə bilərsiniz. Sizə ən qısa zamanda cavab verək.</div>
       <input type="text" id="cName" class="contact-input" placeholder="Adınız">
       <input type="email" id="cEmail" class="contact-input" placeholder="E-poçt ünvanınız">
@@ -437,6 +461,8 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
       <a class="share-icon-btn" href="https://wa.me/?text=${encodeURIComponent((license.owner_name || 'Bu profilə bax') + ': ' + fullProfileUrl)}" target="_blank" rel="noopener" title="WhatsApp-da paylaş">${iconBadge('whatsapp', 30)}</a>
       <a class="share-icon-btn" href="https://t.me/share/url?url=${encodeURIComponent(fullProfileUrl)}&text=${encodeURIComponent(license.owner_name || '')}" target="_blank" rel="noopener" title="Telegram-da paylaş">${iconBadge('telegram', 30)}</a>
     </div>
+
+    ${promoBlock}
 
     <div class="footer">QR PROFILE CARD</div>
   </div>

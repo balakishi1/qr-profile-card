@@ -35,6 +35,7 @@
 | `TELEGRAM_CHAT_ID` | (opsional) chat id-n |
 | `RESEND_API_KEY` | (opsional, amma tövsiyə olunur) — "Bizimlə əlaqə" mesajlarının müştərilərin öz email-inə getməsi VƏ "Elan göndər" funksiyası üçün lazımdır. resend.com-da pulsuz hesab aç, API key götür |
 | `RESEND_FROM` | (opsional) göndərən ünvan, məs. `QR Profile Card <bildiris@sendomeni.com>`. Boş saxlasan, `onboarding@resend.dev`-dən göndərilir (Resend-in test ünvanı, işləyir amma "resend.dev" göstərir) |
+| `ADMIN_CONTACT_PHONE` | (opsional) sənin (admin) telefon nömrən, məs. `+994504759150`. Bu, **bütün profil səhifələrinin altında** "Siz də belə profil istəyirsiniz?" reklam bölməsində göstərilir və WhatsApp-a keçid verir — məhsulu yeni müştərilərə tanıtmaq üçündür |
 
 4. Deploy et. Netlify avtomatik `npm install` işlədib `@supabase/supabase-js`-i quracaq.
 
@@ -48,6 +49,10 @@
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Əlaqə mesajları artıq admin-ə (sənə) gəlmir** — "Mənimlə əlaqə et" (əvvəlki "Bizimlə əlaqə") formundan gələn hər mesaj YALNIZ profil sahibinin öz email-inə gedir. Sən Telegram-a heç bir bildiriş almırsan — istəsən admin panelindəki "Mesajlar" tabından bütün mesajlara baxa bilərsən.
+- **Reklam/tanıtım bölməsi** — hər profil səhifəsinin altında (əgər `ADMIN_CONTACT_PHONE` təyin olunubsa) "Siz də belə profil istəyirsiniz?" adlı kiçik bölmə görünür, sənin telefon nömrənlə, basanda birbaşa sənə WhatsApp açılır — bu, məhsulu yeni müştərilərə tanıtmaq üçündür.
+
+## Əvvəlki versiyalardan
 - **"Bizimlə əlaqə" mesajları artıq düzgün ünvana gedir** — əvvəllər hamısı sənin Telegram-ına düşürdü (bu, başqasına satdığın məhsul üçün düzgün deyildi). İndi hər lisenziya sahibi Profil bölməsində öz email-ini təyin edir, mesajlar birbaşa ORA göndərilir (Resend vasitəsilə). Sən yenə də Telegram-a nəzarət bildirişi alırsan.
 - **Vizitka üslubları** — indi 3 hazır dizayn arasından seçim var: Standart (indiqo), Lüks (qara-qızılı), Rəngli/Yaradıcı.
 - **Profili paylaş düymələri** — QR skan olunanda açılan səhifədə "Paylaş", WhatsApp və Telegram düymələri ilə istənilən ziyarətçi profili başqasına göndərə bilər.
