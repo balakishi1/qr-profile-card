@@ -28,9 +28,12 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ success: false }) };
   }
 
-  const { owner_name, contact_info } = body;
+  const { owner_name, owner_email, contact_info } = body;
   if (!owner_name || owner_name.trim().length < 2) {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_name' }) };
+  }
+  if (!owner_email || !owner_email.includes('@')) {
+    return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_email' }) };
   }
 
   const license_key = crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -44,7 +47,11 @@ exports.handler = async (event) => {
       is_active: false, // admin təsdiq etməli olacaq
       profile_slug,
       max_devices: 1,
-      profile_data: { bio: '', links: [], requestNote: (contact_info || '').slice(0, 300) }
+      profile_data: {
+        bio: '', links: [],
+        contactEmail: owner_email.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
+        requestNote: (contact_info || '').slice(0, 300)
+      }
     })
     .select()
     .single();
@@ -56,6 +63,7 @@ exports.handler = async (event) => {
   await notifyTelegram(
     `🆕 <b>Yeni özünə-xidmət sorğusu</b>\n\n` +
     `👤 Ad: ${esc(owner_name)}\n` +
+    `✉️ Email: ${esc(owner_email)}\n` +
     `📞 Əlaqə: ${esc(contact_info || '-')}\n` +
     `🔑 Yaradılan açar: <code>${license_key}</code>\n\n` +
     `Bu açar HAZIRDA DEAKTİVDİR. Təsdiq etmək üçün admin paneldə "Aktivləşdir" düyməsinə bas.`

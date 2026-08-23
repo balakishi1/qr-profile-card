@@ -93,7 +93,7 @@
     <div id="t-messages" class="hidden">
       <div class="card">
         <table id="msgTable">
-          <thead><tr><th>Vaxt</th><th>Açar</th><th>Ad</th><th>Email</th><th>Mesaj</th></tr></thead>
+          <thead><tr><th>Vaxt</th><th>Açar</th><th>Ad</th><th>Email</th><th>Mesaj</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -102,11 +102,12 @@
     <div id="t-broadcast" class="hidden">
       <div class="card">
         <h3 style="margin-bottom:10px;">Bütün aktiv müştərilərə elan göndər</h3>
-        <p class="sub" style="margin-bottom:14px;">Yeni funksiya, yenilik və ya vacib məlumat olduqda, bunu bütün aktiv lisenziya sahiblərinin email ünvanına (Profil bölməsindəki "əlaqə email"inə, yoxdursa linklərindəki email-ə) avtomatik göndər. Email ünvanı olmayan müştərilər "keçildi" siyahısında görünəcək — onlara özün əlaqə saxlamalısan.</p>
+        <p class="sub" style="margin-bottom:14px;">Yeni funksiya, yenilik və ya vacib məlumat olduqda, bunu bütün aktiv lisenziya sahiblərinin email ünvanına (Profil bölməsindəki "əlaqə email"inə, yoxdursa linklərindəki email-ə) avtomatik göndər. Email ünvanı olmayan müştərilər "keçildi" siyahısında görünəcək — onlara özün əlaqə saxlamalısan. <b>Qeyd:</b> tam avtomatik göndərmə (kod dəyişəndə özü yazıb göndərsin) mümkün deyil, çünki sistem nəyin dəyişdiyini özü bilmir — amma "Şablonu yüklə" düyməsi hazır format təqdim edir, sən sadəcə yeniliyi yazıb göndərirsən.</p>
         <div class="row" style="margin-bottom:10px;">
           <input type="text" id="bcSubject" placeholder="Mövzu (məs: Yeni funksiya: Sertifikatlar bölməsi)" style="flex:1;">
+          <button class="btn secondary" onclick="loadBroadcastTemplate()">📋 Şablonu yüklə</button>
         </div>
-        <textarea id="bcMessage" rows="6" placeholder="Mesajın mətni..." style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;"></textarea>
+        <textarea id="bcMessage" rows="8" placeholder="Mesajın mətni..." style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;"></textarea>
         <button class="btn" onclick="sendBroadcast()">📤 Bütün müştərilərə göndər</button>
         <div id="bcResult" style="margin-top:14px;font-size:13px;color:var(--muted);"></div>
       </div>
@@ -154,6 +155,20 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   if (t.dataset.t === 'messages') loadMessages();
 }));
 
+function loadBroadcastTemplate() {
+  document.getElementById('bcSubject').value = '✨ Yeniliklər və Dəyişikliklər';
+  document.getElementById('bcMessage').value =
+`Artıq sistemdə bir sıra yeniliklər istifadəyə verilib:
+
+🔹 [Yenilik 1 buraya yaz]
+🔹 [Yenilik 2 buraya yaz]
+🔹 [Yenilik 3 buraya yaz]
+
+🚀 Daha rahat, funksional və müasir istifadə üçün yeniliklər davam edir.
+
+Sizi daha gözəl yeniliklər gözləyir! ❤️`;
+}
+
 async function sendBroadcast() {
   const subject = document.getElementById('bcSubject').value.trim();
   const message = document.getElementById('bcMessage').value.trim();
@@ -197,13 +212,20 @@ async function loadMessages() {
       <td><code>${m.license_key || '-'}</code></td>
       <td>${m.name || '-'}</td>
       <td>${m.email || '-'}</td>
-      <td style="max-width:320px;white-space:pre-wrap;">${m.message || '-'}</td>
+      <td style="max-width:280px;white-space:pre-wrap;">${m.message || '-'}</td>
+      <td><button class="btn danger" style="font-size:11px;padding:5px 8px;" onclick="deleteMessage('${m.id}')">Sil</button></td>
     `;
     tbody.appendChild(tr);
   });
   if (!(j.messages || []).length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">Hələ mesaj yoxdur</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">Hələ mesaj yoxdur</td></tr>';
   }
+}
+
+async function deleteMessage(id) {
+  if (!confirm('Bu mesajı silmək istəyirsən?')) return;
+  await fetch(`${FN}/admin-licenses?action=delete_message`, { method: 'POST', headers: h(), body: JSON.stringify({ id }) });
+  loadMessages();
 }
 
 async function createLicense() {

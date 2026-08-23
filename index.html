@@ -132,6 +132,7 @@
     </div>
     <button class="btn" onclick="doActivate()">Aktivləşdir</button>
     <div class="err" id="gateErr"></div>
+    <p class="muted" style="margin-top:16px;">Hələ açarınız yoxdur? <a href="/register" style="color:var(--accent);font-weight:600;">Qeydiyyatdan keçin →</a></p>
   </div>
 
   <!-- BLOCKED -->
@@ -215,13 +216,24 @@
       </div>
 
       <div class="card">
-        <h3>Sertifikatlar / nailiyyətlər</h3>
-        <p class="muted" style="margin-bottom:12px;">Diplom, sertifikat və s. şəkillərini əlavə et — profil səhifəndə xüsusi bir bölmə kimi göstəriləcək.</p>
+        <h3>Sertifikatlar</h3>
+        <p class="muted" style="margin-bottom:12px;">Sertifikat şəkillərini əlavə et — profil səhifəndə "🏆 Sertifikatlar" adlı ayrıca bölmə kimi göstəriləcək.</p>
         <div id="certGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;"></div>
         <div id="certStatus" class="muted" style="display:none;margin-bottom:8px;"></div>
         <label class="btn secondary small" style="display:inline-block;cursor:pointer;">
           📜 Sertifikat şəkli əlavə et
           <input type="file" id="certInput" accept="image/*" multiple style="display:none;">
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Diplomlar</h3>
+        <p class="muted" style="margin-bottom:12px;">Diplom şəkillərini əlavə et — profil səhifəndə sertifikatlardan ayrı, "🎓 Diplomlar" adlı bölmə kimi göstəriləcək.</p>
+        <div id="diplomaGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;"></div>
+        <div id="diplomaStatus" class="muted" style="display:none;margin-bottom:8px;"></div>
+        <label class="btn secondary small" style="display:inline-block;cursor:pointer;">
+          🎓 Diplom şəkli əlavə et
+          <input type="file" id="diplomaInput" accept="image/*" multiple style="display:none;">
         </label>
       </div>
 
@@ -476,6 +488,7 @@ function enterApp(j) {
   if (!currentProfileData.albums) currentProfileData.albums = [];
   if (!currentProfileData.stats) currentProfileData.stats = [];
   if (!currentProfileData.certificates) currentProfileData.certificates = [];
+  if (!currentProfileData.diplomas) currentProfileData.diplomas = [];
   if (!currentProfileData.testimonials) currentProfileData.testimonials = [];
   if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
   if (!currentProfileData.otherProfile) currentProfileData.otherProfile = { label: '', url: '' };
@@ -943,62 +956,71 @@ async function deleteAlbum(albumId) {
   await saveProfileSilent();
 }
 
-/* ---------- SERTİFİKATLAR ---------- */
-function renderCertGrid() {
-  const box = document.getElementById('certGrid');
-  box.innerHTML = '';
-  (currentProfileData.certificates || []).forEach((cert, idx) => {
-    const cell = document.createElement('div');
-    cell.style.cssText = 'position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--card2);';
-    cell.innerHTML = `<img src="${cert.url}" style="width:100%;height:100%;object-fit:cover;">
-      <button onclick="deleteCertificate(${idx})" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;">✕</button>`;
-    box.appendChild(cell);
-  });
-}
-
-document.getElementById('certInput').addEventListener('change', async (e) => {
-  const client = await initSupabaseClient();
-  if (!client) { alert('Yükləmə sistemi hazır deyil.'); return; }
-  if (!currentProfileData.certificates) currentProfileData.certificates = [];
-  const statusEl = document.getElementById('certStatus');
-  const files = Array.from(e.target.files);
-  statusEl.style.display = 'block';
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    statusEl.textContent = `Yüklənir (${i + 1}/${files.length})...`;
-    try {
-      const r = await fetch(`${FN}/get-upload-url`, {
-        method: 'POST',
-        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
-      });
-      const j = await r.json();
-      if (!j.success) continue;
-      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
-      if (upErr) continue;
-      currentProfileData.certificates.push({ url: j.publicUrl, path: j.path });
-      renderCertGrid();
-      await saveProfileSilent();
-    } catch (err) { /* keep going */ }
-  }
-  statusEl.textContent = '✅ Tamamlandı';
-  setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
-  e.target.value = '';
-});
-
-async function deleteCertificate(idx) {
-  if (!confirm('Bu sertifikatı silmək istəyirsən?')) return;
-  const cert = currentProfileData.certificates[idx];
-  if (cert.path) {
-    await fetch(`${FN}/delete-media`, {
-      method: 'POST',
-      body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, path: cert.path })
+/* ---------- SERTİFİKATLAR / DİPLOMLAR (ortaq generik funksiya) ---------- */
+function makeGallerySection(fieldName, gridId, inputId, statusId) {
+  function render() {
+    const box = document.getElementById(gridId);
+    box.innerHTML = '';
+    (currentProfileData[fieldName] || []).forEach((item, idx) => {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--card2);';
+      cell.innerHTML = `<img src="${item.url}" style="width:100%;height:100%;object-fit:cover;">
+        <button data-idx="${idx}" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;">✕</button>`;
+      cell.querySelector('button').onclick = () => del(idx);
+      box.appendChild(cell);
     });
   }
-  currentProfileData.certificates.splice(idx, 1);
-  renderCertGrid();
-  await saveProfileSilent();
+
+  async function del(idx) {
+    if (!confirm('Bu şəkli silmək istəyirsən?')) return;
+    const item = currentProfileData[fieldName][idx];
+    if (item.path) {
+      await fetch(`${FN}/delete-media`, {
+        method: 'POST',
+        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, path: item.path })
+      });
+    }
+    currentProfileData[fieldName].splice(idx, 1);
+    render();
+    await saveProfileSilent();
+  }
+
+  document.getElementById(inputId).addEventListener('change', async (e) => {
+    const client = await initSupabaseClient();
+    if (!client) { alert('Yükləmə sistemi hazır deyil.'); return; }
+    if (!currentProfileData[fieldName]) currentProfileData[fieldName] = [];
+    const statusEl = document.getElementById(statusId);
+    const files = Array.from(e.target.files);
+    statusEl.style.display = 'block';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      statusEl.textContent = `Yüklənir (${i + 1}/${files.length})...`;
+      try {
+        const r = await fetch(`${FN}/get-upload-url`, {
+          method: 'POST',
+          body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+        });
+        const j = await r.json();
+        if (!j.success) continue;
+        const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+        if (upErr) continue;
+        currentProfileData[fieldName].push({ url: j.publicUrl, path: j.path });
+        render();
+        await saveProfileSilent();
+      } catch (err) { /* keep going */ }
+    }
+    statusEl.textContent = '✅ Tamamlandı';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+    e.target.value = '';
+  });
+
+  return { render };
 }
+
+const certGallery = makeGallerySection('certificates', 'certGrid', 'certInput', 'certStatus');
+const diplomaGallery = makeGallerySection('diplomas', 'diplomaGrid', 'diplomaInput', 'diplomaStatus');
+function renderCertGrid() { certGallery.render(); diplomaGallery.render(); }
 
 /* ---------- İŞ SAATLARI ---------- */
 const WEEKDAYS = [['mon','B.e'],['tue','Ç.a'],['wed','Ç'],['thu','C.a'],['fri','C'],['sat','Ş'],['sun','B']];

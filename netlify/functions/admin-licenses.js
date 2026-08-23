@@ -104,6 +104,11 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }
 
+    if (action === 'delete_message') {
+      await supabase.from('contact_messages').delete().eq('id', body.id);
+      return { statusCode: 200, body: JSON.stringify({ success: true }) };
+    }
+
     return { statusCode: 400, body: JSON.stringify({ error: 'unknown_action' }) };
   }
 

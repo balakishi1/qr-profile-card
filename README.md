@@ -34,7 +34,11 @@
 | `TELEGRAM_BOT_TOKEN` | (opsional) bot tokenin |
 | `TELEGRAM_CHAT_ID` | (opsional) chat id-n |
 | `RESEND_API_KEY` | (opsional, amma tövsiyə olunur) — "Bizimlə əlaqə" mesajlarının müştərilərin öz email-inə getməsi VƏ "Elan göndər" funksiyası üçün lazımdır. resend.com-da pulsuz hesab aç, API key götür |
-| `RESEND_FROM` | (opsional) göndərən ünvan, məs. `QR Profile Card <bildiris@sendomeni.com>`. Boş saxlasan, `onboarding@resend.dev`-dən göndərilir (Resend-in test ünvanı, işləyir amma "resend.dev" göstərir) |
+| `RESEND_FROM` | (opsional) göndərən ünvan, məs. `QR Profile Card <bildiris@sendomeni.com>`. Boş saxlasan, `onboarding@resend.dev`-dən göndərilir |
+
+### ⚠️ Email getmirsə, çox güman ki, bu səbəbdəndir
+Resend-in `onboarding@resend.dev` test ünvanı ilə **YALNIZ öz Resend hesabına qeydiyyatdan keçdiyin email-ə** məktub göndərmək olar — başqa (müştərinin) email ünvanına göndərmək **işləməyəcək**, sakit-səssiz uğursuz olacaq.
+**Həll:** resend.com-da öz domeninizi (məs. `sendomeni.com`) "Domains" bölməsindən əlavə edib DNS qeydlərini təsdiqlə (5-10 dəqiqə çəkir, pulsuzdur), sonra `RESEND_FROM`-u `bildiris@sendomeni.com` kimi təyin et. Bundan sonra istənilən email ünvanına göndərmə işləyəcək.
 | `ADMIN_CONTACT_PHONE` | (opsional) sənin (admin) telefon nömrən, məs. `+994504759150`. Bu, **bütün profil səhifələrinin altında** "Siz də belə profil istəyirsiniz?" reklam bölməsində göstərilir və WhatsApp-a keçid verir — məhsulu yeni müştərilərə tanıtmaq üçündür |
 
 4. Deploy et. Netlify avtomatik `npm install` işlədib `@supabase/supabase-js`-i quracaq.
@@ -49,6 +53,13 @@
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Mesajları silmək mümkündür** — admin panelində "Mesajlar" tabında hər sətrin yanında "Sil" düyməsi var.
+- **Qeydiyyat linki əsas səhifədə** — açar daxil etmə ekranının altında "Hələ açarınız yoxdur? Qeydiyyatdan keçin →" linki var, `/register`-ə aparır.
+- **Qeydiyyatda email məcburidir** — daxil edilən email avtomatik "əlaqə email"i kimi təyin olunur (sonra Profil bölməsindən dəyişə bilər). Bu, gələcək "Elan göndər" bildirişlərinin ora çatması üçündür.
+- **Diplomlar bölməsi** — Sertifikatlardan tam ayrı, "🎓 Diplomlar" adlı ikinci qalereya bölməsi əlavə olundu.
+- **Elan üçün hazır şablon** — admin panelində "Elan göndər" tabında "📋 Şablonu yüklə" düyməsi, hazır format doldurur, sadəcə yeniliyi yazıb göndərmək qalır.
+
+## Əvvəlki versiyalardan
 - **Əlaqə mesajları artıq admin-ə (sənə) gəlmir** — "Mənimlə əlaqə et" (əvvəlki "Bizimlə əlaqə") formundan gələn hər mesaj YALNIZ profil sahibinin öz email-inə gedir. Sən Telegram-a heç bir bildiriş almırsan — istəsən admin panelindəki "Mesajlar" tabından bütün mesajlara baxa bilərsən.
 - **Reklam/tanıtım bölməsi** — hər profil səhifəsinin altında (əgər `ADMIN_CONTACT_PHONE` təyin olunubsa) "Siz də belə profil istəyirsiniz?" adlı kiçik bölmə görünür, sənin telefon nömrənlə, basanda birbaşa sənə WhatsApp açılır — bu, məhsulu yeni müştərilərə tanıtmaq üçündür.
 

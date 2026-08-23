@@ -209,6 +209,19 @@ exports.handler = async (event) => {
       </div>
     </div>` : '';
 
+  // Diplomlar (sertifikatlardan ayrı bölmə)
+  const diplomas = d.diplomas || [];
+  const diplomaHtml = diplomas.length ? `
+    <div class="cert-section">
+      <div class="cert-title reveal">🎓 DİPLOMLAR</div>
+      <div class="cert-strip">
+        ${diplomas.map((c, idx) => `
+          <div class="cert-badge reveal" style="transition-delay:${Math.min(idx * 50, 300)}ms" onclick="openLightbox('${esc(c.url)}','image')">
+            <img src="${esc(c.url)}" loading="lazy">
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
   // Müştəri rəyləri
   const testimonials = (d.testimonials || []).filter(t => t.text);
   const testimonialsHtml = testimonials.length ? `
@@ -443,6 +456,7 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     <div class="links-grid">${links || ''}</div>
     ${aboutHtml}
     ${certHtml}
+    ${diplomaHtml}
     ${testimonialsHtml}
     ${albumsHtml}
 

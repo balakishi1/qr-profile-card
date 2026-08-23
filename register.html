@@ -48,7 +48,11 @@
         <input type="text" id="ownerName" placeholder="məs: Elvin Məmmədov / Casa Eleganza">
       </div>
       <div class="field">
-        <label>Əlaqə məlumatın (telefon və ya email)</label>
+        <label>Email (məcburi — gələcək yeniliklər buraya göndəriləcək)</label>
+        <input type="email" id="ownerEmail" placeholder="sənin.email@gmail.com">
+      </div>
+      <div class="field">
+        <label>Telefon (istəyə görə)</label>
         <input type="text" id="contactInfo" placeholder="+994 XX XXX XX XX">
       </div>
       <button class="btn" onclick="submitRequest()">Sorğu göndər</button>
@@ -66,6 +70,7 @@
 <script>
 async function submitRequest() {
   const owner_name = document.getElementById('ownerName').value.trim();
+  const owner_email = document.getElementById('ownerEmail').value.trim();
   const contact_info = document.getElementById('contactInfo').value.trim();
   const errMsg = document.getElementById('errMsg');
   errMsg.style.display = 'none';
@@ -74,10 +79,15 @@ async function submitRequest() {
     errMsg.style.display = 'block';
     return;
   }
+  if (!owner_email || !owner_email.includes('@')) {
+    errMsg.textContent = 'Zəhmət olmasa düzgün email yaz.';
+    errMsg.style.display = 'block';
+    return;
+  }
   try {
     const r = await fetch('/.netlify/functions/request-license', {
       method: 'POST',
-      body: JSON.stringify({ owner_name, contact_info })
+      body: JSON.stringify({ owner_name, owner_email, contact_info })
     });
     const j = await r.json();
     if (j.success) {
