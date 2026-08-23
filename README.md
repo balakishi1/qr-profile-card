@@ -53,6 +53,11 @@ Resend-in `onboarding@resend.dev` test ünvanı ilə **YALNIZ öz Resend hesabı
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Fəaliyyət sahələri (çoxlu biznes filtri)** — Profil bölməsində "Fəaliyyət sahələri" yarat (məs. "Mühasibatlıq", "Mebel"), hər link/albom hansı sahəyə aid olduğunu seç. QR skan olunanda yuxarıda seçim düymələri çıxır, ziyarətçi maraqlandığı sahəni seçir, yalnız ona aid olanlar görünür — qarışıqlıq olmur.
+- **Bug düzəldi:** qeydiyyatda yazılan telefon nömrəsi indi düzgün olaraq profildəki "Telefon" sahəsinə düşür (əvvəllər sadəcə qeyd kimi saxlanılırdı, görünmürdü).
+- **Öz açarını yaza bilmək** — `/register` səhifəsində indi istəyən öz açarını (məs. `CASAELEGANZA`) yaza bilər, boş saxlasa avtomatik yaranır. Artıq götürülmüş açar yazılsa, xəbərdarlıq göstərilir.
+
+## Əvvəlki versiyalardan
 - **Mesajları silmək mümkündür** — admin panelində "Mesajlar" tabında hər sətrin yanında "Sil" düyməsi var.
 - **Qeydiyyat linki əsas səhifədə** — açar daxil etmə ekranının altında "Hələ açarınız yoxdur? Qeydiyyatdan keçin →" linki var, `/register`-ə aparır.
 - **Qeydiyyatda email məcburidir** — daxil edilən email avtomatik "əlaqə email"i kimi təyin olunur (sonra Profil bölməsindən dəyişə bilər). Bu, gələcək "Elan göndər" bildirişlərinin ora çatması üçündür.

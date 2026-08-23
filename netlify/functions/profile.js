@@ -135,6 +135,14 @@ exports.handler = async (event) => {
 
   const allLinks = d.links || [];
 
+  // Fəaliyyət sahələri seçici (bir neçə fərqli biznesi olan istifadəçilər üçün)
+  const categories = d.categories || [];
+  const categoryTabsHtml = categories.length ? `
+    <div class="cat-tabs reveal" id="catTabs">
+      <button class="cat-tab active" data-cat="">Hamısı</button>
+      ${categories.map(c => `<button class="cat-tab" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}
+    </div>` : '';
+
   // Xəritəsi olan ünvan linkini ayrıca (böyük xəritə kartı kimi) göstəririk
   const mapLocationLink = allLinks.find(l => l.type === 'location' && l.lat && l.lng);
 
@@ -144,7 +152,7 @@ exports.handler = async (event) => {
     if (l.type === 'phone') href = `tel:${esc((l.url || '').replace(/[^\d+]/g, ''))}`;
     if (l.type === 'location') href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.url || '')}`;
     return `
-    <a class="link-tile reveal" style="transition-delay:${Math.min(idx * 50, 400)}ms" href="${href}" target="_blank" rel="noopener">
+    <a class="link-tile reveal" data-cat="${esc(l.category || '')}" style="transition-delay:${Math.min(idx * 50, 400)}ms" href="${href}" target="_blank" rel="noopener">
       ${iconBadge(l.type, 32)}
       <span class="label">${esc(l.label || l.type)}</span>
     </a>`;
@@ -190,7 +198,7 @@ exports.handler = async (event) => {
       </div>`;
     }).join('');
     return `
-    <div class="album-section">
+    <div class="album-section" data-cat="${esc(album.category || '')}">
       <div class="album-title reveal">${esc(album.name)}</div>
       <div class="media-grid">${items}</div>
     </div>`;
@@ -328,6 +336,13 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
 
+  .cat-tabs { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:18px; }
+  .cat-tab {
+    flex-shrink:0; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:#c7d0e8;
+    padding:9px 16px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  .cat-tab.active { background:linear-gradient(135deg,#6366f1,#8b5cf6); border-color:transparent; color:#fff; }
+
   .hours-badge {
     display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.05);
     border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:8px 16px; font-size:12.5px;
@@ -448,6 +463,7 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
       <h1>${esc(license.owner_name || '')}</h1>
       ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
     </div>
+    ${categoryTabsHtml}
     ${hoursBlock ? `<div style="text-align:center;">${hoursBlock}</div>` : ''}
     ${vcardBlock}
     ${otherProfileBlock}
@@ -552,6 +568,23 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     }
 
     // Scroll ilə görünən elementlərin canlanması
+    // Fəaliyyət sahəsi filtri
+    const catTabs = document.getElementById('catTabs');
+    if (catTabs) {
+      catTabs.querySelectorAll('.cat-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          catTabs.querySelectorAll('.cat-tab').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          const selected = btn.dataset.cat;
+          document.querySelectorAll('[data-cat]').forEach((el) => {
+            const elCat = el.dataset.cat;
+            const show = !selected || !elCat || elCat === selected;
+            el.style.display = show ? '' : 'none';
+          });
+        });
+      });
+    }
+
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }

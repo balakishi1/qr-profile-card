@@ -189,6 +189,16 @@
       </div>
 
       <div class="card">
+        <h3>Fəaliyyət sahələri</h3>
+        <p class="muted" style="margin-bottom:12px;">Bir neçə fərqli biznesin/fəaliyyətin varsa (məs. "Mühasibatlıq", "Mebel"), buraya adlarını yaz. QR skan olunanda ziyarətçi bunlardan birini seçəcək, yalnız ona aid link/albom görünəcək — qarışıqlıq olmayacaq.</p>
+        <div id="categoriesList" style="margin-bottom:10px;"></div>
+        <div class="row">
+          <input type="text" id="newCategoryInput" placeholder="məs: Mühasibatlıq / Garant Consulting">
+          <button class="btn secondary small" onclick="addCategory()">+ Əlavə et</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h3>Sosial şəbəkə linkləri</h3>
         <div id="linksList"></div>
         <button class="btn secondary small" onclick="addLinkRow()">+ Link əlavə et</button>
@@ -321,6 +331,9 @@
           <input type="text" id="newAlbumName" placeholder="Albom adı (məs: Mətbəx layihələri)">
           <button class="btn small" onclick="createAlbum()">+ Yarat</button>
         </div>
+        <select id="newAlbumCategory" style="margin-top:8px;">
+          <option value="">🌐 Hamısı üçün (bütün ziyarətçilər görür)</option>
+        </select>
       </div>
       <div id="albumsList"></div>
     </div>
@@ -490,6 +503,7 @@ function enterApp(j) {
   if (!currentProfileData.certificates) currentProfileData.certificates = [];
   if (!currentProfileData.diplomas) currentProfileData.diplomas = [];
   if (!currentProfileData.testimonials) currentProfileData.testimonials = [];
+  if (!currentProfileData.categories) currentProfileData.categories = [];
   if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
   if (!currentProfileData.otherProfile) currentProfileData.otherProfile = { label: '', url: '' };
   currentSlug = j.profile_slug;
@@ -506,6 +520,7 @@ function enterApp(j) {
   renderAvatarPreview();
   renderAboutPhotoPreview();
   renderStats();
+  renderCategories();
   renderLinks();
   renderAlbums();
   renderCertGrid();
@@ -755,12 +770,27 @@ function makeLinkRow(link, idx) {
 
   card.appendChild(topRow);
   card.appendChild(urlInput);
+
+  if ((currentProfileData.categories || []).length) {
+    const catSel = document.createElement('select');
+    catSel.style.marginTop = '8px';
+    const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '🌐 Hamısı üçün (bütün ziyarətçilər görür)';
+    catSel.appendChild(optAll);
+    currentProfileData.categories.forEach(cat => {
+      const o = document.createElement('option'); o.value = cat; o.textContent = cat;
+      if ((link.category || '') === cat) o.selected = true;
+      catSel.appendChild(o);
+    });
+    catSel.onchange = () => { currentProfileData.links[idx].category = catSel.value; };
+    card.appendChild(catSel);
+  }
+
   return card;
 }
 
 function addLinkRow() {
   if (!currentProfileData.links) currentProfileData.links = [];
-  currentProfileData.links.push({ type: 'instagram', url: '', label: 'Instagram' });
+  currentProfileData.links.push({ type: 'instagram', url: '', label: 'Instagram', category: '' });
   renderLinks();
 }
 
@@ -777,6 +807,51 @@ async function geocodeLocationLink(idx, address) {
       currentProfileData.links[idx].lng = j.lng;
     }
   } catch (e) { /* xəritə olmadan da işləyir, problem deyil */ }
+}
+
+/* ---------- FƏALİYYƏT SAHƏLƏRİ ---------- */
+function renderCategories() {
+  const box = document.getElementById('categoriesList');
+  box.innerHTML = '';
+  (currentProfileData.categories || []).forEach((cat, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;';
+    row.innerHTML = `<span style="flex:1;font-size:13px;">${cat}</span><button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;">✕</button>`;
+    row.querySelector('button').onclick = () => {
+      if (!confirm(`"${cat}" sahəsini silmək istəyirsən? Bu sahəyə bağlı link/albomlar "Hamısı"na keçəcək.`)) return;
+      currentProfileData.categories.splice(idx, 1);
+      (currentProfileData.links || []).forEach(l => { if (l.category === cat) l.category = ''; });
+      (currentProfileData.albums || []).forEach(a => { if (a.category === cat) a.category = ''; });
+      renderCategories(); renderLinks(); renderAlbums();
+    };
+    box.appendChild(row);
+  });
+  refreshAlbumCategorySelect();
+  // Bütün link seçicilərini yenilə ki yeni kateqoriya seçimi görünsün
+  renderLinks();
+}
+
+function refreshAlbumCategorySelect() {
+  const sel = document.getElementById('newAlbumCategory');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">🌐 Hamısı üçün (bütün ziyarətçilər görür)</option>';
+  (currentProfileData.categories || []).forEach(cat => {
+    const o = document.createElement('option'); o.value = cat; o.textContent = cat;
+    sel.appendChild(o);
+  });
+  sel.value = current;
+}
+
+function addCategory() {
+  const input = document.getElementById('newCategoryInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!currentProfileData.categories) currentProfileData.categories = [];
+  if (currentProfileData.categories.includes(val)) { alert('Bu sahə artıq mövcuddur.'); return; }
+  currentProfileData.categories.push(val);
+  input.value = '';
+  renderCategories();
 }
 
 /* ---------- ALBUMS (şəkil/video) ---------- */
@@ -801,7 +876,8 @@ function createAlbum() {
   const name = document.getElementById('newAlbumName').value.trim();
   if (!name) return;
   if (!currentProfileData.albums) currentProfileData.albums = [];
-  currentProfileData.albums.push({ id: uid(), name, items: [] });
+  const category = document.getElementById('newAlbumCategory') ? document.getElementById('newAlbumCategory').value : '';
+  currentProfileData.albums.push({ id: uid(), name, items: [], category });
   document.getElementById('newAlbumName').value = '';
   renderAlbums();
   saveProfileSilent();
@@ -838,6 +914,20 @@ function renderAlbums() {
     actions.appendChild(delAlbumBtn);
     head.appendChild(actions);
     card.appendChild(head);
+
+    if ((currentProfileData.categories || []).length) {
+      const catSel = document.createElement('select');
+      catSel.style.marginBottom = '10px';
+      const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '🌐 Hamısı üçün';
+      catSel.appendChild(optAll);
+      currentProfileData.categories.forEach(cat => {
+        const o = document.createElement('option'); o.value = cat; o.textContent = cat;
+        if ((album.category || '') === cat) o.selected = true;
+        catSel.appendChild(o);
+      });
+      catSel.onchange = () => { album.category = catSel.value; saveProfileSilent(); };
+      card.appendChild(catSel);
+    }
 
     const grid = document.createElement('div');
     grid.className = 'media-grid';

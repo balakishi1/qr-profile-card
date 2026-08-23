@@ -55,6 +55,10 @@
         <label>Telefon (istəyə görə)</label>
         <input type="text" id="contactInfo" placeholder="+994 XX XXX XX XX">
       </div>
+      <div class="field">
+        <label>Öz açarını yaz (istəyə görə)</label>
+        <input type="text" id="customKey" placeholder="məs: CASAELEGANZA — boş saxlasan avtomatik yaranır" style="text-transform:uppercase;">
+      </div>
       <button class="btn" onclick="submitRequest()">Sorğu göndər</button>
       <div class="err" id="errMsg"></div>
     </div>
@@ -72,6 +76,7 @@ async function submitRequest() {
   const owner_name = document.getElementById('ownerName').value.trim();
   const owner_email = document.getElementById('ownerEmail').value.trim();
   const contact_info = document.getElementById('contactInfo').value.trim();
+  const custom_key = document.getElementById('customKey').value.trim();
   const errMsg = document.getElementById('errMsg');
   errMsg.style.display = 'none';
   if (!owner_name) {
@@ -87,13 +92,16 @@ async function submitRequest() {
   try {
     const r = await fetch('/.netlify/functions/request-license', {
       method: 'POST',
-      body: JSON.stringify({ owner_name, owner_email, contact_info })
+      body: JSON.stringify({ owner_name, owner_email, contact_info, custom_key })
     });
     const j = await r.json();
     if (j.success) {
       document.getElementById('form').style.display = 'none';
       document.getElementById('result').style.display = 'block';
       document.getElementById('resultKey').textContent = j.license_key;
+    } else if (j.reason === 'key_taken') {
+      errMsg.textContent = 'Bu açar artıq götürülüb, başqa bir açar yaz.';
+      errMsg.style.display = 'block';
     } else {
       errMsg.textContent = 'Xəta baş verdi, bir az sonra cəhd et.';
       errMsg.style.display = 'block';

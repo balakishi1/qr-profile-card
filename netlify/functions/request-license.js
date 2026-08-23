@@ -28,7 +28,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ success: false }) };
   }
 
-  const { owner_name, owner_email, contact_info } = body;
+  const { owner_name, owner_email, contact_info, custom_key } = body;
   if (!owner_name || owner_name.trim().length < 2) {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_name' }) };
   }
@@ -36,7 +36,13 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_email' }) };
   }
 
-  const license_key = crypto.randomBytes(3).toString('hex').toUpperCase();
+  let license_key = crypto.randomBytes(3).toString('hex').toUpperCase();
+  if (custom_key && custom_key.trim()) {
+    license_key = custom_key.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    if (license_key.length < 3) {
+      return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'key_too_short' }) };
+    }
+  }
   const profile_slug = crypto.randomBytes(6).toString('hex');
 
   const { data, error } = await supabase
@@ -49,6 +55,7 @@ exports.handler = async (event) => {
       max_devices: 1,
       profile_data: {
         bio: '', links: [],
+        phone: (contact_info || '').slice(0, 50), // telefon indi profildəki "Telefon" sahəsində düzgün görünür
         contactEmail: owner_email.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
         requestNote: (contact_info || '').slice(0, 300)
       }
@@ -57,6 +64,9 @@ exports.handler = async (event) => {
     .single();
 
   if (error) {
+    if (error.code === '23505' || /duplicate|unique/i.test(error.message)) {
+      return { statusCode: 409, body: JSON.stringify({ success: false, reason: 'key_taken' }) };
+    }
     return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
   }
 
