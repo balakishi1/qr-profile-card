@@ -150,6 +150,7 @@ exports.handler = async (event) => {
   const links = allLinks.filter(l => l !== mapLocationLink).map((l, idx) => {
     let href = esc(l.url);
     if (l.type === 'phone') href = `tel:${esc((l.url || '').replace(/[^\d+]/g, ''))}`;
+    if (l.type === 'email') href = `mailto:${esc(l.url || '')}`;
     if (l.type === 'location') href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.url || '')}`;
     return `
     <a class="link-tile reveal" data-cat="${esc(l.category || '')}" style="transition-delay:${Math.min(idx * 50, 400)}ms" href="${href}" target="_blank" rel="noopener">
@@ -336,7 +337,7 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
 
-  .cat-tabs { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:18px; }
+  .cat-tabs { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:18px; }
   .cat-tab {
     flex-shrink:0; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:#c7d0e8;
     padding:9px 16px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
