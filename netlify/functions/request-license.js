@@ -54,7 +54,8 @@ exports.handler = async (event) => {
       profile_slug,
       max_devices: 1,
       profile_data: {
-        bio: '', links: [],
+        bio: '',
+        links: [{ type: 'email', url: owner_email.trim().slice(0, 200), label: 'E-mail', category: '' }],
         phone: (contact_info || '').slice(0, 50), // telefon indi profildəki "Telefon" sahəsində düzgün görünür
         contactEmail: owner_email.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
         requestNote: (contact_info || '').slice(0, 300)
