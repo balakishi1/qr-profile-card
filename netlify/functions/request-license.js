@@ -50,7 +50,7 @@ exports.handler = async (event) => {
     .insert({
       license_key,
       owner_name: owner_name.trim().slice(0, 100),
-      is_active: false, // admin təsdiq etməli olacaq
+      is_active: true, // avtomatik aktivləşir, admin təsdiqi lazım deyil
       profile_slug,
       max_devices: 1,
       profile_data: {
@@ -72,12 +72,12 @@ exports.handler = async (event) => {
   }
 
   await notifyTelegram(
-    `🆕 <b>Yeni özünə-xidmət sorğusu</b>\n\n` +
+    `🆕 <b>Yeni istifadəçi qeydiyyatdan keçdi (avtomatik aktivləşdi)</b>\n\n` +
     `👤 Ad: ${esc(owner_name)}\n` +
     `✉️ Email: ${esc(owner_email)}\n` +
     `📞 Əlaqə: ${esc(contact_info || '-')}\n` +
-    `🔑 Yaradılan açar: <code>${license_key}</code>\n\n` +
-    `Bu açar HAZIRDA DEAKTİVDİR. Təsdiq etmək üçün admin paneldə "Aktivləşdir" düyməsinə bas.`
+    `🔑 Açar: <code>${license_key}</code>\n\n` +
+    `Bu açar artıq AKTİVDİR, istifadəçi dərhal öz cihazında aktivləşdirə bilər. Əməliyyat lazım deyil, sadəcə məlumat üçün.`
   );
 
   return { statusCode: 200, body: JSON.stringify({ success: true, license_key }) };

@@ -552,12 +552,15 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
           body: JSON.stringify({ slug: PROFILE_SLUG, name, email, message })
         });
         const j = await r.json();
-        if (j.success) {
+        if (j.success && j.emailSent) {
           feedback.style.color = '#22c55e';
           feedback.textContent = '✅ Mesajınız göndərildi! Tezliklə sizinlə əlaqə saxlanılacaq.';
           document.getElementById('cName').value = '';
           document.getElementById('cEmail').value = '';
           document.getElementById('cMsg').value = '';
+        } else if (j.success && !j.emailSent) {
+          feedback.style.color = '#f59e0b';
+          feedback.textContent = '⚠️ Mesajınız qeydə alındı, amma email göndərilə bilmədi. Zəhmət olmasa telefonla əlaqə saxlayın.';
         } else {
           feedback.style.color = '#ef4444';
           feedback.textContent = 'Xəta baş verdi, bir az sonra cəhd edin.';

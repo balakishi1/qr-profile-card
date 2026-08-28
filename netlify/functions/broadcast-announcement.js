@@ -1,29 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
+const { sendEmail } = require('./lib/sendEmail');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-async function sendEmail({ to, subject, text }) {
-  if (!process.env.RESEND_API_KEY || !to) return false;
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM || 'QR Profile Card <onboarding@resend.dev>',
-        to: [to],
-        subject,
-        text
-      })
-    });
-    return r.ok;
-  } catch (e) {
-    console.error('resend error', e);
-    return false;
-  }
-}
 
 exports.handler = async (event) => {
   const pass = event.headers['x-admin-password'];
@@ -63,15 +41,20 @@ exports.handler = async (event) => {
     }
     if (!destination) {
       skipped++;
-      skippedList.push(lic.owner_name || lic.license_key);
+      skippedList.push(`${lic.owner_name || lic.license_key} (email yoxdur)`);
       continue;
     }
-    const ok = await sendEmail({
+    const result = await sendEmail({
       to: destination,
       subject,
       text: `${message}\n\n---\nQR Profile Card sistemindən avtomatik göndərilib.`
     });
-    if (ok) sent++; else { skipped++; skippedList.push(lic.owner_name || lic.license_key); }
+    if (result.sent) {
+      sent++;
+    } else {
+      skipped++;
+      skippedList.push(`${lic.owner_name || lic.license_key} (${destination}): ${result.reason}${result.detail ? ' — ' + result.detail : ''}`);
+    }
   }
 
   return {

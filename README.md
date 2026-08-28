@@ -33,15 +33,31 @@
 | `ADMIN_PASSWORD` | admin panelə giriş şifrən |
 | `TELEGRAM_BOT_TOKEN` | (opsional) bot tokenin |
 | `TELEGRAM_CHAT_ID` | (opsional) chat id-n |
-| `RESEND_API_KEY` | (opsional, amma tövsiyə olunur) — "Bizimlə əlaqə" mesajlarının müştərilərin öz email-inə getməsi VƏ "Elan göndər" funksiyası üçün lazımdır. resend.com-da pulsuz hesab aç, API key götür |
-| `RESEND_FROM` | (opsional) göndərən ünvan, məs. `QR Profile Card <bildiris@sendomeni.com>`. Boş saxlasan, `onboarding@resend.dev`-dən göndərilir |
+| `ADMIN_CONTACT_PHONE` | (opsional) sənin (admin) telefon nömrən, məs. `+994504759150`. Bu, **bütün profil səhifələrinin altında** "Siz də belə profil istəyirsiniz?" reklam bölməsində göstərilir və WhatsApp-a keçid verir |
+| `GMAIL_USER` | (tövsiyə olunur) email göndərmək üçün öz Gmail ünvanın, məs. `balakishi5@gmail.com` |
+| `GMAIL_APP_PASSWORD` | Gmail-in "App Password"-u (aşağıda necə alınacağı izah olunub) — **bu, adi Gmail parolun DEYİL** |
+| `RESEND_API_KEY` | (opsional, Gmail təyin olunmayıbsa istifadə olunur) resend.com-da pulsuz hesab aç, API key götür |
+| `RESEND_FROM` | (opsional) göndərən ünvan, məs. `QR Profile Card <bildiris@sendomeni.com>` |
 
-### ⚠️ Email getmirsə, çox güman ki, bu səbəbdəndir
-Resend-in `onboarding@resend.dev` test ünvanı ilə **YALNIZ öz Resend hesabına qeydiyyatdan keçdiyin email-ə** məktub göndərmək olar — başqa (müştərinin) email ünvanına göndərmək **işləməyəcək**, sakit-səssiz uğursuz olacaq.
-**Həll:** resend.com-da öz domeninizi (məs. `sendomeni.com`) "Domains" bölməsindən əlavə edib DNS qeydlərini təsdiqlə (5-10 dəqiqə çəkir, pulsuzdur), sonra `RESEND_FROM`-u `bildiris@sendomeni.com` kimi təyin et. Bundan sonra istənilən email ünvanına göndərmə işləyəcək.
-| `ADMIN_CONTACT_PHONE` | (opsional) sənin (admin) telefon nömrən, məs. `+994504759150`. Bu, **bütün profil səhifələrinin altında** "Siz də belə profil istəyirsiniz?" reklam bölməsində göstərilir və WhatsApp-a keçid verir — məhsulu yeni müştərilərə tanıtmaq üçündür |
+### 📧 Email göndərmə — Gmail ilə (tövsiyə olunan üsul)
+Sistem indi email-ləri **sənin öz Gmail ünvanından** (`balakishi5@gmail.com` kimi) göndərə bilir — domen almağa ehtiyac yoxdur, istənilən ünvana çatır:
 
-4. Deploy et. Netlify avtomatik `npm install` işlədib `@supabase/supabase-js`-i quracaq.
+1. Google hesabında **2 addımlı doğrulama** (2-Step Verification) aktiv olmalıdır (Google Account → Security)
+2. **myaccount.google.com/apppasswords** səhifəsinə get
+3. Tətbiq adı yaz (məs. "QR Profile Card"), **Yarat** bas
+4. Sənə 16 simvollu bir kod göstəriləcək (məs. `abcd efgh ijkl mnop`) — bunu boşluqsuz kopyala
+5. Netlify-da:
+   - `GMAIL_USER` = `balakishi5@gmail.com`
+   - `GMAIL_APP_PASSWORD` = həmin 16 simvollu kod
+
+Bu iki dəyişəni əlavə etdikdən sonra bütün email-lər (əlaqə formu + elan göndər) avtomatik Gmail vasitəsilə, sənin ünvanından, istənilən qəbul edənə gedəcək — Resend-ə, domenə ehtiyac qalmayacaq.
+
+⚠️ **Qeyd:** Adi Gmail hesabının gündəlik göndərmə limiti ~500 email-dir — bu, kiçik/orta müştəri bazası üçün kifayət qədərdir.
+
+### Resend istifadə etmək istəsən (Gmail əvəzinə, alternativ)
+Gmail təyin olunmayıbsa, sistem avtomatik Resend-ə keçir (əgər `RESEND_API_KEY` varsa). Amma diqqət: Resend-in pulsuz `onboarding@resend.dev` göndərəni yalnız sənin öz Resend hesabına email göndərə bilir, başqa ünvanlara yox — bunun üçün resend.com-da öz domenini "Domains" bölməsindən təsdiqləyib `RESEND_FROM`-u ona uyğun təyin etməlisən. Ona görə Gmail üsulu daha sadədir.
+
+Deploy et. Netlify avtomatik `npm install` işlədib bütün asılılıqları (`@supabase/supabase-js`, `nodemailer`) quracaq.
 
 ## 4. İstifadə axını
 1. Sən `/admin` səhifəsinə şifrənlə girirsən.
@@ -53,6 +69,10 @@ Resend-in `onboarding@resend.dev` test ünvanı ilə **YALNIZ öz Resend hesabı
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
 ## Bu versiyada yenilənənlər
+- **Email göndərmə kökündən düzəldi — Gmail SMTP dəstəyi əlavə olundu.** İndi email-lər sənin öz Gmail ünvanından (`GMAIL_USER` + `GMAIL_APP_PASSWORD`) göndərilir, domen almağa ehtiyac yoxdur, istənilən ünvana çatır. Resend hələ də alternativ kimi dəstəklənir (Gmail təyin olunmayıbsa avtomatik ona keçir).
+- **Özünə-xidmət qeydiyyatı artıq avtomatik aktivləşir** — `/register`-dən keçən yeni istifadəçi dərhal aktiv açar alır, admin təsdiqini gözləmək lazım deyil. Sənə Telegram-a məlumat kimi bildiriş gəlir (əməliyyat tələb olunmur).
+
+## Əvvəlki versiyalardan
 - **Fəaliyyət sahələri (çoxlu biznes filtri)** — Profil bölməsində "Fəaliyyət sahələri" yarat (məs. "Mühasibatlıq", "Mebel"), hər link/albom hansı sahəyə aid olduğunu seç. QR skan olunanda yuxarıda seçim düymələri çıxır, ziyarətçi maraqlandığı sahəni seçir, yalnız ona aid olanlar görünür — qarışıqlıq olmur.
 - **Bug düzəldi:** qeydiyyatda yazılan telefon nömrəsi indi düzgün olaraq profildəki "Telefon" sahəsinə düşür (əvvəllər sadəcə qeyd kimi saxlanılırdı, görünmürdü).
 - **Öz açarını yaza bilmək** — `/register` səhifəsində indi istəyən öz açarını (məs. `CASAELEGANZA`) yaza bilər, boş saxlasa avtomatik yaranır. Artıq götürülmüş açar yazılsa, xəbərdarlıq göstərilir.
