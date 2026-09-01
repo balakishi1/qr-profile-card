@@ -428,6 +428,15 @@ async function boot() {
     session = null;
   }
   document.getElementById('gate').style.display = 'block';
+
+  // Qeydiyyatdan (/register) gələn link: ?key=XXXX ilə açar avtomatik doldurulur və aktivləşdirilir
+  const urlKey = new URLSearchParams(window.location.search).get('key');
+  if (urlKey) {
+    document.getElementById('licenseInput').value = urlKey.trim().toUpperCase();
+    // URL-i təmizlə ki, sayfa yenilənəndə açar bir də göndərilməsin
+    window.history.replaceState({}, document.title, window.location.pathname);
+    doActivate();
+  }
 }
 
 async function doActivate() {

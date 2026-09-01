@@ -60,6 +60,16 @@ create table if not exists contact_messages (
   created_at timestamptz default now()
 );
 
+-- Platformanın özü barədə istifadəçi rəyləri (ulduz + şərh) — landing səhifədə göstərilir
+create table if not exists platform_reviews (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  rating int not null default 5,
+  comment text not null,
+  created_at timestamptz default now()
+);
+alter table platform_reviews enable row level security;
+
 -- Netlify Functions service_role key ilə işlədiyi üçün RLS-i bağlı saxlamaq kifayətdir
 -- (default olaraq açıqdır, əlavə policy lazım deyil, çünki client birbaşa Supabase-ə qoşulmur)
 alter table licenses enable row level security;

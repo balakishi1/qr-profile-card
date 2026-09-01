@@ -4,7 +4,8 @@ exports.handler = async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       supabaseUrl: process.env.SUPABASE_URL || '',
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+      adminContactPhone: process.env.ADMIN_CONTACT_PHONE || ''
     })
   };
 };

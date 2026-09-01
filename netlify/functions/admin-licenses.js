@@ -109,6 +109,11 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ success: true }) };
     }
 
+    if (action === 'delete_review') {
+      await supabase.from('platform_reviews').delete().eq('id', body.id);
+      return { statusCode: 200, body: JSON.stringify({ success: true }) };
+    }
+
     return { statusCode: 400, body: JSON.stringify({ error: 'unknown_action' }) };
   }
 

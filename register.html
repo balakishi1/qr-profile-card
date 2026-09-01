@@ -3,75 +3,302 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Profile Card — Sorğu göndər</title>
+<title>QR Profile Card — bütün sosial şəbəkələrin, tək bir peşəkar profildə</title>
+<meta name="description" content="Sosial şəbəkələrini, əlaqə məlumatlarını, albomlarını və vizitkanı tək bir QR kod və link altında peşəkar şəkildə təqdim et.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b1220; --card:#131c2e; --card2:#0f1729; --border:#243049;
-    --text:#e7ecf7; --muted:#8b9bb8; --accent:#6366f1; --accent2:#8b5cf6; --green:#22c55e; --radius:16px;
+    --navy:#0b2545; --blue:#1458c4; --blue-dark:#0f4499; --blue-tint:#eaf1fc; --blue-tint2:#f5f8fd;
+    --paper:#ffffff; --ink:#101a2b; --muted:#5b6b85; --line:#e2e8f3; --gold:#c9982e;
+    --radius:14px; --maxw:1120px;
   }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{
-    font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
-    background:radial-gradient(circle at 20% -10%,#1b2740 0%,var(--bg) 55%);
-    color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
-  }
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px 26px;max-width:420px;width:100%;}
-  .logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px;}
-  h1{font-size:20px;text-align:center;margin-bottom:6px;}
-  p.sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:24px;line-height:1.5;}
-  .field{margin-bottom:14px;}
-  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
-  input,textarea{
-    width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
-    padding:12px 14px;border-radius:10px;font-size:14px;outline:none;font-family:inherit;
-  }
-  input:focus,textarea:focus{border-color:var(--accent);}
-  .btn{
-    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
-    padding:14px 18px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:6px;
-  }
-  .btn:active{transform:scale(.98);}
-  .result{display:none;text-align:center;margin-top:18px;padding:16px;background:var(--card2);border-radius:12px;}
-  .result code{background:#0a1120;padding:6px 12px;border-radius:8px;display:inline-block;margin-top:8px;font-size:16px;letter-spacing:1px;color:var(--green);}
-  .err{color:#ef4444;font-size:13px;margin-top:10px;display:none;text-align:center;}
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.5;}
+  h1,h2,h3,.brand{font-family:'Manrope',-apple-system,sans-serif;}
+  a{color:inherit;}
+  .container{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+  img{max-width:100%;}
+
+  header.nav{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:50;}
+  .nav-row{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:var(--maxw);margin:0 auto;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--navy);text-decoration:none;}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;}
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:14px;font-weight:600;color:var(--muted);}
+  .nav-links a:hover{color:var(--navy);}
+  .nav-cta{display:flex;gap:10px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--blue);}
+  .btn-block{width:100%;}
+  @media (max-width:820px){ .nav-links{display:none;} }
+
+  .hero{background:linear-gradient(180deg,var(--blue-tint2) 0%,#fff 65%);padding:64px 0 40px;}
+  .hero-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;}
+  @media (max-width:900px){ .hero-grid{grid-template-columns:1fr;} }
+  .hero h1{font-size:clamp(30px,4.2vw,46px);font-weight:800;color:var(--navy);letter-spacing:-.5px;margin:0 0 18px;}
+  .hero p.lead{font-size:17px;color:var(--muted);max-width:520px;margin:0 0 28px;}
+  .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:34px;}
+  .stat-row{display:flex;gap:34px;flex-wrap:wrap;}
+  .stat{min-width:110px;}
+  .stat b{display:block;font-size:26px;font-weight:800;color:var(--navy);}
+  .stat span{font-size:13px;color:var(--muted);}
+
+  .mock-frame{background:var(--navy);border-radius:26px;padding:14px;box-shadow:0 30px 60px -20px rgba(11,37,69,.35);max-width:300px;margin:0 auto;}
+  .mock-screen{background:#fff;border-radius:18px;padding:22px 18px;text-align:center;}
+  .mock-avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--navy));margin:0 auto 12px;}
+  .mock-name{height:12px;width:60%;background:var(--navy);border-radius:6px;margin:0 auto 8px;opacity:.85;}
+  .mock-role{height:8px;width:42%;background:var(--line);border-radius:6px;margin:0 auto 18px;}
+  .mock-pills{display:flex;justify-content:center;gap:6px;margin-bottom:18px;}
+  .mock-pill{width:30px;height:30px;border-radius:9px;background:var(--blue-tint);}
+  .mock-qr{width:96px;height:96px;margin:0 auto 10px;border-radius:10px;
+    background-image:repeating-linear-gradient(0deg,var(--navy) 0 6px, transparent 6px 12px),repeating-linear-gradient(90deg,var(--navy) 0 6px, transparent 6px 12px);
+    background-blend-mode:multiply;background-color:#fff;border:1px solid var(--line);}
+  .mock-caption{font-size:11px;color:var(--muted);}
+
+  section{padding:64px 0;}
+  .section-head{max-width:600px;margin:0 auto 40px;text-align:center;}
+  .section-head h2{font-size:clamp(24px,3vw,32px);color:var(--navy);margin:0 0 10px;}
+  .section-head p{color:var(--muted);font-size:15px;margin:0;}
+
+  .features{background:var(--blue-tint2);}
+  .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  @media (max-width:820px){ .feat-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .feat-grid{grid-template-columns:1fr;} }
+  .feat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;}
+  .feat-icon{width:40px;height:40px;border-radius:10px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px;}
+  .feat-card h3{font-size:15.5px;margin:0 0 6px;color:var(--ink);}
+  .feat-card p{font-size:13.5px;color:var(--muted);margin:0;}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  @media (max-width:820px){ .steps{grid-template-columns:1fr;} }
+  .step{border-left:2px solid var(--line);padding-left:18px;}
+  .step .num{color:var(--blue);font-weight:800;font-size:13px;margin-bottom:6px;}
+  .step h3{font-size:15.5px;margin:0 0 6px;color:var(--ink);}
+  .step p{font-size:13.5px;color:var(--muted);margin:0;}
+
+  .register{background:var(--navy);color:#fff;}
+  .register .section-head h2{color:#fff;}
+  .register .section-head p{color:#b9c6dd;}
+  .reg-card{max-width:460px;margin:0 auto;background:#fff;color:var(--ink);border-radius:var(--radius);padding:30px 26px;box-shadow:0 30px 60px -25px rgba(0,0,0,.5);}
+  .field{margin-bottom:14px;text-align:left;}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+  .field input{width:100%;background:#f8fafc;border:1px solid var(--line);color:var(--ink);padding:12px 13px;border-radius:9px;font-size:14px;outline:none;font-family:inherit;}
+  .field input:focus{border-color:var(--blue);background:#fff;}
+  .err{color:#dc2626;font-size:13px;margin-top:10px;display:none;text-align:center;}
+  .result{display:none;text-align:center;}
+  .result .check{width:52px;height:52px;border-radius:50%;background:#e8f7ee;color:#16a34a;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;}
+  .result h3{margin:0 0 6px;font-size:17px;}
+  .result p{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
+  .key-box{background:#f8fafc;border:1px dashed var(--line);border-radius:10px;padding:12px;font-size:19px;font-weight:800;letter-spacing:2px;color:var(--blue);margin-bottom:16px;}
+
+  .reviews-summary{display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:36px;}
+  .rev-score b{font-size:44px;color:var(--navy);}
+  .stars{color:var(--gold);font-size:18px;letter-spacing:2px;}
+  .rev-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:34px;}
+  @media (max-width:820px){ .rev-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .rev-grid{grid-template-columns:1fr;} }
+  .rev-card{border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:#fff;}
+  .rev-card .stars{font-size:13px;margin-bottom:8px;display:block;}
+  .rev-card p{font-size:13.5px;color:var(--ink);margin:0 0 10px;}
+  .rev-card .who{font-size:12.5px;color:var(--muted);font-weight:700;}
+  .rev-empty{color:var(--muted);font-size:14px;text-align:center;padding:20px 0;grid-column:1/-1;}
+
+  .rev-form{max-width:480px;margin:0 auto;border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:var(--blue-tint2);}
+  .rev-form h3{margin:0 0 14px;font-size:15.5px;text-align:center;}
+  .star-pick{display:flex;justify-content:center;gap:6px;font-size:26px;margin-bottom:16px;cursor:pointer;color:#d1d9e6;}
+  .star-pick span.sel{color:var(--gold);}
+  .rev-form textarea{width:100%;background:#fff;border:1px solid var(--line);color:var(--ink);padding:11px 13px;border-radius:9px;font-size:13.5px;outline:none;font-family:inherit;resize:vertical;min-height:70px;margin-bottom:12px;}
+  .rev-msg{font-size:13px;text-align:center;margin-top:10px;display:none;}
+
+  .collab{background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff;border-radius:20px;margin:0 24px;padding:40px;text-align:center;max-width:calc(var(--maxw) - 0px);margin-left:auto;margin-right:auto;}
+  .collab h2{font-size:22px;margin:0 0 8px;}
+  .collab p{color:#dbe6fb;font-size:14.5px;max-width:520px;margin:0 auto 22px;}
+  footer{padding:34px 24px 40px;text-align:center;color:var(--muted);font-size:13px;}
+  footer a{color:var(--blue);font-weight:700;text-decoration:none;}
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">🔗</div>
-    <h1>Sorğu göndər</h1>
-    <p class="sub">Adını yaz, biz sənə dərhal lisenziya açarı yaradacağıq — heç bir gözləmə yoxdur, açarı aldığın anda profilini qurmağa başlaya bilərsən.</p>
 
-    <div id="form">
-      <div class="field">
-        <label>Adın / Brend adın</label>
-        <input type="text" id="ownerName" placeholder="məs: Elvin Məmmədov / Casa Eleganza">
-      </div>
-      <div class="field">
-        <label>Email (məcburi — gələcək yeniliklər buraya göndəriləcək)</label>
-        <input type="email" id="ownerEmail" placeholder="sənin.email@gmail.com">
-      </div>
-      <div class="field">
-        <label>Telefon (istəyə görə)</label>
-        <input type="text" id="contactInfo" placeholder="+994 XX XXX XX XX">
-      </div>
-      <div class="field">
-        <label>Öz açarını yaz (istəyə görə)</label>
-        <input type="text" id="customKey" placeholder="məs: CASAELEGANZA — boş saxlasan avtomatik yaranır" style="text-transform:uppercase;">
-      </div>
-      <button class="btn" onclick="submitRequest()">Sorğu göndər</button>
-      <div class="err" id="errMsg"></div>
-    </div>
-
-    <div class="result" id="result">
-      <p>✅ Qeydiyyatın tamamlandı!</p>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;">Sənin açarın:</p>
-      <code id="resultKey"></code>
-      <p style="color:var(--muted);font-size:12px;margin-top:14px;">Bu açar artıq AKTİVDİR — heç nəyi gözləməyə ehtiyac yoxdur. Əsas sayta get, açarı daxil et, profilini indi qurmağa başla.</p>
+<header class="nav">
+  <div class="nav-row">
+    <a class="brand" href="#top"><span class="mark">QR</span> QR Profile Card</a>
+    <nav class="nav-links">
+      <a href="#features">Xüsusiyyətlər</a>
+      <a href="#how">Necə işləyir</a>
+      <a href="#reviews">Rəylər</a>
+      <a href="#collab">Əməkdaşlıq</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/">Daxil ol</a>
+      <a class="btn btn-primary" href="#register">Qeydiyyat</a>
     </div>
   </div>
+</header>
+
+<div id="top"></div>
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <h1>Bütün əlaqələrin, tək bir peşəkar profildə.</h1>
+      <p class="lead">Sosial şəbəkələrini, telefon nömrəni, iş nümunələrini və vizitkanı bir QR kod və bir link altında topla. Skan olunan kimi ziyarətçi hər şeyi anında görür.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#register">Pulsuz qeydiyyatdan keç</a>
+        <a class="btn btn-ghost" href="#how">Necə işlədiyinə bax</a>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><b id="statUsers">—</b><span>aktiv istifadəçi</span></div>
+        <div class="stat"><b id="statRating">—</b><span>ortalama qiymət</span></div>
+        <div class="stat"><b id="statReviews">—</b><span>istifadəçi rəyi</span></div>
+      </div>
+    </div>
+    <div class="mock-frame">
+      <div class="mock-screen">
+        <div class="mock-avatar"></div>
+        <div class="mock-name"></div>
+        <div class="mock-role"></div>
+        <div class="mock-pills"><div class="mock-pill"></div><div class="mock-pill"></div><div class="mock-pill"></div><div class="mock-pill"></div></div>
+        <div class="mock-qr"></div>
+        <div class="mock-caption">Skan et — profil açılır</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-head">
+      <h2>Bir profildə hər şey</h2>
+      <p>Ayrı-ayrı linkləri paylaşmaq yerinə, hamısını bir səhifədə peşəkar şəkildə göstər.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card"><div class="feat-icon">🔗</div><h3>Bütün sosial şəbəkələr bir yerdə</h3><p>Instagram, WhatsApp, LinkedIn, telefon, ünvan — hamısı tək profildə, rəngli ikonlarla.</p></div>
+      <div class="feat-card"><div class="feat-icon">📱</div><h3>Çox-cihaz dəstəyi</h3><p>Eyni profili telefon və kompyuterdə paralel istifadə et, hər ikisində eyni məlumat görünür.</p></div>
+      <div class="feat-card"><div class="feat-icon">🖼️</div><h3>Albomlar</h3><p>İş nümunələrini, layihələrini şəkil və video albomları şəklində qalereyada göstər.</p></div>
+      <div class="feat-card"><div class="feat-icon">🗺️</div><h3>Xəritə və iş saatları</h3><p>Ünvanını əlavə et, ziyarətçi bir toxunuşla Google Maps-də tapsın, iş saatın avtomatik göstərilsin.</p></div>
+      <div class="feat-card"><div class="feat-icon">🏆</div><h3>Sertifikat və diplomlar</h3><p>Nailiyyətlərini, sertifikatlarını ayrıca qalereya bölmələrində nümayiş etdir.</p></div>
+      <div class="feat-card"><div class="feat-icon">✉️</div><h3>Birbaşa əlaqə forması</h3><p>Ziyarətçi profildən birbaşa sənə yaza bilər, mesaj birbaşa sənin email-inə düşür.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="container">
+    <div class="section-head">
+      <h2>Necə işləyir</h2>
+      <p>Üç addımda hazır — texniki bilik tələb olunmur.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><h3>Qeydiyyatdan keç</h3><p>Adını və email-ini yaz, sorğu göndər — hesabın həmin anda aktivləşir.</p></div>
+      <div class="step"><div class="num">2</div><h3>Profilini qur</h3><p>Şəklini, telefonun, sosial şəbəkələrini əlavə et — dəyişiklik dərhal görünür.</p></div>
+      <div class="step"><div class="num">3</div><h3>QR kodunu paylaş</h3><p>Vizitkana, vitrininə və ya Instagram bio-na yerləşdir, ziyarətçi skan edən kimi hər şeyi görür.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="register" id="register">
+  <div class="container">
+    <div class="section-head">
+      <h2>Qeydiyyatdan keç</h2>
+      <p>Sorğunu göndər, hesabın dərhal aktivləşir — gözləmə yoxdur.</p>
+    </div>
+
+    <div class="reg-card">
+      <div id="form">
+        <div class="field">
+          <label>Adın / Brend adın</label>
+          <input type="text" id="ownerName" placeholder="məs: Elvin Məmmədov / Casa Eleganza">
+        </div>
+        <div class="field">
+          <label>Email (məcburi)</label>
+          <input type="email" id="ownerEmail" placeholder="sənin.email@gmail.com">
+        </div>
+        <div class="field">
+          <label>Telefon (istəyə görə)</label>
+          <input type="text" id="contactInfo" placeholder="+994 XX XXX XX XX">
+        </div>
+        <div class="field">
+          <label>Öz açarını yaz (istəyə görə)</label>
+          <input type="text" id="customKey" placeholder="boş saxlasan avtomatik yaranır" style="text-transform:uppercase;">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="submitRequest()">Sorğu göndər</button>
+        <div class="err" id="errMsg"></div>
+      </div>
+
+      <div class="result" id="result">
+        <div class="check">✓</div>
+        <h3>Qeydiyyatın tamamlandı</h3>
+        <p>Hesabın artıq aktivdir. Açarını email-inə də göndərdik (istifadə qaydası ilə birlikdə).</p>
+        <div class="key-box" id="resultKey"></div>
+        <a class="btn btn-primary btn-block" id="openProfileBtn" href="#">Profilimi indi qur →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="reviews">
+  <div class="container">
+    <div class="section-head">
+      <h2>İstifadəçilər nə deyir</h2>
+      <p>Platforma haqqında rəylər — həqiqi istifadəçilərdən.</p>
+    </div>
+    <div class="reviews-summary">
+      <div class="rev-score"><b id="revAvg">—</b></div>
+      <div>
+        <div class="stars" id="revStars">☆☆☆☆☆</div>
+        <div style="color:var(--muted);font-size:13px;" id="revCount">Hələ rəy yoxdur</div>
+      </div>
+    </div>
+    <div class="rev-grid" id="revGrid">
+      <div class="rev-empty">Yüklənir...</div>
+    </div>
+    <div class="rev-form">
+      <h3>Rəyini yaz</h3>
+      <div class="star-pick" id="starPick">
+        <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+      </div>
+      <div class="field"><input type="text" id="revName" placeholder="Adın"></div>
+      <textarea id="revComment" placeholder="Fikrini yaz..."></textarea>
+      <button class="btn btn-primary btn-block" onclick="submitReview()">Rəyi göndər</button>
+      <div class="rev-msg" id="revMsg"></div>
+    </div>
+  </div>
+</section>
+
+<section id="collab">
+  <div class="collab">
+    <h2>Biznesin üçün əməkdaşlıq</h2>
+    <p>Agentlik, mağaza şəbəkəsi və ya çoxlu işçisi olan biznessən? Toplu lisenziya, xüsusi dizayn və inteqrasiya barədə birbaşa danış.</p>
+    <a class="btn" style="background:#fff;color:var(--navy);" id="collabBtn" href="#register">Bizimlə əlaqə saxla</a>
+  </div>
+</section>
+
+<footer>
+  © <span id="year"></span> QR Profile Card · <a href="/">Daxil ol</a> · <a href="/admin">Admin</a>
+</footer>
 
 <script>
+const FN = '/.netlify/functions';
+document.getElementById('year').textContent = new Date().getFullYear();
+
+fetch(`${FN}/platform?action=stats`).then(r => r.json()).then(j => {
+  document.getElementById('statUsers').textContent = (j.totalUsers || 0) + '+';
+  document.getElementById('statRating').textContent = j.avgRating ? j.avgRating.toFixed(1) + '★' : '—';
+  document.getElementById('statReviews').textContent = j.totalReviews || 0;
+}).catch(() => {});
+
+fetch(`${FN}/public-config`).then(r => r.json()).then(j => {
+  if (j.adminContactPhone) {
+    const digits = j.adminContactPhone.replace(/[^\d+]/g, '').replace('+', '');
+    const msg = encodeURIComponent('Salam, biznesim üçün QR Profile Card ilə əməkdaşlıq etmək istəyirəm.');
+    document.getElementById('collabBtn').href = `https://wa.me/${digits}?text=${msg}`;
+    document.getElementById('collabBtn').target = '_blank';
+  }
+}).catch(() => {});
+
 async function submitRequest() {
   const owner_name = document.getElementById('ownerName').value.trim();
   const owner_email = document.getElementById('ownerEmail').value.trim();
@@ -79,36 +306,89 @@ async function submitRequest() {
   const custom_key = document.getElementById('customKey').value.trim();
   const errMsg = document.getElementById('errMsg');
   errMsg.style.display = 'none';
-  if (!owner_name) {
-    errMsg.textContent = 'Zəhmət olmasa adını yaz.';
-    errMsg.style.display = 'block';
-    return;
-  }
-  if (!owner_email || !owner_email.includes('@')) {
-    errMsg.textContent = 'Zəhmət olmasa düzgün email yaz.';
-    errMsg.style.display = 'block';
-    return;
-  }
+  if (!owner_name) { errMsg.textContent = 'Zəhmət olmasa adını yaz.'; errMsg.style.display = 'block'; return; }
+  if (!owner_email || !owner_email.includes('@')) { errMsg.textContent = 'Zəhmət olmasa düzgün email yaz.'; errMsg.style.display = 'block'; return; }
   try {
-    const r = await fetch('/.netlify/functions/request-license', {
-      method: 'POST',
-      body: JSON.stringify({ owner_name, owner_email, contact_info, custom_key })
-    });
+    const r = await fetch(`${FN}/request-license`, { method: 'POST', body: JSON.stringify({ owner_name, owner_email, contact_info, custom_key }) });
     const j = await r.json();
     if (j.success) {
       document.getElementById('form').style.display = 'none';
       document.getElementById('result').style.display = 'block';
       document.getElementById('resultKey').textContent = j.license_key;
+      document.getElementById('openProfileBtn').href = j.activateUrl || `/?key=${encodeURIComponent(j.license_key)}`;
     } else if (j.reason === 'key_taken') {
-      errMsg.textContent = 'Bu açar artıq götürülüb, başqa bir açar yaz.';
-      errMsg.style.display = 'block';
+      errMsg.textContent = 'Bu açar artıq götürülüb, başqa bir açar yaz.'; errMsg.style.display = 'block';
     } else {
-      errMsg.textContent = 'Xəta baş verdi, bir az sonra cəhd et.';
-      errMsg.style.display = 'block';
+      errMsg.textContent = 'Xəta baş verdi, bir az sonra cəhd et.'; errMsg.style.display = 'block';
     }
   } catch (e) {
-    errMsg.textContent = 'Şəbəkə xətası.';
-    errMsg.style.display = 'block';
+    errMsg.textContent = 'Şəbəkə xətası.'; errMsg.style.display = 'block';
+  }
+}
+
+let pickedRating = 5;
+document.querySelectorAll('#starPick span').forEach(s => {
+  s.addEventListener('click', () => { pickedRating = parseInt(s.dataset.v, 10); paintStars(); });
+});
+function paintStars() {
+  document.querySelectorAll('#starPick span').forEach(s => s.classList.toggle('sel', parseInt(s.dataset.v, 10) <= pickedRating));
+}
+paintStars();
+
+function starsHtml(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
+
+async function loadReviews() {
+  const grid = document.getElementById('revGrid');
+  try {
+    const [statsR, listR] = await Promise.all([
+      fetch(`${FN}/platform?action=stats`).then(r => r.json()),
+      fetch(`${FN}/platform?action=reviews`).then(r => r.json())
+    ]);
+    document.getElementById('revAvg').textContent = statsR.avgRating ? statsR.avgRating.toFixed(1) : '—';
+    document.getElementById('revStars').textContent = starsHtml(Math.round(statsR.avgRating || 0));
+    document.getElementById('revCount').textContent = (statsR.totalReviews || 0) + ' rəy';
+
+    const reviews = listR.reviews || [];
+    if (!reviews.length) {
+      grid.innerHTML = '<div class="rev-empty">Hələ rəy yoxdur — birinci ol!</div>';
+      return;
+    }
+    grid.innerHTML = reviews.slice(0, 9).map(rv => `
+      <div class="rev-card">
+        <span class="stars">${starsHtml(rv.rating)}</span>
+        <p>${escapeHtml(rv.comment)}</p>
+        <div class="who">${escapeHtml(rv.name)}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = '<div class="rev-empty">Rəylər yüklənmədi.</div>';
+  }
+}
+function escapeHtml(s) { return String(s || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+loadReviews();
+
+async function submitReview() {
+  const name = document.getElementById('revName').value.trim();
+  const comment = document.getElementById('revComment').value.trim();
+  const msg = document.getElementById('revMsg');
+  msg.style.display = 'block';
+  if (!name || name.length < 2) { msg.style.color = '#dc2626'; msg.textContent = 'Zəhmət olmasa adını yaz.'; return; }
+  if (!comment || comment.length < 3) { msg.style.color = '#dc2626'; msg.textContent = 'Zəhmət olmasa rəyini yaz.'; return; }
+  msg.style.color = 'var(--muted)'; msg.textContent = 'Göndərilir...';
+  try {
+    const r = await fetch(`${FN}/platform`, { method: 'POST', body: JSON.stringify({ name, rating: pickedRating, comment }) });
+    const j = await r.json();
+    if (j.success) {
+      msg.style.color = '#16a34a'; msg.textContent = 'Təşəkkürlər! Rəyin əlavə olundu.';
+      document.getElementById('revName').value = '';
+      document.getElementById('revComment').value = '';
+      pickedRating = 5; paintStars();
+      loadReviews();
+    } else {
+      msg.style.color = '#dc2626'; msg.textContent = 'Xəta baş verdi, bir az sonra cəhd et.';
+    }
+  } catch (e) {
+    msg.style.color = '#dc2626'; msg.textContent = 'Şəbəkə xətası.';
   }
 }
 </script>

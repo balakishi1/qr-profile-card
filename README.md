@@ -68,7 +68,15 @@ Deploy et. Netlify avtomatik `npm install` işlədib bütün asılılıqları (`
 6. Limit dolandan sonra (3-cü cihazdan cəhd) — rədd olunur, admin panelində "Cəhd logları"nda şəhər/ölkə/operator məlumatı ilə görünür, Telegram-a bildiriş gəlir.
 7. Admin panelində hər lisenziyanın yanında bütün bağlı cihazlar ayrı-ayrı siyahılanır — istəsən yalnız BİR cihazı silə bilərsən (digərlərinə toxunmadan), ya da "Cihaz sayı"nı istənilən vaxt artıra/azalda bilərsən.
 
-## Bu versiyada yenilənənlər
+## Bu versiyada yenilənənlər (v20)
+- **Qeydiyyat → dərhal profilə keçid** — `/register`-dən sorğu göndərəndən sonra "Profilimi indi qur →" düyməsi çıxır, basan kimi əsas sayt açılır, açar avtomatik doldurulur və aktivləşdirilir (özün əl ilə köçürüb-yapışdırmağa ehtiyac yoxdur). Bunun üçün `index.html`-ə `?key=AÇAR` parametrini oxuyan məntiq əlavə olundu.
+- **Avtomatik "xoş gəldin" email-i** — qeydiyyatdan keçən kimi (`request-license` funksiyası) istifadəçiyə HTML formatında email gedir: açarı, "Profilimi indi qur" linki, və qısa istifadə təlimatı (5 addım) daxil olmaqla. Bunun üçün ayrıca quraşdırma lazım deyil — mövcud `GMAIL_USER`/`GMAIL_APP_PASSWORD` (və ya Resend) ayarları avtomatik işə düşür.
+- **`/register` tam yeni, peşəkar "landing page" dizaynı** — LinkedIn/UNEC tipli sadə, işgüzar, ağ-fon+lacivərd üslub: xüsusiyyətlər bölməsi, "necə işləyir" addımları, canlı statistika (aktiv istifadəçi sayı, ortalama reytinq), platform haqqında rəylər bölməsi və biznes əməkdaşlığı bloku.
+- **Platform statistikası (dinamik say)** — yeni `platform.js` funksiyası aktiv istifadəçi sayını, ümumi rəy sayını və ortalama reytinqi hesablayıb `/register` səhifəsində canlı göstərir.
+- **Platform rəyləri (ulduz + şərh)** — istifadəçilər (məhsulun özü haqqında, profil sahibləri haqqında yox) ulduz reytinqi və şərh yaza bilir, `/register`-də siyahı və orta bal görünür. Admin panelində yeni **"Platform rəyləri"** tabından uyğunsuz rəyi silmək mümkündür.
+- **Yeni SQL lazımdır** — yuxarıdakı `supabase-schema.sql`-i YENİDƏN SQL Editor-də işə sal (`platform_reviews` cədvəlini yaradır, mövcud məlumatlara toxunmur).
+
+## Əvvəlki versiyadan
 - **Email göndərmə kökündən düzəldi — Gmail SMTP dəstəyi əlavə olundu.** İndi email-lər sənin öz Gmail ünvanından (`GMAIL_USER` + `GMAIL_APP_PASSWORD`) göndərilir, domen almağa ehtiyac yoxdur, istənilən ünvana çatır. Resend hələ də alternativ kimi dəstəklənir (Gmail təyin olunmayıbsa avtomatik ona keçir).
 - **Özünə-xidmət qeydiyyatı artıq avtomatik aktivləşir** — `/register`-dən keçən yeni istifadəçi dərhal aktiv açar alır, admin təsdiqini gözləmək lazım deyil. Sənə Telegram-a məlumat kimi bildiriş gəlir (əməliyyat tələb olunmur).
 

@@ -59,6 +59,7 @@
       <div class="tab" data-t="attempts">Cəhd logları</div>
       <div class="tab" data-t="messages">Mesajlar</div>
       <div class="tab" data-t="broadcast">Elan göndər</div>
+      <div class="tab" data-t="reviews">Platform rəyləri</div>
     </div>
 
     <div id="t-licenses">
@@ -112,6 +113,16 @@
         <div id="bcResult" style="margin-top:14px;font-size:13px;color:var(--muted);"></div>
       </div>
     </div>
+
+    <div id="t-reviews" class="hidden">
+      <div class="card">
+        <p class="sub" style="margin-bottom:10px;">Landing səhifəsindəki "Platform haqqında rəylər" bölməsinə yazılan rəylər — spam/uyğunsuz olanı sil.</p>
+        <table id="revTable">
+          <thead><tr><th>Vaxt</th><th>Ad</th><th>Reytinq</th><th>Rəy</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -151,9 +162,38 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('t-attempts').classList.toggle('hidden', t.dataset.t !== 'attempts');
   document.getElementById('t-messages').classList.toggle('hidden', t.dataset.t !== 'messages');
   document.getElementById('t-broadcast').classList.toggle('hidden', t.dataset.t !== 'broadcast');
+  document.getElementById('t-reviews').classList.toggle('hidden', t.dataset.t !== 'reviews');
   if (t.dataset.t === 'attempts') loadAttempts();
   if (t.dataset.t === 'messages') loadMessages();
+  if (t.dataset.t === 'reviews') loadReviews();
 }));
+
+async function loadReviews() {
+  const r = await fetch(`${FN}/platform?action=reviews`);
+  const j = await r.json();
+  const tbody = document.querySelector('#revTable tbody');
+  tbody.innerHTML = '';
+  (j.reviews || []).forEach(rv => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(rv.created_at).toLocaleString('az-AZ')}</td>
+      <td>${rv.name || '-'}</td>
+      <td>${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</td>
+      <td style="max-width:320px;white-space:pre-wrap;">${rv.comment || '-'}</td>
+      <td><button class="btn danger" style="font-size:11px;padding:5px 8px;" onclick="deleteReview('${rv.id}')">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  if (!(j.reviews || []).length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">Hələ rəy yoxdur</td></tr>';
+  }
+}
+
+async function deleteReview(id) {
+  if (!confirm('Bu rəyi silmək istəyirsən?')) return;
+  await fetch(`${FN}/admin-licenses?action=delete_review`, { method: 'POST', headers: h(), body: JSON.stringify({ id }) });
+  loadReviews();
+}
 
 function loadBroadcastTemplate() {
   document.getElementById('bcSubject').value = '✨ Yeniliklər və Dəyişikliklər';

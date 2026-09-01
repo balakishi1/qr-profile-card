@@ -15,7 +15,7 @@ function getGmailTransporter() {
   return gmailTransporter;
 }
 
-async function sendEmail({ to, replyTo, subject, text }) {
+async function sendEmail({ to, replyTo, subject, text, html }) {
   if (!to) return { sent: false, reason: 'no_destination' };
 
   // 1) Əvvəlcə Gmail SMTP (əgər GMAIL_USER + GMAIL_APP_PASSWORD təyin olunubsa)
@@ -27,7 +27,8 @@ async function sendEmail({ to, replyTo, subject, text }) {
         to,
         replyTo: replyTo || undefined,
         subject,
-        text
+        text,
+        html: html || undefined
       });
       return { sent: true, via: 'gmail' };
     } catch (e) {
@@ -50,7 +51,8 @@ async function sendEmail({ to, replyTo, subject, text }) {
           to: [to],
           reply_to: replyTo || undefined,
           subject,
-          text
+          text,
+          html: html || undefined
         })
       });
       if (!r.ok) {
