@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>QR Profile Card</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#0b1220; --card:#131c2e; --card2:#0f1729; --border:#243049;
+    --text:#e7ecf7; --muted:#8b9bb8; --accent:#6366f1; --accent2:#8b5cf6;
+    --green:#22c55e; --red:#ef4444; --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:radial-gradient(circle at 20% -10%,#1b2740 0%,var(--bg) 55%);
+    color:var(--text); min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px;}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .top h1{font-size:17px;font-weight:700;}
+  .top span{display:block;font-size:12px;color:var(--muted);}
+
+  /* GATE */
+  .gate{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px 22px;margin-top:40px;text-align:center;}
+  .gate .icon{font-size:36px;margin-bottom:10px;}
+  .gate h2{font-size:18px;margin-bottom:6px;}
+  .gate p{color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.5;}
+  input[type=text],input[type=url],textarea,select{
+    width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    padding:12px 14px;border-radius:10px;font-size:14px;outline:none;
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+  .btn{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
+    padding:13px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;
+    transition:.15s;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:active{transform:scale(.98);}
+  .btn.secondary{background:var(--card2);border:1px solid var(--border);color:var(--text);}
+  .btn.danger{background:var(--red);}
+  .btn.small{width:auto;padding:9px 14px;font-size:13px;}
+  .err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+  .blocked{display:none;}
+  .blocked .icon{color:var(--red);}
+
+  /* TABS */
+  .tabs{display:flex;gap:6px;background:var(--card2);padding:5px;border-radius:12px;margin-bottom:18px;}
+  .tab{flex:1;text-align:center;padding:10px 6px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .tab.active{background:var(--accent);color:#fff;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
+  .card h3{font-size:14px;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .lang-tabs{display:flex;gap:6px;margin-bottom:8px;}
+  .lang-tab{background:var(--card2);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit;}
+  .lang-tab.active{background:var(--accent,#1458c4);border-color:transparent;color:#fff;}
+
+  .link-row{display:flex;gap:8px;align-items:center;}
+  .link-row select{flex:1;}
+  .link-edit-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;}
+  .icon-preview{flex-shrink:0;}
+  .link-row select{flex:0 0 110px;}
+  .link-row input{flex:1;}
+  .link-row button{flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:10px 12px;cursor:pointer;}
+
+  .qr-preview{display:flex;justify-content:center;padding:20px;background:#fff;border-radius:14px;margin-bottom:14px;}
+  .row{display:flex;gap:10px;}
+  .row .btn{flex:1;}
+  .swatches{display:flex;gap:8px;margin-bottom:12px;}
+  .swatch{width:32px;height:32px;border-radius:8px;cursor:pointer;border:2px solid transparent;}
+  .swatch.selected{border-color:#fff;}
+
+  /* COMPOSER */
+  .drop{border:2px dashed var(--border);border-radius:14px;padding:26px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:14px;}
+  .drop:hover{border-color:var(--accent);}
+  .composer-stage{position:relative;width:100%;background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px;touch-action:none;}
+  .composer-stage img.bg{width:100%;display:block;pointer-events:none;}
+  .qr-handle{position:absolute;cursor:grab;touch-action:none;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));}
+  .qr-handle img{width:100%;display:block;border-radius:6px;}
+  .qr-handle:active{cursor:grabbing;}
+  .slider-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .slider-row label{font-size:12px;color:var(--muted);flex:0 0 60px;}
+  .slider-row input[type=range]{flex:1;}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;background:#0f2818;color:var(--green);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;}
+  .muted{color:var(--muted);font-size:12px;}
+  .hidden{display:none !important;}
+  a.share-link{color:var(--accent);word-break:break-all;font-size:13px;}
+
+  /* ALBUMS */
+  .album-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .album-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .album-head h4{font-size:15px;font-weight:700;}
+  .album-head .actions{display:flex;gap:6px;}
+  .icon-btn{background:var(--card2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;}
+  .icon-btn.danger{color:var(--red);}
+  .media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+  .media-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--card2);}
+  .media-item img,.media-item video{width:100%;height:100%;object-fit:cover;}
+  .media-item .del-x{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;}
+  .media-item .play-badge{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;}
+  .upload-status{font-size:12px;color:var(--accent);margin-bottom:8px;}
+  .file-btn{display:inline-block;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:8px;font-size:13px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo">🔗</div>
+    <div>
+      <h1>QR Profile Card</h1>
+      <span id="ownerLabel">Sosial şəbəkə & QR alətin</span>
+    </div>
+  </div>
+
+  <!-- GATE -->
+  <div class="gate" id="gate">
+    <div class="icon">🔑</div>
+    <h2>Profilinə daxil ol</h2>
+    <p>Bu cihaz ilk dəfə açırsan, açar avtomatik bu cihaza bağlanacaq. Başqa cihazdan açmaq mümkün olmayacaq.</p>
+
+    <div id="googleLoginBox" style="display:none;margin-bottom:16px;">
+      <div id="googleBtnContainer" style="display:flex;justify-content:center;"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:12px;">
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <span data-i18n="or">və ya</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <input type="text" id="licenseInput" placeholder="məs: A1B2C3D4" style="text-align:center;letter-spacing:2px;text-transform:uppercase;">
+    </div>
+    <button class="btn" onclick="doActivate()">Aktivləşdir</button>
+    <div class="err" id="gateErr"></div>
+    <p class="muted" style="margin-top:14px;">
+      <a href="#" onclick="toggleRecoverBox(event)" style="color:var(--accent);font-weight:600;">Açarımı unutmuşam</a>
+    </p>
+    <div id="recoverBox" style="display:none;margin-top:6px;text-align:left;">
+      <div class="field">
+        <input type="email" id="recoverEmail" placeholder="qeydiyyatda istifadə etdiyin email">
+      </div>
+      <button class="btn secondary small" style="width:100%;" onclick="recoverKey()">Açarımı email-ə göndər</button>
+      <div class="err" id="recoverMsg" style="color:var(--green);"></div>
+    </div>
+    <p class="muted" style="margin-top:16px;">Hələ açarınız yoxdur? <a href="/register" style="color:var(--accent);font-weight:600;">Qeydiyyatdan keçin →</a></p>
+  </div>
+
+  <!-- BLOCKED -->
+  <div class="gate blocked" id="blocked">
+    <div class="icon">⛔</div>
+    <h2>Bu cihazda icazə yoxdur</h2>
+    <p id="blockedText">Bu lisenziya artıq icazə verilən cihaz sayı qədər başqa cihazlara bağlıdır. Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.</p>
+    <p class="muted" style="margin-top:14px;font-size:12px;">Bu, əslində sənin öz cihazındırsa (brauzer yaddaşı təmizlənib), aşağıdan özün sıfırlaya bilərsən:</p>
+    <button class="btn secondary" style="margin-top:10px;" onclick="selfResetAndRetry()">♻️ Cihazlarımı sıfırla və yenidən cəhd et</button>
+    <div class="err" id="selfResetMsg" style="color:var(--green);"></div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <div class="tabs">
+      <div class="tab active" data-tab="profile">Profil</div>
+      <div class="tab" data-tab="qr">QR Kod</div>
+      <div class="tab" data-tab="albums">Albomlar</div>
+      <div class="tab" data-tab="compose">Post üzərinə</div>
+    </div>
+
+    <!-- PROFILE PANEL -->
+    <div class="panel active" id="panel-profile">
+      <div class="card">
+        <h3>Şəxsi məlumat</h3>
+        <div class="field" style="display:flex;align-items:center;gap:14px;">
+          <div id="avatarPreview" style="width:64px;height:64px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--muted);">📷</div>
+          <div style="flex:1;">
+            <label>Şəkil / Loqo</label>
+            <input type="file" id="avatarInput" accept="image/*" style="padding:8px;">
+          </div>
+        </div>
+        <div class="field">
+          <label>Ad / Brend adı</label>
+          <input type="text" id="ownerName" placeholder="Balakişi / Casa Eleganza">
+        </div>
+        <div class="field">
+          <label>Telefon nömrəsi (vizitkada göstəriləcək)</label>
+          <input type="text" id="phoneInput" placeholder="+994 XX XXX XX XX">
+        </div>
+        <div class="field">
+          <label>WhatsApp-a hazır mesaj (istəyə görə)</label>
+          <input type="text" id="whatsappMsgInput" placeholder="Salam, sizin profildən yazıram, xidmətləriniz haqqında məlumat almaq istəyirəm">
+        </div>
+        <div class="field">
+          <label>"Mənimlə əlaqə et" formundan gələn mesajların göndəriləcəyi email</label>
+          <input type="email" id="contactEmailInput" placeholder="sənin.email@gmail.com">
+          <p class="muted" style="margin-top:6px;">Profil səhifəndəki əlaqə formundan kimsə yazanda, mesaj bura göndəriləcək. Boş saxlasan, linklərində "E-mail" tipli link varsa ora göndərilir.</p>
+        </div>
+        <div class="field">
+          <label>Haqqımda (bio) — dillərə görə yaz</label>
+          <p class="muted" style="margin:2px 0 8px;">Yalnız AZ doldursan kifayətdir — digər dillər boş qalsa, ziyarətçiyə avtomatik AZ mətn göstərilir. Xarici müştərilər üçün EN/RU-nu da doldurmağın tövsiyə olunur.</p>
+          <div class="lang-tabs" data-target="bio">
+            <button type="button" class="lang-tab active" data-lang="az" onclick="switchLangTab('bio','az')">🇦🇿 AZ</button>
+            <button type="button" class="lang-tab" data-lang="en" onclick="switchLangTab('bio','en')">🇬🇧 EN</button>
+            <button type="button" class="lang-tab" data-lang="ru" onclick="switchLangTab('bio','ru')">🇷🇺 RU</button>
+          </div>
+          <textarea id="bioText_az" rows="3" placeholder="Qısa məlumat yaz..." oninput="currentProfileData.bio.az = this.value"></textarea>
+          <textarea id="bioText_en" rows="3" placeholder="Write a short bio in English..." style="display:none;" oninput="currentProfileData.bio.en = this.value"></textarea>
+          <textarea id="bioText_ru" rows="3" placeholder="Напиши краткое био на русском..." style="display:none;" oninput="currentProfileData.bio.ru = this.value"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Fəaliyyət sahələri</h3>
+        <p class="muted" style="margin-bottom:12px;">Bir neçə fərqli biznesin/fəaliyyətin varsa (məs. "Mühasibatlıq", "Mebel"), buraya adlarını yaz. QR skan olunanda ziyarətçi bunlardan birini seçəcək, yalnız ona aid link/albom görünəcək — qarışıqlıq olmayacaq.</p>
+        <div id="categoriesList" style="margin-bottom:10px;"></div>
+        <div class="row">
+          <input type="text" id="newCategoryInput" placeholder="məs: Mühasibatlıq / Garant Consulting">
+          <button class="btn secondary small" onclick="addCategory()">+ Əlavə et</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Sosial şəbəkə linkləri</h3>
+        <div id="linksList"></div>
+        <button class="btn secondary small" onclick="addLinkRow()">+ Link əlavə et</button>
+      </div>
+
+      <div class="card">
+        <h3>Haqqımda bölməsi (peşəkar təcrübə)</h3>
+        <p class="muted" style="margin-bottom:12px;">Bu bölmə QR skan olunanda ayrıca "Haqqımda" hissəsi kimi görünür — təcrübə illəri, seminar sayı və s. statistika ilə birlikdə.</p>
+        <div class="field" style="display:flex;align-items:center;gap:14px;">
+          <div id="aboutPhotoPreview" style="width:64px;height:64px;border-radius:14px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--muted);">📷</div>
+          <div style="flex:1;">
+            <label>Ayrıca iri şəkil (güvənli portret)</label>
+            <input type="file" id="aboutPhotoInput" accept="image/*" style="padding:8px;">
+          </div>
+        </div>
+        <div class="field">
+          <label>Ətraflı haqqımda mətni — dillərə görə yaz</label>
+          <div class="lang-tabs" data-target="about">
+            <button type="button" class="lang-tab active" data-lang="az" onclick="switchLangTab('about','az')">🇦🇿 AZ</button>
+            <button type="button" class="lang-tab" data-lang="en" onclick="switchLangTab('about','en')">🇬🇧 EN</button>
+            <button type="button" class="lang-tab" data-lang="ru" onclick="switchLangTab('about','ru')">🇷🇺 RU</button>
+          </div>
+          <textarea id="aboutText_az" rows="5" placeholder="Mən [Ad] — 2005-ci ildən bu sahədə fəaliyyət göstərirəm..." oninput="currentProfileData.aboutText.az = this.value"></textarea>
+          <textarea id="aboutText_en" rows="5" placeholder="I am [Name] — I've been working in this field since 2005..." style="display:none;" oninput="currentProfileData.aboutText.en = this.value"></textarea>
+          <textarea id="aboutText_ru" rows="5" placeholder="Меня зовут [Имя] — я работаю в этой сфере с 2005 года..." style="display:none;" oninput="currentProfileData.aboutText.ru = this.value"></textarea>
+        </div>
+        <div class="field">
+          <label>Statistika (məs: "15+" / "İl peşəkar təcrübə")</label>
+          <div id="statsList"></div>
+          <button class="btn secondary small" onclick="addStatRow()">+ Statistika əlavə et</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Sertifikatlar</h3>
+        <p class="muted" style="margin-bottom:12px;">Sertifikat şəkillərini əlavə et — profil səhifəndə "🏆 Sertifikatlar" adlı ayrıca bölmə kimi göstəriləcək.</p>
+        <div id="certGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;"></div>
+        <div id="certStatus" class="muted" style="display:none;margin-bottom:8px;"></div>
+        <label class="btn secondary small" style="display:inline-block;cursor:pointer;">
+          📜 Sertifikat şəkli əlavə et
+          <input type="file" id="certInput" accept="image/*" multiple style="display:none;">
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Diplomlar</h3>
+        <p class="muted" style="margin-bottom:12px;">Diplom şəkillərini əlavə et — profil səhifəndə sertifikatlardan ayrı, "🎓 Diplomlar" adlı bölmə kimi göstəriləcək.</p>
+        <div id="diplomaGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;"></div>
+        <div id="diplomaStatus" class="muted" style="display:none;margin-bottom:8px;"></div>
+        <label class="btn secondary small" style="display:inline-block;cursor:pointer;">
+          🎓 Diplom şəkli əlavə et
+          <input type="file" id="diplomaInput" accept="image/*" multiple style="display:none;">
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Digər biznesim / profilim</h3>
+        <p class="muted" style="margin-bottom:12px;">Əgər başqa bir QR Profile Card lisenziyan varsa (məs. ikinci biznesin üçün), ora keçid düyməsi əlavə edə bilərsən.</p>
+        <div class="field">
+          <label>Düymə mətni</label>
+          <input type="text" id="otherProfileLabel" placeholder="Casa Eleganza dizaynlarına bax">
+        </div>
+        <div class="field">
+          <label>Link</label>
+          <input type="text" id="otherProfileUrl" placeholder="https://qrprofilcard.netlify.app/p/xxxxxx">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>İş saatları</h3>
+        <div class="field">
+          <label>İşlək günlər</label>
+          <div id="hoursDays" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex:1;">
+            <label>Açılış</label>
+            <input type="time" id="hoursOpen" value="09:00">
+          </div>
+          <div class="field" style="flex:1;">
+            <label>Bağlanış</label>
+            <input type="time" id="hoursClose" value="18:00">
+          </div>
+        </div>
+        <p class="muted">Profil səhifəndə "🟢 Açıqdır" / "🔴 Bağlıdır" statusu avtomatik (Bakı vaxtı ilə) hesablanacaq.</p>
+      </div>
+
+      <div class="card">
+        <h3>Müştəri rəyləri</h3>
+        <div id="testimonialsList"></div>
+        <button class="btn secondary small" onclick="addTestimonialRow()">+ Rəy əlavə et</button>
+      </div>
+
+      <button class="btn" onclick="saveProfile()">Yadda saxla</button>
+      <div class="err" id="profileMsg" style="color:var(--green);"></div>
+    </div>
+
+    <!-- QR PANEL -->
+    <div class="panel" id="panel-qr">
+      <div class="card">
+        <h3>QR rəngi</h3>
+        <div class="swatches" id="colorSwatches"></div>
+        <canvas id="simpleQrCanvas" style="display:none;"></canvas>
+        <div class="qr-preview" id="qrPreview"></div>
+        <div class="row" style="margin-bottom:10px;">
+          <button class="btn secondary" onclick="downloadQR()">📥 Sadə QR yüklə</button>
+          <button class="btn secondary" onclick="shareQR()">📤 Paylaş</button>
+        </div>
+        <p class="muted" style="margin-top:10px;">Bu QR kodu skan edən hər kəs sənin ictimai profil səhifəni (bütün linklər + bio) görəcək.</p>
+        <div id="profileLinkBox" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>Vizitka dizaynı</h3>
+        <div class="field">
+          <label>Üslub</label>
+          <div id="themeSwatches" style="display:flex;gap:10px;"></div>
+        </div>
+        <div class="field">
+          <label>Alt yazı (QR-ın altında görünəcək)</label>
+          <input type="text" id="taglineInput" placeholder="Bütün sosial şəbəkələrim üçün skan et">
+        </div>
+        <canvas id="vizitkaCanvas" style="display:none;"></canvas>
+        <div id="vizitkaPreviewBox" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
+        <div class="row">
+          <button class="btn" onclick="downloadVizitka()">📥 Vizitka kimi yüklə</button>
+          <button class="btn secondary" onclick="shareVizitka()">📤 Paylaş</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALBUMS PANEL -->
+    <div class="panel" id="panel-albums">
+      <div class="card">
+        <h3>Yeni albom</h3>
+        <div class="row">
+          <input type="text" id="newAlbumName" placeholder="Albom adı (məs: Mətbəx layihələri)">
+          <button class="btn small" onclick="createAlbum()">+ Yarat</button>
+        </div>
+        <select id="newAlbumCategory" style="margin-top:8px;">
+          <option value="">🌐 Hamısı üçün (bütün ziyarətçilər görür)</option>
+        </select>
+      </div>
+      <div id="albumsList"></div>
+    </div>
+
+    <!-- COMPOSER PANEL -->
+    <div class="panel" id="panel-compose">
+      <div class="card">
+        <h3>Post şəkli / PDF yüklə</h3>
+        <div class="drop" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          📁 Şəkil (JPG/PNG) və ya PDF seç
+        </div>
+        <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
+
+        <div id="composerStageWrap" class="hidden">
+          <div class="composer-stage" id="composerStage">
+            <img class="bg" id="composerBg">
+            <div class="qr-handle" id="qrHandle"><img id="qrHandleImg"></div>
+          </div>
+          <div class="slider-row">
+            <label>QR ölçü</label>
+            <input type="range" id="qrSizeSlider" min="8" max="40" value="18">
+          </div>
+          <div class="field" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="captionToggle" style="width:auto;" checked>
+            <label for="captionToggle" style="margin:0;">QR-ın altına alt yazı əlavə et</label>
+          </div>
+          <div class="field" id="captionTextWrap">
+            <input type="text" id="captionText" placeholder="Skan et 👆" value="Skan et 👆">
+          </div>
+          <p class="muted" style="margin-bottom:12px;">QR-ı barmağınla / siçanla sürüşdürüb istədiyin yerə qoy.</p>
+          <div class="row">
+            <button class="btn secondary" onclick="exportComposedImage()">📥 PNG kimi yüklə</button>
+            <button class="btn secondary" id="exportPdfBtn" onclick="exportComposedPDF()">📄 PDF kimi yüklə</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;">
+      <span class="badge">✅ Bu cihaz aktivdir</span>
+    </div>
+  </div>
+</div>
+
+<script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const FN = '/.netlify/functions';
+let session = JSON.parse(localStorage.getItem('qpc_session') || 'null');
+let deviceId = null;
+let currentProfileData = { bio: { az: '', en: '', ru: '' }, aboutText: { az: '', en: '', ru: '' }, links: [] };
+
+// Köhnə profillərdə bio/aboutText sadə mətn (string) kimi saxlanılırdı.
+// Bunu {az,en,ru} formatına çeviririk ki, həm köhnə data işləsin, həm də çox-dilli redaktə mümkün olsun.
+function normalizeI18nField(val) {
+  if (val && typeof val === 'object' && !Array.isArray(val)) return { az: val.az || '', en: val.en || '', ru: val.ru || '' };
+  return { az: val || '', en: '', ru: '' };
+}
+
+function switchLangTab(field, lang) {
+  document.querySelectorAll(`.lang-tabs[data-target="${field}"] .lang-tab`).forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  ['az', 'en', 'ru'].forEach(l => {
+    const ta = document.getElementById(`${field === 'bio' ? 'bioText' : 'aboutText'}_${l}`);
+    if (ta) ta.style.display = (l === lang) ? '' : 'none';
+  });
+}
+let currentSlug = null;
+let qrColor = '#0f172a';
+let qrObj = null;
+
+/* ---------- DEVICE FINGERPRINT ---------- */
+async function getDeviceId() {
+  let id = localStorage.getItem('qpc_device_id');
+  if (id) return id;
+  const parts = [
+    navigator.userAgent, navigator.language,
+    screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.hardwareConcurrency || '', navigator.platform || ''
+  ];
+  try {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    ctx.textBaseline = 'top'; ctx.font = '14px Arial';
+    ctx.fillText('qpc-fingerprint-lock', 2, 2);
+    parts.push(c.toDataURL());
+  } catch (e) {}
+  const enc = new TextEncoder().encode(parts.join('|'));
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  id = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  localStorage.setItem('qpc_device_id', id);
+  return id;
+}
+
+/* ---------- BOOT / GATE ---------- */
+let googleClientIdCache = null;
+async function initGoogleLogin() {
+  try {
+    const r = await fetch(`${FN}/public-config`);
+    const cfg = await r.json();
+    if (!cfg.googleClientId || !window.google || !google.accounts || !google.accounts.id) return;
+    googleClientIdCache = cfg.googleClientId;
+    google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: handleGoogleLoginResponse });
+    document.getElementById('googleLoginBox').style.display = 'block';
+    google.accounts.id.renderButton(document.getElementById('googleBtnContainer'), {
+      theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 260
+    });
+  } catch (e) { console.error('Google login init error', e); }
+}
+
+async function handleGoogleLoginResponse(response) {
+  const errBox = document.getElementById('gateErr');
+  errBox.style.display = 'none';
+  try {
+    const r = await fetch(`${FN}/google-login`, { method: 'POST', body: JSON.stringify({ id_token: response.credential }) });
+    const j = await r.json();
+    if (j.success && j.license_key) {
+      document.getElementById('licenseInput').value = j.license_key;
+      doActivate();
+    } else if (j.reason === 'not_registered') {
+      errBox.textContent = 'Bu Google hesabı ilə qeydiyyat tapılmadı. Zəhmət olmasa əvvəlcə qeydiyyatdan keç.';
+      errBox.style.display = 'block';
+      setTimeout(() => { window.location.href = '/register'; }, 2200);
+    } else if (j.reason === 'inactive') {
+      errBox.textContent = 'Hesabın deaktiv edilib. Admin ilə əlaqə saxla.';
+      errBox.style.display = 'block';
+    } else {
+      errBox.textContent = 'Google ilə giriş alınmadı, bir az sonra cəhd et.';
+      errBox.style.display = 'block';
+    }
+  } catch (e) {
+    errBox.textContent = 'Şəbəkə xətası.';
+    errBox.style.display = 'block';
+  }
+}
+
+function toggleRecoverBox(e) {
+  e.preventDefault();
+  const box = document.getElementById('recoverBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+async function recoverKey() {
+  const email = document.getElementById('recoverEmail').value.trim();
+  const msg = document.getElementById('recoverMsg');
+  msg.style.display = 'block'; msg.style.color = 'var(--muted)';
+  if (!email || !email.includes('@')) { msg.style.color = '#ef4444'; msg.textContent = 'Zəhmət olmasa düzgün email yaz.'; return; }
+  msg.textContent = 'Göndərilir...';
+  try {
+    const r = await fetch(`${FN}/recover-key`, { method: 'POST', body: JSON.stringify({ email }) });
+    const j = await r.json();
+    // Təhlükəsizlik üçün hər zaman eyni mesaj (hesab olub-olmadığını bildirmirik)
+    msg.style.color = 'var(--green)';
+    msg.textContent = 'Əgər bu email ilə hesab varsa, açar ora göndərildi. Poçt qutunu (Spam qovluğunu da) yoxla.';
+  } catch (e) {
+    msg.style.color = '#ef4444'; msg.textContent = 'Şəbəkə xətası.';
+  }
+}
+
+async function boot() {
+  deviceId = await getDeviceId();
+  if (session && session.license_key && session.token) {
+    try {
+      const r = await fetch(`${FN}/verify`, { method: 'POST', body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token }) });
+      const j = await r.json();
+      if (j.valid) { enterApp(j); return; }
+    } catch (e) {}
+    localStorage.removeItem('qpc_session');
+    session = null;
+  }
+  document.getElementById('gate').style.display = 'block';
+  initGoogleLogin();
+
+  // Qeydiyyatdan (/register) gələn link: ?key=XXXX ilə açar avtomatik doldurulur və aktivləşdirilir
+  const urlKey = new URLSearchParams(window.location.search).get('key');
+  if (urlKey) {
+    document.getElementById('licenseInput').value = urlKey.trim().toUpperCase();
+    // URL-i təmizlə ki, sayfa yenilənəndə açar bir də göndərilməsin
+    window.history.replaceState({}, document.title, window.location.pathname);
+    doActivate();
+  }
+}
+
+async function doActivate() {
+  const key = document.getElementById('licenseInput').value.trim().toUpperCase();
+  const errBox = document.getElementById('gateErr');
+  errBox.style.display = 'none';
+  if (!key) return;
+  const device_info = { userAgent: navigator.userAgent, screen: screen.width + 'x' + screen.height, language: navigator.language, platform: navigator.platform };
+  try {
+    const r = await fetch(`${FN}/activate`, { method: 'POST', body: JSON.stringify({ license_key: key, device_id: deviceId, device_info }) });
+    const j = await r.json();
+    if (j.success) {
+      session = { license_key: key, token: j.token };
+      localStorage.setItem('qpc_session', JSON.stringify(session));
+      const vr = await fetch(`${FN}/verify`, { method: 'POST', body: JSON.stringify({ license_key: key, device_id: deviceId, token: j.token }) });
+      const vj = await vr.json();
+      enterApp(vj);
+    } else if (j.reason === 'device_limit_reached') {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('blocked').style.display = 'block';
+      document.getElementById('blockedText').textContent =
+        `Bu lisenziya üçün icazə verilən cihaz limiti dolub (${j.current}/${j.max}). Cəhdin qeydə alındı və sahibinə bildiriş göndərildi. Yeni cihaz üçün admin panelindən icazə tələb et.`;
+    } else if (j.reason === 'device_mismatch') {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('blocked').style.display = 'block';
+    } else {
+      errBox.textContent = j.reason === 'not_found' ? 'Bu açar tapılmadı.' : (j.reason === 'inactive' ? 'Bu açar deaktivdir.' : 'Xəta baş verdi.');
+      errBox.style.display = 'block';
+    }
+  } catch (e) {
+    errBox.textContent = 'Şəbəkə xətası.';
+    errBox.style.display = 'block';
+  }
+}
+
+async function selfResetAndRetry() {
+  const key = document.getElementById('licenseInput').value.trim().toUpperCase();
+  const msg = document.getElementById('selfResetMsg');
+  if (!key) {
+    msg.style.color = 'var(--red)'; msg.textContent = 'Açar tapılmadı — səhifəni yenidən yüklə və açarı yenidən yaz.';
+    msg.style.display = 'block';
+    return;
+  }
+  msg.style.color = 'var(--accent)';
+  msg.textContent = 'Sıfırlanır...';
+  msg.style.display = 'block';
+  try {
+    const r = await fetch(`${FN}/self-reset-devices`, { method: 'POST', body: JSON.stringify({ license_key: key }) });
+    const j = await r.json();
+    if (j.success) {
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✅ Sıfırlandı! Yenidən aktivləşdirilir...';
+      setTimeout(() => doActivate(), 900);
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = j.reason === 'not_found' ? 'Bu açar tapılmadı.' : 'Xəta: sıfırlanmadı.';
+    }
+  } catch (e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Şəbəkə xətası.';
+  }
+}
+
+function enterApp(j) {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('blocked').style.display = 'none';
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('ownerName').value = j.owner_name || '';
+  document.getElementById('ownerLabel').textContent = j.owner_name || 'Sosial şəbəkə & QR alətin';
+  currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
+  if (!currentProfileData.albums) currentProfileData.albums = [];
+  if (!currentProfileData.stats) currentProfileData.stats = [];
+  if (!currentProfileData.certificates) currentProfileData.certificates = [];
+  if (!currentProfileData.diplomas) currentProfileData.diplomas = [];
+  if (!currentProfileData.testimonials) currentProfileData.testimonials = [];
+  if (!currentProfileData.categories) currentProfileData.categories = [];
+  if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
+  if (!currentProfileData.otherProfile) currentProfileData.otherProfile = { label: '', url: '' };
+  currentSlug = j.profile_slug;
+  currentProfileData.bio = normalizeI18nField(currentProfileData.bio);
+  currentProfileData.aboutText = normalizeI18nField(currentProfileData.aboutText);
+  document.getElementById('bioText_az').value = currentProfileData.bio.az || '';
+  document.getElementById('bioText_en').value = currentProfileData.bio.en || '';
+  document.getElementById('bioText_ru').value = currentProfileData.bio.ru || '';
+  document.getElementById('phoneInput').value = currentProfileData.phone || '';
+  document.getElementById('whatsappMsgInput').value = currentProfileData.whatsappMessage || '';
+  document.getElementById('contactEmailInput').value = currentProfileData.contactEmail || '';
+  document.getElementById('aboutText_az').value = currentProfileData.aboutText.az || '';
+  document.getElementById('aboutText_en').value = currentProfileData.aboutText.en || '';
+  document.getElementById('aboutText_ru').value = currentProfileData.aboutText.ru || '';
+  document.getElementById('otherProfileLabel').value = currentProfileData.otherProfile.label || '';
+  document.getElementById('otherProfileUrl').value = currentProfileData.otherProfile.url || '';
+  document.getElementById('hoursOpen').value = currentProfileData.hours.open || '09:00';
+  document.getElementById('hoursClose').value = currentProfileData.hours.close || '18:00';
+  document.getElementById('taglineInput').value = currentProfileData.tagline || 'Bütün sosial şəbəkələrim üçün skan et';
+  renderAvatarPreview();
+  renderAboutPhotoPreview();
+  renderStats();
+  renderCategories();
+  renderLinks();
+  renderAlbums();
+  renderCertGrid();
+  renderHoursDays();
+  renderTestimonials();
+  buildColorSwatches();
+  buildThemeSwatches();
+  renderQR();
+  initSupabaseClient();
+}
+
+function renderAvatarPreview() {
+  const box = document.getElementById('avatarPreview');
+  if (currentProfileData.avatar) {
+    box.innerHTML = `<img src="${currentProfileData.avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    box.innerHTML = '📷';
+  }
+}
+
+document.getElementById('avatarInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const dataUrl = await new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result);
+    reader.readAsDataURL(file);
+  });
+  const img = new Image();
+  img.onload = () => {
+    const size = 300;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const scale = Math.max(size / img.width, size / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+    currentProfileData.avatar = canvas.toDataURL('image/jpeg', 0.85);
+    renderAvatarPreview();
+    renderQR();
+  };
+  img.src = dataUrl;
+});
+
+/* ---------- HAQQIMDA: ayrıca şəkil + statistika ---------- */
+function renderAboutPhotoPreview() {
+  const box = document.getElementById('aboutPhotoPreview');
+  if (currentProfileData.aboutPhoto) {
+    box.innerHTML = `<img src="${currentProfileData.aboutPhoto}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    box.innerHTML = '📷';
+  }
+}
+
+document.getElementById('aboutPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const dataUrl = await new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result);
+    reader.readAsDataURL(file);
+  });
+  const img = new Image();
+  img.onload = () => {
+    // Portret formatda (3:4), yüksək keyfiyyətdə saxlanılır
+    const targetW = 600, targetH = 800;
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW; canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+    const scale = Math.max(targetW / img.width, targetH / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    ctx.drawImage(img, (targetW - w) / 2, (targetH - h) / 2, w, h);
+    currentProfileData.aboutPhoto = canvas.toDataURL('image/jpeg', 0.88);
+    renderAboutPhotoPreview();
+  };
+  img.src = dataUrl;
+});
+
+function renderStats() {
+  const box = document.getElementById('statsList');
+  box.innerHTML = '';
+  (currentProfileData.stats || []).forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'link-row';
+    row.style.marginBottom = '8px';
+    const numInput = document.createElement('input');
+    numInput.type = 'text'; numInput.placeholder = '15+'; numInput.value = s.number || '';
+    numInput.style.flex = '0 0 90px';
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text'; labelInput.placeholder = 'İl peşəkar təcrübə'; labelInput.value = s.label || '';
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.onclick = () => { currentProfileData.stats.splice(idx, 1); renderStats(); };
+    numInput.oninput = () => { currentProfileData.stats[idx].number = numInput.value; };
+    labelInput.oninput = () => { currentProfileData.stats[idx].label = labelInput.value; };
+    row.appendChild(numInput); row.appendChild(labelInput); row.appendChild(del);
+    box.appendChild(row);
+  });
+}
+
+function addStatRow() {
+  if (!currentProfileData.stats) currentProfileData.stats = [];
+  if (currentProfileData.stats.length >= 4) { alert('Maksimum 4 statistika əlavə edə bilərsən.'); return; }
+  currentProfileData.stats.push({ number: '', label: '' });
+  renderStats();
+}
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  if (t.dataset.tab === 'qr') renderQR();
+  if (t.dataset.tab === 'compose') prepareHandleQR();
+}));
+
+/* ---------- LINKS ---------- */
+const LINK_TYPES = [
+  ['instagram','Instagram'],['facebook','Facebook'],['linkedin','LinkedIn'],
+  ['telegram','Telegram'],['whatsapp','WhatsApp'],['tiktok','TikTok'],
+  ['youtube','YouTube'],['website','Vebsayt'],['email','E-mail'],['phone','Telefon'],
+  ['location','Ünvan / Məkan'],['other','Digər']
+];
+
+/* ---------- İKON SİSTEMİ (real, rəngli, tanınan ikonlar) ---------- */
+const ICON_DEFS = {
+  instagram: { gradient: [[0,'#f58529'],[0.5,'#dd2a7b'],[1,'#8134af']], color:'#fff',
+    path:'M12 15.2c1.77 0 3.2-1.43 3.2-3.2s-1.43-3.2-3.2-3.2-3.2 1.43-3.2 3.2 1.43 3.2 3.2 3.2zM9 2l-1.83 2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-2.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z' },
+  facebook: { bg:'#1877F2', color:'#fff', letter:'f' },
+  whatsapp: { bg:'#25D366', color:'#fff',
+    path:'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+  telegram: { bg:'#229ED9', color:'#fff', path:'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z' },
+  tiktok: { bg:'#000000', color:'#fff', path:'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' },
+  youtube: { bg:'#FF0000', color:'#fff', path:'M9.5 8.5v7l6-3.5-6-3.5z' },
+  linkedin: { bg:'#0A66C2', color:'#fff', letter:'in' },
+  twitter: { bg:'#000000', color:'#fff', letter:'X' },
+  x: { bg:'#000000', color:'#fff', letter:'X' },
+  email: { bg:'#64748b', color:'#fff', path:'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z' },
+  phone: { bg:'#6366f1', color:'#fff',
+    path:'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+  location: { bg:'#ef4444', color:'#fff', path:'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
+  website: { bg:'#0891b2', color:'#fff',
+    path:'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.9 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z' },
+  other: { bg:'#94a3b8', color:'#fff', path:'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z' }
+};
+
+function iconBadgeSvgHtml(type, size) {
+  const def = ICON_DEFS[type] || ICON_DEFS.other;
+  const bg = def.gradient
+    ? `background:linear-gradient(135deg, ${def.gradient.map(g => g[1]).join(',')});`
+    : `background:${def.bg};`;
+  const inner = def.letter
+    ? `<span style="color:${def.color};font-weight:800;font-size:${size * 0.42}px;font-family:-apple-system,Arial;">${def.letter}</span>`
+    : `<svg viewBox="0 0 24 24" width="${size * 0.56}" height="${size * 0.56}" fill="${def.color}"><path d="${def.path}"/></svg>`;
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;${bg}">${inner}</div>`;
+}
+
+function drawIconBadge(ctx, cx, cy, r, type) {
+  const def = ICON_DEFS[type] || ICON_DEFS.other;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  if (def.gradient) {
+    const g = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    def.gradient.forEach(([stop, color]) => g.addColorStop(stop, color));
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = def.bg;
+  }
+  ctx.fill();
+  ctx.restore();
+
+  if (def.letter) {
+    ctx.fillStyle = def.color;
+    ctx.font = `800 ${Math.round(r * 0.95)}px -apple-system, Arial`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(def.letter, cx, cy + 1);
+  } else if (def.path) {
+    const scale = (r * 1.15) / 24;
+    ctx.save();
+    ctx.translate(cx - 12 * scale, cy - 12 * scale);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = def.color;
+    ctx.fill(new Path2D(def.path));
+    ctx.restore();
+  }
+}
+
+function renderLinks() {
+  const box = document.getElementById('linksList');
+  box.innerHTML = '';
+  (currentProfileData.links || []).forEach((l, i) => box.appendChild(makeLinkRow(l, i)));
+}
+
+function makeLinkRow(link, idx) {
+  const card = document.createElement('div');
+  card.className = 'link-edit-card';
+
+  const topRow = document.createElement('div');
+  topRow.className = 'link-row';
+
+  const iconPreview = document.createElement('div');
+  iconPreview.className = 'icon-preview';
+
+  const sel = document.createElement('select');
+  LINK_TYPES.forEach(([v, label]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = label;
+    if (link.type === v) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  const del = document.createElement('button');
+  del.textContent = '✕';
+  del.onclick = () => { currentProfileData.links.splice(idx, 1); renderLinks(); };
+
+  topRow.appendChild(iconPreview);
+  topRow.appendChild(sel);
+  topRow.appendChild(del);
+
+  const urlInput = document.createElement('input');
+  urlInput.type = 'text';
+  urlInput.style.marginTop = '8px';
+  urlInput.value = link.url || '';
+  const isLocation = () => sel.value === 'location';
+  urlInput.placeholder = isLocation() ? 'Ünvan yaz (məs: Bakı, Nəsimi r., 28 May küç. 10)' : 'https://...';
+
+  function refreshIconPreview() {
+    iconPreview.innerHTML = iconBadgeSvgHtml(sel.value, 34);
+  }
+  refreshIconPreview();
+
+  sel.onchange = () => {
+    currentProfileData.links[idx].type = sel.value;
+    currentProfileData.links[idx].label = LINK_TYPES.find(t => t[0] === sel.value)[1];
+    urlInput.placeholder = isLocation() ? 'Ünvan yaz (məs: Bakı, Nəsimi r., 28 May küç. 10)' : 'https://...';
+    refreshIconPreview();
+  };
+  urlInput.oninput = () => { currentProfileData.links[idx].url = urlInput.value; };
+  if (isLocation()) {
+    urlInput.addEventListener('blur', () => geocodeLocationLink(idx, urlInput.value));
+  } else {
+    sel.addEventListener('change', () => {
+      if (isLocation() && urlInput.value) geocodeLocationLink(idx, urlInput.value);
+    });
+  }
+
+  card.appendChild(topRow);
+  card.appendChild(urlInput);
+
+  if ((currentProfileData.categories || []).length) {
+    const catSel = document.createElement('select');
+    catSel.style.marginTop = '8px';
+    const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '🌐 Hamısı üçün (bütün ziyarətçilər görür)';
+    catSel.appendChild(optAll);
+    currentProfileData.categories.forEach(cat => {
+      const o = document.createElement('option'); o.value = cat; o.textContent = cat;
+      if ((link.category || '') === cat) o.selected = true;
+      catSel.appendChild(o);
+    });
+    catSel.onchange = () => { currentProfileData.links[idx].category = catSel.value; };
+    card.appendChild(catSel);
+  }
+
+  return card;
+}
+
+function addLinkRow() {
+  if (!currentProfileData.links) currentProfileData.links = [];
+  currentProfileData.links.push({ type: 'instagram', url: '', label: 'Instagram', category: '' });
+  renderLinks();
+}
+
+async function geocodeLocationLink(idx, address) {
+  if (!address || address.trim().length < 4) return;
+  try {
+    const r = await fetch(`${FN}/geocode-address`, {
+      method: 'POST',
+      body: JSON.stringify({ address })
+    });
+    const j = await r.json();
+    if (j.success && currentProfileData.links[idx]) {
+      currentProfileData.links[idx].lat = j.lat;
+      currentProfileData.links[idx].lng = j.lng;
+    }
+  } catch (e) { /* xəritə olmadan da işləyir, problem deyil */ }
+}
+
+/* ---------- FƏALİYYƏT SAHƏLƏRİ ---------- */
+function renderCategories() {
+  const box = document.getElementById('categoriesList');
+  box.innerHTML = '';
+  (currentProfileData.categories || []).forEach((cat, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;';
+    row.innerHTML = `<span style="flex:1;font-size:13px;">${cat}</span><button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;">✕</button>`;
+    row.querySelector('button').onclick = () => {
+      if (!confirm(`"${cat}" sahəsini silmək istəyirsən? Bu sahəyə bağlı link/albomlar "Hamısı"na keçəcək.`)) return;
+      currentProfileData.categories.splice(idx, 1);
+      (currentProfileData.links || []).forEach(l => { if (l.category === cat) l.category = ''; });
+      (currentProfileData.albums || []).forEach(a => { if (a.category === cat) a.category = ''; });
+      renderCategories(); renderLinks(); renderAlbums();
+    };
+    box.appendChild(row);
+  });
+  refreshAlbumCategorySelect();
+  // Bütün link seçicilərini yenilə ki yeni kateqoriya seçimi görünsün
+  renderLinks();
+}
+
+function refreshAlbumCategorySelect() {
+  const sel = document.getElementById('newAlbumCategory');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">🌐 Hamısı üçün (bütün ziyarətçilər görür)</option>';
+  (currentProfileData.categories || []).forEach(cat => {
+    const o = document.createElement('option'); o.value = cat; o.textContent = cat;
+    sel.appendChild(o);
+  });
+  sel.value = current;
+}
+
+function addCategory() {
+  const input = document.getElementById('newCategoryInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!currentProfileData.categories) currentProfileData.categories = [];
+  if (currentProfileData.categories.includes(val)) { alert('Bu sahə artıq mövcuddur.'); return; }
+  currentProfileData.categories.push(val);
+  input.value = '';
+  renderCategories();
+}
+
+/* ---------- ALBUMS (şəkil/video) ---------- */
+let supabaseClient = null;
+async function initSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  try {
+    const r = await fetch(`${FN}/public-config`);
+    const cfg = await r.json();
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    }
+  } catch (e) { console.error('supabase config error', e); }
+  return supabaseClient;
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function createAlbum() {
+  const name = document.getElementById('newAlbumName').value.trim();
+  if (!name) return;
+  if (!currentProfileData.albums) currentProfileData.albums = [];
+  const category = document.getElementById('newAlbumCategory') ? document.getElementById('newAlbumCategory').value : '';
+  currentProfileData.albums.push({ id: uid(), name, items: [], category });
+  document.getElementById('newAlbumName').value = '';
+  renderAlbums();
+  saveProfileSilent();
+}
+
+async function saveProfileSilent() {
+  await fetch(`${FN}/update-profile`, {
+    method: 'POST',
+    body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, profile_data: currentProfileData })
+  });
+}
+
+function renderAlbums() {
+  const box = document.getElementById('albumsList');
+  box.innerHTML = '';
+  const albums = currentProfileData.albums || [];
+  if (!albums.length) {
+    box.innerHTML = '<p class="muted">Hələ albom yaradılmayıb. Yuxarıdan ad yazıb "Yarat" bas.</p>';
+    return;
+  }
+  albums.forEach((album) => {
+    const card = document.createElement('div');
+    card.className = 'album-card';
+
+    const head = document.createElement('div');
+    head.className = 'album-head';
+    head.innerHTML = `<h4>${album.name} <span class="muted">(${album.items.length})</span></h4>`;
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const delAlbumBtn = document.createElement('button');
+    delAlbumBtn.className = 'icon-btn danger';
+    delAlbumBtn.textContent = 'Albomu sil';
+    delAlbumBtn.onclick = () => deleteAlbum(album.id);
+    actions.appendChild(delAlbumBtn);
+    head.appendChild(actions);
+    card.appendChild(head);
+
+    if ((currentProfileData.categories || []).length) {
+      const catSel = document.createElement('select');
+      catSel.style.marginBottom = '10px';
+      const optAll = document.createElement('option'); optAll.value = ''; optAll.textContent = '🌐 Hamısı üçün';
+      catSel.appendChild(optAll);
+      currentProfileData.categories.forEach(cat => {
+        const o = document.createElement('option'); o.value = cat; o.textContent = cat;
+        if ((album.category || '') === cat) o.selected = true;
+        catSel.appendChild(o);
+      });
+      catSel.onchange = () => { album.category = catSel.value; saveProfileSilent(); };
+      card.appendChild(catSel);
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'media-grid';
+    album.items.forEach((item, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'media-item';
+      if (item.type === 'video') {
+        cell.innerHTML = `<video src="${item.url}" muted></video><span class="play-badge">▶ VİDEO</span>`;
+      } else {
+        cell.innerHTML = `<img src="${item.url}" loading="lazy">`;
+      }
+      const delBtn = document.createElement('button');
+      delBtn.className = 'del-x';
+      delBtn.textContent = '✕';
+      delBtn.onclick = () => deleteMedia(album.id, idx);
+      cell.appendChild(delBtn);
+      grid.appendChild(cell);
+    });
+    card.appendChild(grid);
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'upload-status';
+    statusEl.style.display = 'none';
+    statusEl.id = 'status-' + album.id;
+    card.appendChild(statusEl);
+
+    const fileLabel = document.createElement('label');
+    fileLabel.className = 'file-btn';
+    fileLabel.textContent = '📷🎬 Şəkil / Video əlavə et';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*,video/*';
+    fileInput.multiple = true;
+    fileInput.style.display = 'none';
+    fileInput.onchange = (e) => uploadFilesToAlbum(album.id, e.target.files);
+    fileLabel.appendChild(fileInput);
+    card.appendChild(fileLabel);
+
+    box.appendChild(card);
+  });
+}
+
+async function uploadFilesToAlbum(albumId, fileList) {
+  const client = await initSupabaseClient();
+  if (!client) {
+    alert('Yükləmə sistemi hazır deyil. Admin Supabase konfiqurasiyasını (ANON KEY) tamamlamalıdır.');
+    return;
+  }
+  const album = (currentProfileData.albums || []).find(a => a.id === albumId);
+  if (!album) return;
+  const statusEl = document.getElementById('status-' + albumId);
+  const files = Array.from(fileList);
+  statusEl.style.display = 'block';
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    statusEl.textContent = `Yüklənir (${i + 1}/${files.length}): ${file.name}...`;
+    try {
+      const r = await fetch(`${FN}/get-upload-url`, {
+        method: 'POST',
+        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+      });
+      const j = await r.json();
+      if (!j.success) { statusEl.textContent = `Xəta: ${file.name} yüklənmədi`; continue; }
+
+      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+      if (upErr) { statusEl.textContent = `Xəta: ${file.name} yüklənmədi (${upErr.message})`; continue; }
+
+      album.items.push({
+        url: j.publicUrl,
+        path: j.path,
+        type: file.type.startsWith('video') ? 'video' : 'image',
+        name: file.name
+      });
+      renderAlbums();
+      await saveProfileSilent();
+    } catch (e) {
+      statusEl.textContent = `Xəta: ${file.name} yüklənmədi`;
+    }
+  }
+  const finalStatus = document.getElementById('status-' + albumId);
+  if (finalStatus) { finalStatus.textContent = '✅ Tamamlandı'; setTimeout(() => { if (finalStatus) finalStatus.style.display = 'none'; }, 2500); }
+}
+
+async function deleteMedia(albumId, itemIdx) {
+  const album = (currentProfileData.albums || []).find(a => a.id === albumId);
+  if (!album) return;
+  const item = album.items[itemIdx];
+  if (!confirm('Bu faylı silmək istəyirsən?')) return;
+  if (item.path) {
+    await fetch(`${FN}/delete-media`, {
+      method: 'POST',
+      body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, path: item.path })
+    });
+  }
+  album.items.splice(itemIdx, 1);
+  renderAlbums();
+  await saveProfileSilent();
+}
+
+async function deleteAlbum(albumId) {
+  if (!confirm('Bu albomu və içindəki bütün fayllar silinsin?')) return;
+  const album = (currentProfileData.albums || []).find(a => a.id === albumId);
+  if (album) {
+    for (const item of album.items) {
+      if (item.path) {
+        await fetch(`${FN}/delete-media`, {
+          method: 'POST',
+          body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, path: item.path })
+        });
+      }
+    }
+  }
+  currentProfileData.albums = (currentProfileData.albums || []).filter(a => a.id !== albumId);
+  renderAlbums();
+  await saveProfileSilent();
+}
+
+/* ---------- SERTİFİKATLAR / DİPLOMLAR (ortaq generik funksiya) ---------- */
+function makeGallerySection(fieldName, gridId, inputId, statusId) {
+  function render() {
+    const box = document.getElementById(gridId);
+    box.innerHTML = '';
+    (currentProfileData[fieldName] || []).forEach((item, idx) => {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--card2);';
+      cell.innerHTML = `<img src="${item.url}" style="width:100%;height:100%;object-fit:cover;">
+        <button data-idx="${idx}" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;">✕</button>`;
+      cell.querySelector('button').onclick = () => del(idx);
+      box.appendChild(cell);
+    });
+  }
+
+  async function del(idx) {
+    if (!confirm('Bu şəkli silmək istəyirsən?')) return;
+    const item = currentProfileData[fieldName][idx];
+    if (item.path) {
+      await fetch(`${FN}/delete-media`, {
+        method: 'POST',
+        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, path: item.path })
+      });
+    }
+    currentProfileData[fieldName].splice(idx, 1);
+    render();
+    await saveProfileSilent();
+  }
+
+  document.getElementById(inputId).addEventListener('change', async (e) => {
+    const client = await initSupabaseClient();
+    if (!client) { alert('Yükləmə sistemi hazır deyil.'); return; }
+    if (!currentProfileData[fieldName]) currentProfileData[fieldName] = [];
+    const statusEl = document.getElementById(statusId);
+    const files = Array.from(e.target.files);
+    statusEl.style.display = 'block';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      statusEl.textContent = `Yüklənir (${i + 1}/${files.length})...`;
+      try {
+        const r = await fetch(`${FN}/get-upload-url`, {
+          method: 'POST',
+          body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+        });
+        const j = await r.json();
+        if (!j.success) continue;
+        const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+        if (upErr) continue;
+        currentProfileData[fieldName].push({ url: j.publicUrl, path: j.path });
+        render();
+        await saveProfileSilent();
+      } catch (err) { /* keep going */ }
+    }
+    statusEl.textContent = '✅ Tamamlandı';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+    e.target.value = '';
+  });
+
+  return { render };
+}
+
+const certGallery = makeGallerySection('certificates', 'certGrid', 'certInput', 'certStatus');
+const diplomaGallery = makeGallerySection('diplomas', 'diplomaGrid', 'diplomaInput', 'diplomaStatus');
+function renderCertGrid() { certGallery.render(); diplomaGallery.render(); }
+
+/* ---------- İŞ SAATLARI ---------- */
+const WEEKDAYS = [['mon','B.e'],['tue','Ç.a'],['wed','Ç'],['thu','C.a'],['fri','C'],['sat','Ş'],['sun','B']];
+
+function renderHoursDays() {
+  const box = document.getElementById('hoursDays');
+  box.innerHTML = '';
+  if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
+  WEEKDAYS.forEach(([key, label]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    const active = currentProfileData.hours.days.includes(key);
+    btn.textContent = label;
+    btn.className = 'btn small ' + (active ? '' : 'secondary');
+    btn.style.padding = '7px 12px';
+    btn.onclick = () => {
+      const days = currentProfileData.hours.days;
+      const i = days.indexOf(key);
+      if (i === -1) days.push(key); else days.splice(i, 1);
+      renderHoursDays();
+    };
+    box.appendChild(btn);
+  });
+}
+
+/* ---------- MÜŞTƏRİ RƏYLƏRİ ---------- */
+function renderTestimonials() {
+  const box = document.getElementById('testimonialsList');
+  box.innerHTML = '';
+  (currentProfileData.testimonials || []).forEach((t, idx) => {
+    const card = document.createElement('div');
+    card.className = 'link-edit-card';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text'; nameInput.placeholder = 'Müştərinin adı'; nameInput.value = t.name || '';
+    nameInput.style.marginBottom = '8px';
+    const starsSel = document.createElement('select');
+    [5, 4, 3, 2, 1].forEach(n => {
+      const o = document.createElement('option'); o.value = n; o.textContent = '⭐'.repeat(n);
+      if ((t.stars || 5) === n) o.selected = true;
+      starsSel.appendChild(o);
+    });
+    starsSel.style.marginBottom = '8px';
+    const textArea = document.createElement('textarea');
+    textArea.rows = 2; textArea.placeholder = 'Rəyin mətni...'; textArea.value = t.text || '';
+    const del = document.createElement('button');
+    del.textContent = '✕ Sil'; del.className = 'btn danger small'; del.style.marginTop = '8px';
+    del.onclick = () => { currentProfileData.testimonials.splice(idx, 1); renderTestimonials(); };
+
+    nameInput.oninput = () => { t.name = nameInput.value; };
+    starsSel.onchange = () => { t.stars = parseInt(starsSel.value, 10); };
+    textArea.oninput = () => { t.text = textArea.value; };
+
+    card.appendChild(nameInput);
+    card.appendChild(starsSel);
+    card.appendChild(textArea);
+    card.appendChild(del);
+    box.appendChild(card);
+  });
+}
+
+function addTestimonialRow() {
+  if (!currentProfileData.testimonials) currentProfileData.testimonials = [];
+  currentProfileData.testimonials.push({ name: '', stars: 5, text: '' });
+  renderTestimonials();
+}
+
+async function saveProfile() {
+  currentProfileData.bio = {
+    az: document.getElementById('bioText_az').value,
+    en: document.getElementById('bioText_en').value,
+    ru: document.getElementById('bioText_ru').value
+  };
+  currentProfileData.tagline = document.getElementById('taglineInput').value;
+  currentProfileData.phone = document.getElementById('phoneInput').value;
+  currentProfileData.whatsappMessage = document.getElementById('whatsappMsgInput').value;
+  currentProfileData.contactEmail = document.getElementById('contactEmailInput').value;
+  currentProfileData.aboutText = {
+    az: document.getElementById('aboutText_az').value,
+    en: document.getElementById('aboutText_en').value,
+    ru: document.getElementById('aboutText_ru').value
+  };
+  currentProfileData.otherProfile = {
+    label: document.getElementById('otherProfileLabel').value,
+    url: document.getElementById('otherProfileUrl').value
+  };
+  currentProfileData.hours.open = document.getElementById('hoursOpen').value;
+  currentProfileData.hours.close = document.getElementById('hoursClose').value;
+  const owner_name = document.getElementById('ownerName').value;
+  const r = await fetch(`${FN}/update-profile`, {
+    method: 'POST',
+    body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, profile_data: currentProfileData, owner_name })
+  });
+  const j = await r.json();
+  const msg = document.getElementById('profileMsg');
+  if (j.success) {
+    msg.textContent = '✅ Yadda saxlanıldı';
+    document.getElementById('ownerLabel').textContent = owner_name || 'Sosial şəbəkə & QR alətin';
+    renderQR();
+  } else {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Xəta: yadda saxlanmadı';
+  }
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+}
+
+/* ---------- QR ---------- */
+function buildColorSwatches() {
+  const colors = ['#0f172a','#6366f1','#8b5cf6','#ef4444','#22c55e','#f59e0b','#0891b2'];
+  const box = document.getElementById('colorSwatches');
+  box.innerHTML = '';
+  colors.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (c === qrColor ? ' selected' : '');
+    sw.style.background = c;
+    sw.onclick = () => { qrColor = c; buildColorSwatches(); renderQR(); };
+    box.appendChild(sw);
+  });
+}
+
+function getProfileUrl() {
+  return `${location.origin}/p/${currentSlug}`;
+}
+
+let lastSimpleQrDataUrl = null;
+
+async function renderQR() {
+  const dataUrl = await renderSimpleQrCard();
+  lastSimpleQrDataUrl = dataUrl;
+  document.getElementById('profileLinkBox').innerHTML =
+    `<span class="muted">Profil linki: </span><a class="share-link" href="${getProfileUrl()}" target="_blank">${getProfileUrl()}</a>`;
+  setTimeout(() => { prepareHandleQR(); renderVizitka(); }, 80);
+}
+
+async function renderSimpleQrCard() {
+  const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
+  try { await document.fonts.load('700 46px "Caveat"'); } catch (e) {}
+
+  const qrSize = 640;
+  const pad = 40;
+  const scanH = 100;
+  const W = qrSize + pad * 2;
+  const H = qrSize + pad * 2 + scanH;
+
+  const canvas = document.getElementById('simpleQrCanvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, 0, 0, W, H, 28);
+  ctx.fill();
+
+  const qrBoxX = pad, qrBoxY = pad;
+  await new Promise((resolve) => {
+    const qrImg = new Image();
+    qrImg.onload = () => { ctx.drawImage(qrImg, qrBoxX, qrBoxY, qrSize, qrSize); resolve(); };
+    qrImg.src = qrDataUrl;
+  });
+
+  drawScanCorners(ctx, qrBoxX - 12, qrBoxY - 12, qrSize + 24, 34, 5, qrColor);
+
+  // QR-ın mərkəzinə şəkil (avatar) yerləşdir
+  if (currentProfileData.avatar) {
+    const centerR = qrSize * 0.15;
+    const cx = qrBoxX + qrSize / 2, cy = qrBoxY + qrSize / 2;
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx, cy, centerR + 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, centerR, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, cx - centerR, cy - centerR, centerR * 2, centerR * 2); resolve(); };
+      img.src = currentProfileData.avatar;
+    });
+    ctx.restore();
+  }
+
+  // "Scan me!" effekti — əyri ox + cursive mətn
+  const scanY = qrBoxY + qrSize + 56;
+  ctx.save();
+  ctx.strokeStyle = qrColor;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  const asx = qrBoxX + 30, asy = scanY - 6;
+  const aex = qrBoxX + 78, aey = qrBoxY + qrSize + 10;
+  ctx.beginPath();
+  ctx.moveTo(asx, asy);
+  ctx.quadraticCurveTo(asx + 10, asy - 44, aex, aey);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(aex, aey); ctx.lineTo(aex - 13, aey + 9);
+  ctx.moveTo(aex, aey); ctx.lineTo(aex + 4, aey + 16);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 48px "Caveat", cursive';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Scan me!', qrBoxX + 94, scanY + 14);
+
+  const dataUrl = canvas.toDataURL('image/png');
+  document.getElementById('qrPreview').innerHTML = `<img src="${dataUrl}" style="max-width:100%;border-radius:14px;">`;
+  return dataUrl;
+}
+
+function generateHighResQr(text, color, sizePx) {
+  return new Promise((resolve) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '-9999px';
+    document.body.appendChild(tempDiv);
+    new QRCode(tempDiv, {
+      text, width: sizePx, height: sizePx,
+      colorDark: color, colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    setTimeout(() => {
+      const el = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
+      const dataUrl = el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src;
+      document.body.removeChild(tempDiv);
+      resolve(dataUrl);
+    }, 80);
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawScanCorners(ctx, x, y, size, len, thick, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thick;
+  ctx.lineCap = 'round';
+  const corners = [
+    [[x, y + len], [x, y], [x + len, y]],
+    [[x + size - len, y], [x + size, y], [x + size, y + len]],
+    [[x, y + size - len], [x, y + size], [x + len, y + size]],
+    [[x + size - len, y + size], [x + size, y + size], [x + size, y + size - len]]
+  ];
+  corners.forEach(pts => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    ctx.lineTo(pts[1][0], pts[1][1]);
+    ctx.lineTo(pts[2][0], pts[2][1]);
+    ctx.stroke();
+  });
+}
+
+const THEME_PRESETS = {
+  default: {
+    label: 'Standart', swatch: '#6366f1',
+    bg1: '#0d1526', bg2: '#141c33', glow: 'rgba(99,102,241,0.30)',
+    accent1: '#6366f1', accent2: '#8b5cf6', avatarShadow: 'rgba(139,92,246,0.55)',
+    nameColor: '#f7f9ff', taglineColor: '#9aa8ca',
+    pillBg: 'rgba(255,255,255,0.06)', pillBorder: 'rgba(255,255,255,0.14)', pillText: '#e2e8f7',
+    pillBg2: 'rgba(255,255,255,0.05)', pillBorder2: 'rgba(255,255,255,0.12)', pillText2: '#c7d0e8',
+    scanCorner: '#8b5cf6', scanArrow: 'rgba(199,208,232,0.85)', scanText: '#eef1fb', footer: '#5b6b8c'
+  },
+  luxury: {
+    label: 'Lüks (qara-qızılı)', swatch: '#d4af37',
+    bg1: '#0a0a0a', bg2: '#1a1408', glow: 'rgba(212,175,55,0.22)',
+    accent1: '#d4af37', accent2: '#f4e5a1', avatarShadow: 'rgba(212,175,55,0.5)',
+    nameColor: '#f8f1dc', taglineColor: '#c9b98a',
+    pillBg: 'rgba(212,175,55,0.08)', pillBorder: 'rgba(212,175,55,0.28)', pillText: '#f0e2b8',
+    pillBg2: 'rgba(212,175,55,0.05)', pillBorder2: 'rgba(212,175,55,0.2)', pillText2: '#d8c98f',
+    scanCorner: '#d4af37', scanArrow: 'rgba(212,175,55,0.85)', scanText: '#f8f1dc', footer: '#8a7b4f'
+  },
+  vibrant: {
+    label: 'Rəngli / Yaradıcı', swatch: '#ec4899',
+    bg1: '#1a0f2e', bg2: '#2d1b4e', glow: 'rgba(236,72,153,0.32)',
+    accent1: '#f59e0b', accent2: '#ec4899', avatarShadow: 'rgba(236,72,153,0.55)',
+    nameColor: '#ffffff', taglineColor: '#d8b4e2',
+    pillBg: 'rgba(255,255,255,0.08)', pillBorder: 'rgba(236,72,153,0.3)', pillText: '#ffe8f5',
+    pillBg2: 'rgba(255,255,255,0.06)', pillBorder2: 'rgba(236,72,153,0.22)', pillText2: '#f3d9ec',
+    scanCorner: '#ec4899', scanArrow: 'rgba(245,158,11,0.85)', scanText: '#ffffff', footer: '#a78bda'
+  }
+};
+
+function buildThemeSwatches() {
+  const box = document.getElementById('themeSwatches');
+  box.innerHTML = '';
+  Object.entries(THEME_PRESETS).forEach(([key, t]) => {
+    const btn = document.createElement('div');
+    const active = (currentProfileData.vizitkaTheme || 'default') === key;
+    btn.title = t.label;
+    btn.style.cssText = `width:44px;height:44px;border-radius:12px;cursor:pointer;background:linear-gradient(135deg,${t.accent1},${t.accent2});border:2px solid ${active ? '#fff' : 'transparent'};`;
+    btn.onclick = () => { currentProfileData.vizitkaTheme = key; buildThemeSwatches(); renderVizitka(); };
+    box.appendChild(btn);
+  });
+}
+
+async function renderVizitka() {
+  const theme = THEME_PRESETS[currentProfileData.vizitkaTheme] || THEME_PRESETS.default;
+  const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
+  try { await document.fonts.load('800 34px "Baloo 2"'); } catch (e) {}
+  try { await document.fonts.load('700 44px "Caveat"'); } catch (e) {}
+
+  const name = document.getElementById('ownerName').value || 'İsim';
+  const tagline = document.getElementById('taglineInput').value || 'Bütün sosial şəbəkələrim üçün skan et';
+  const phone = document.getElementById('phoneInput').value;
+  const locationLink = (currentProfileData.links || []).find(l => l.type === 'location' && l.url);
+
+  const W = 560;
+  const avatarSize = 168;
+  const avatarY = 62;
+
+  // ---- Mərhələ 1: şaquli layout-u əvvəlcədən hesabla (boş yer qalmasın deyə) ----
+  let y = avatarY + avatarSize + 112;
+  if (phone) y += 42 + 14;
+  if (locationLink) y += 38 + 26; else y += 10;
+  const qrBoxY = y;
+  const qrBoxSize = 264;
+  const scanMeY = qrBoxY + qrBoxSize + 62;
+  const footerY = scanMeY + 46;
+  const H = footerY + 34;
+
+  const canvas = document.getElementById('vizitkaCanvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Base background
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, theme.bg1);
+  bgGrad.addColorStop(1, theme.bg2);
+  ctx.fillStyle = bgGrad;
+  roundRect(ctx, 0, 0, W, H, 36);
+  ctx.fill();
+
+  // Subtle grid pattern
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 36);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+  for (let gy = 0; gy < H; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+  ctx.restore();
+
+  // Subtle radial glow accent (top)
+  const glow = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 340);
+  glow.addColorStop(0, theme.glow);
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 36);
+  ctx.clip();
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Outer border
+  ctx.save();
+  roundRect(ctx, 1.5, 1.5, W - 3, H - 3, 34);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // Top accent bar (brand line)
+  const barGrad = ctx.createLinearGradient(0, 0, W, 0);
+  barGrad.addColorStop(0, theme.accent1);
+  barGrad.addColorStop(1, theme.accent2);
+  ctx.fillStyle = barGrad;
+  roundRect(ctx, 44, 34, W - 88, 4, 2);
+  ctx.fill();
+
+  // Avatar — daha iri
+  const avatarX = W / 2 - avatarSize / 2;
+  ctx.save();
+  ctx.shadowColor = theme.avatarShadow;
+  ctx.shadowBlur = 34;
+  ctx.beginPath();
+  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  if (currentProfileData.avatar) {
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clip();
+        ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
+        resolve();
+      };
+      img.src = currentProfileData.avatar;
+    });
+  } else {
+    const g2 = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
+    g2.addColorStop(0, theme.accent1); g2.addColorStop(1, theme.accent2);
+    ctx.fillStyle = g2;
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '600 70px -apple-system, Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const initial = (name || '?').trim().slice(0, 1).toUpperCase();
+    ctx.fillText(initial, W / 2, avatarY + avatarSize / 2 + 4);
+  }
+  ctx.restore();
+
+  // Name — xüsusi şrift
+  ctx.fillStyle = theme.nameColor;
+  ctx.font = '800 36px "Baloo 2", -apple-system, Arial';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(name, W / 2, avatarY + avatarSize + 54);
+
+  // Tagline
+  ctx.fillStyle = theme.taglineColor;
+  ctx.font = '400 16px -apple-system, Arial';
+  ctx.fillText(tagline, W / 2, avatarY + avatarSize + 84, W - 100);
+
+  let qrTop = avatarY + avatarSize + 112;
+
+  // Phone pill
+  if (phone) {
+    ctx.font = '600 17px -apple-system, Arial';
+    const label = '📞  ' + phone;
+    const textW = ctx.measureText(label).width;
+    const pillW = textW + 44, pillH = 42;
+    const pillX = W / 2 - pillW / 2, pillY = qrTop;
+    ctx.fillStyle = theme.pillBg;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 21);
+    ctx.fill();
+    ctx.strokeStyle = theme.pillBorder;
+    ctx.lineWidth = 1;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 21);
+    ctx.stroke();
+    ctx.fillStyle = theme.pillText;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
+    qrTop += pillH + 14;
+  }
+
+  // Ünvan pill
+  if (locationLink) {
+    ctx.font = '600 15px -apple-system, Arial';
+    const shortAddr = locationLink.url.length > 34 ? locationLink.url.slice(0, 34) + '…' : locationLink.url;
+    const label = '📍  ' + shortAddr;
+    const textW = ctx.measureText(label).width;
+    const pillW = Math.min(textW + 40, W - 80), pillH = 38;
+    const pillX = W / 2 - pillW / 2, pillY = qrTop;
+    ctx.fillStyle = theme.pillBg2;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 19);
+    ctx.fill();
+    ctx.strokeStyle = theme.pillBorder2;
+    ctx.lineWidth = 1;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 19);
+    ctx.stroke();
+    ctx.fillStyle = theme.pillText2;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, W / 2, pillY + pillH / 2 + 1);
+    qrTop += pillH + 26;
+  } else {
+    qrTop += 10;
+  }
+
+  // QR white box with scan-corner frame
+  const qrBoxX = W / 2 - qrBoxSize / 2;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 12;
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  ctx.fill();
+  ctx.restore();
+
+  await new Promise((resolve) => {
+    const qrImg = new Image();
+    qrImg.onload = () => {
+      const pad = 20;
+      ctx.drawImage(qrImg, qrBoxX + pad, qrBoxY + pad, qrBoxSize - pad * 2, qrBoxSize - pad * 2);
+      resolve();
+    };
+    qrImg.src = qrDataUrl;
+  });
+
+  drawScanCorners(ctx, qrBoxX - 14, qrBoxY - 14, qrBoxSize + 28, 26, 4, theme.scanCorner);
+
+  // "Scan me!" effekti - əyri ox + cursive mətn
+  ctx.save();
+  ctx.strokeStyle = theme.scanArrow;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  const arrowStartX = qrBoxX + 18, arrowStartY = scanMeY - 4;
+  const arrowEndX = qrBoxX + 54, arrowEndY = qrBoxY + qrBoxSize + 4;
+  ctx.beginPath();
+  ctx.moveTo(arrowStartX, arrowStartY);
+  ctx.quadraticCurveTo(arrowStartX + 6, arrowStartY - 34, arrowEndX, arrowEndY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(arrowEndX, arrowEndY);
+  ctx.lineTo(arrowEndX - 11, arrowEndY + 8);
+  ctx.moveTo(arrowEndX, arrowEndY);
+  ctx.lineTo(arrowEndX + 3, arrowEndY + 13);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = theme.scanText;
+  ctx.font = '700 40px "Caveat", cursive';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Scan me!', qrBoxX + 66, scanMeY + 10);
+
+  // Footer
+  ctx.fillStyle = theme.footer;
+  ctx.font = '600 12px -apple-system, Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Q R   P R O F I L E   C A R D', W / 2, footerY);
+
+  document.getElementById('vizitkaPreviewBox').innerHTML =
+    `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:20px;box-shadow:0 16px 40px rgba(0,0,0,.5);">`;
+}
+
+document.getElementById('taglineInput').addEventListener('input', () => renderVizitka());
+document.getElementById('phoneInput').addEventListener('input', () => renderVizitka());
+document.getElementById('ownerName').addEventListener('input', () => renderVizitka());
+
+function downloadVizitka() {
+  const canvas = document.getElementById('vizitkaCanvas');
+  const link = document.createElement('a');
+  link.download = 'vizitka-qr.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function shareVizitka() {
+  const canvas = document.getElementById('vizitkaCanvas');
+  const dataUrl = canvas.toDataURL('image/png');
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], 'vizitka-qr.png', { type: 'image/png' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: document.getElementById('ownerName').value || 'Vizitka' }); return; } catch (e) {}
+  }
+  downloadVizitka();
+}
+
+function getQrCanvas(sourceBox) {
+  const img = sourceBox.querySelector('img');
+  const canvas = sourceBox.querySelector('canvas');
+  return canvas || img;
+}
+
+async function downloadQR() {
+  const dataUrl = await renderSimpleQrCard();
+  const link = document.createElement('a');
+  link.download = 'qr-kod.png';
+  link.href = dataUrl;
+  link.click();
+}
+
+async function shareQR() {
+  const dataUrl = await renderSimpleQrCard();
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], 'qr-kod.png', { type: 'image/png' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Mənim QR kodum', text: getProfileUrl() }); return; } catch (e) {}
+  }
+  downloadQR();
+}
+
+/* ---------- COMPOSER ---------- */
+let composerImgDataUrl = null;
+let isPdfSource = false;
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.type === 'application/pdf') {
+    isPdfSource = true;
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    composerImgDataUrl = canvas.toDataURL('image/png');
+  } else {
+    isPdfSource = false;
+    composerImgDataUrl = await new Promise((res) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
+  document.getElementById('exportPdfBtn').style.display = isPdfSource ? 'block' : 'none';
+  loadComposer();
+});
+
+let handlePos = { xPct: 70, yPct: 70 };
+let handleSizePct = 18;
+
+function loadComposer() {
+  const bg = document.getElementById('composerBg');
+  bg.src = composerImgDataUrl;
+  document.getElementById('composerStageWrap').classList.remove('hidden');
+  bg.onload = () => { prepareHandleQR(); positionHandle(); };
+}
+
+async function buildQrChip() {
+  const qrDataUrl = await generateHighResQr(getProfileUrl(), qrColor, 800);
+  const withCaption = document.getElementById('captionToggle').checked;
+  if (!withCaption) return qrDataUrl;
+
+  const captionText = document.getElementById('captionText').value || 'Skan et 👆';
+  const qrSize = 500;
+  const pad = 36;
+  const capH = 108;
+  const canvas = document.createElement('canvas');
+  canvas.width = qrSize + pad * 2;
+  canvas.height = qrSize + pad * 2 + capH;
+  const ctx = canvas.getContext('2d');
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = '#ffffff';
+  roundRect(ctx, 0, 0, canvas.width, canvas.height, 20);
+  ctx.fill();
+  ctx.restore();
+
+  return new Promise((resolve) => {
+    const qrImg = new Image();
+    qrImg.onload = () => {
+      ctx.drawImage(qrImg, pad, pad, qrSize, qrSize);
+
+      // divider
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, qrSize + pad + 4);
+      ctx.lineTo(canvas.width - pad, qrSize + pad + 4);
+      ctx.stroke();
+
+      // caption pill
+      const pillY = qrSize + pad + 26;
+      const pillH = capH - 44;
+      ctx.fillStyle = qrColor;
+      roundRect(ctx, pad, pillY, qrSize, pillH, pillH / 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 32px -apple-system, Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(captionText, canvas.width / 2, pillY + pillH / 2 + 2);
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+    qrImg.src = qrDataUrl;
+  });
+}
+
+async function prepareHandleQR() {
+  const stage = document.getElementById('composerStage');
+  if (!stage || document.getElementById('composerStageWrap').classList.contains('hidden')) return;
+  const dataUrl = await buildQrChip();
+  if (!dataUrl) return;
+  document.getElementById('qrHandleImg').src = dataUrl;
+  positionHandle();
+}
+
+document.getElementById('captionToggle').addEventListener('change', (e) => {
+  document.getElementById('captionTextWrap').style.display = e.target.checked ? 'block' : 'none';
+  prepareHandleQR();
+});
+document.getElementById('captionText').addEventListener('input', () => prepareHandleQR());
+
+function positionHandle() {
+  const stage = document.getElementById('composerStage');
+  const handle = document.getElementById('qrHandle');
+  const img = document.getElementById('qrHandleImg');
+  const ratio = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : 1;
+  const w = stage.clientWidth * (handleSizePct / 100);
+  const hgt = w * ratio;
+  handle.style.width = w + 'px';
+  handle.style.left = (stage.clientWidth * handlePos.xPct / 100 - w / 2) + 'px';
+  handle.style.top = (stage.clientHeight * handlePos.yPct / 100 - hgt / 2) + 'px';
+}
+
+document.getElementById('qrSizeSlider').addEventListener('input', (e) => {
+  handleSizePct = +e.target.value;
+  positionHandle();
+});
+
+(function enableDrag() {
+  const handle = document.getElementById('qrHandle');
+  let dragging = false;
+  function start(e) { dragging = true; e.preventDefault(); }
+  function move(e) {
+    if (!dragging) return;
+    const stage = document.getElementById('composerStage');
+    const rect = stage.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    let x = point.clientX - rect.left, y = point.clientY - rect.top;
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+    handlePos.xPct = (x / rect.width) * 100;
+    handlePos.yPct = (y / rect.height) * 100;
+    positionHandle();
+  }
+  function end() { dragging = false; }
+  handle.addEventListener('mousedown', start);
+  handle.addEventListener('touchstart', start, { passive: false });
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('mouseup', end);
+  window.addEventListener('touchend', end);
+  window.addEventListener('resize', positionHandle);
+})();
+
+function renderComposedCanvas() {
+  return new Promise((resolve) => {
+    const bg = document.getElementById('composerBg');
+    const naturalW = bg.naturalWidth, naturalH = bg.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = naturalW; canvas.height = naturalH;
+    const ctx = canvas.getContext('2d');
+    const bgImg = new Image();
+    bgImg.onload = () => {
+      ctx.drawImage(bgImg, 0, 0, naturalW, naturalH);
+      const qrImg = new Image();
+      qrImg.onload = () => {
+        const ratio = qrImg.naturalHeight / qrImg.naturalWidth;
+        const qrW = naturalW * (handleSizePct / 100);
+        const qrH = qrW * ratio;
+        const cx = naturalW * (handlePos.xPct / 100);
+        const cy = naturalH * (handlePos.yPct / 100);
+        ctx.drawImage(qrImg, cx - qrW / 2, cy - qrH / 2, qrW, qrH);
+        resolve(canvas);
+      };
+      qrImg.src = document.getElementById('qrHandleImg').src;
+    };
+    bgImg.src = composerImgDataUrl;
+  });
+}
+
+async function exportComposedImage() {
+  const canvas = await renderComposedCanvas();
+  const link = document.createElement('a');
+  link.download = 'post-qr.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function exportComposedPDF() {
+  const canvas = await renderComposedCanvas();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'l' : 'p', unit: 'px', format: [canvas.width, canvas.height] });
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save('post-qr.pdf');
+}
+
+boot();
+</script>
+</body>
+</html>

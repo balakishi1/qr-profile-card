@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — QR Profile Card</title>
+<style>
+  :root{
+    --bg:#0b1220; --card:#131c2e; --card2:#0f1729; --border:#243049;
+    --text:#e7ecf7; --muted:#8b9bb8; --accent:#6366f1; --green:#22c55e; --red:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px;}
+  h1{font-size:20px;margin-bottom:4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;}
+  input,select{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;outline:none;}
+  .btn{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn.red{background:var(--red);}
+  .btn.gray{background:var(--card2);border:1px solid var(--border);color:var(--text);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{text-align:left;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--border);font-weight:600;}
+  td{padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .pill{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .pill.active{background:#0f2818;color:var(--green);}
+  .pill.inactive{background:#2a1414;color:var(--red);}
+  .pill.bound{background:#1a2440;color:#a5b4fc;}
+  .pill.free{background:#241a30;color:#c4b5fd;}
+  .actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .actions button{font-size:11px;padding:6px 9px;border-radius:6px;border:none;cursor:pointer;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  code{background:var(--card2);padding:2px 6px;border-radius:5px;font-size:11.5px;}
+  #loginBox{max-width:340px;margin:80px auto;text-align:center;}
+  #loginBox input{width:100%;margin-bottom:10px;text-align:center;}
+  #loginBox .btn{width:100%;}
+  .hidden{display:none !important;}
+  .tabbar{display:flex;gap:8px;margin-bottom:16px;}
+  .tabbar div{padding:8px 14px;border-radius:8px;background:var(--card2);border:1px solid var(--border);cursor:pointer;font-size:13px;}
+  .tabbar div.active{background:var(--accent);border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loginBox" class="card">
+    <h1>Admin girişi</h1>
+    <p class="sub">Panelə giriş üçün şifrəni daxil et</p>
+    <input type="password" id="pwd" placeholder="Admin şifrəsi">
+    <button class="btn" onclick="login()">Daxil ol</button>
+    <div id="loginErr" style="color:var(--red);font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <div id="panel" class="hidden">
+    <h1>QR Profile Card — Admin</h1>
+    <p class="sub">Lisenziyaları yarat, cihazları idarə et, icazəsiz cəhdlərə bax</p>
+
+    <div class="tabbar">
+      <div class="tab active" data-t="licenses">Lisenziyalar</div>
+      <div class="tab" data-t="attempts">Cəhd logları</div>
+      <div class="tab" data-t="messages">Mesajlar</div>
+      <div class="tab" data-t="broadcast">Elan göndər</div>
+      <div class="tab" data-t="reviews">Platform rəyləri</div>
+    </div>
+
+    <div id="t-licenses">
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Yeni lisenziya yarat</h3>
+        <div class="row">
+          <input type="text" id="newOwner" placeholder="Sahibin adı (məs: Elvin - müştəri)">
+          <input type="text" id="newKey" placeholder="Öz açarını yaz (boş saxlasan avtomatik yaranır)" style="text-transform:uppercase;">
+          <input type="number" id="newMaxDevices" placeholder="Cihaz sayı" value="1" min="1" max="10" style="width:90px;">
+          <button class="btn" onclick="createLicense()">+ Yarat</button>
+        </div>
+        <p class="sub" style="margin:6px 0 0;">"Cihaz sayı" — bu lisenziya neçə fərqli cihazda (telefon + kompyuter və s.) eyni vaxtda açıla bilər. Hamısında eyni profil (linklər, şəkillər) görünəcək.</p>
+      </div>
+
+      <div class="card">
+        <table id="licTable">
+          <thead><tr><th>Açar</th><th>Sahib</th><th>Status</th><th>Cihazlar</th><th>Profil</th><th>Əməliyyat</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="t-attempts" class="hidden">
+      <div class="card">
+        <table id="attTable">
+          <thead><tr><th>Vaxt</th><th>Açar</th><th>Nəticə</th><th>Məkan</th><th>Cihaz məlumatı</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="t-messages" class="hidden">
+      <div class="card">
+        <table id="msgTable">
+          <thead><tr><th>Vaxt</th><th>Açar</th><th>Ad</th><th>Email</th><th>Mesaj</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="t-broadcast" class="hidden">
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Bütün aktiv müştərilərə elan göndər</h3>
+        <p class="sub" style="margin-bottom:14px;">Yeni funksiya, yenilik və ya vacib məlumat olduqda, bunu bütün aktiv lisenziya sahiblərinin email ünvanına (Profil bölməsindəki "əlaqə email"inə, yoxdursa linklərindəki email-ə) avtomatik göndər. Email ünvanı olmayan müştərilər "keçildi" siyahısında görünəcək — onlara özün əlaqə saxlamalısan. <b>Qeyd:</b> tam avtomatik göndərmə (kod dəyişəndə özü yazıb göndərsin) mümkün deyil, çünki sistem nəyin dəyişdiyini özü bilmir — amma "Şablonu yüklə" düyməsi hazır format təqdim edir, sən sadəcə yeniliyi yazıb göndərirsən.</p>
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="bcSubject" placeholder="Mövzu (məs: Yeni funksiya: Sertifikatlar bölməsi)" style="flex:1;">
+          <button class="btn secondary" onclick="loadBroadcastTemplate()">📋 Şablonu yüklə</button>
+        </div>
+        <textarea id="bcMessage" rows="8" placeholder="Mesajın mətni..." style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;"></textarea>
+        <button class="btn" onclick="sendBroadcast()">📤 Bütün müştərilərə göndər</button>
+        <div id="bcResult" style="margin-top:14px;font-size:13px;color:var(--muted);"></div>
+      </div>
+    </div>
+
+    <div id="t-reviews" class="hidden">
+      <div class="card">
+        <p class="sub" style="margin-bottom:10px;">Landing səhifəsindəki "Platform haqqında rəylər" bölməsinə yazılan rəylər — spam/uyğunsuz olanı sil.</p>
+        <table id="revTable">
+          <thead><tr><th>Vaxt</th><th>Ad</th><th>Reytinq</th><th>Rəy</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FN = '/.netlify/functions';
+let adminPwd = sessionStorage.getItem('qpc_admin_pwd') || '';
+
+function h() { return { 'x-admin-password': adminPwd }; }
+
+async function login() {
+  adminPwd = document.getElementById('pwd').value;
+  const r = await fetch(`${FN}/admin-licenses?action=list`, { headers: h() });
+  if (r.status === 200) {
+    sessionStorage.setItem('qpc_admin_pwd', adminPwd);
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+    loadLicenses();
+  } else {
+    document.getElementById('loginErr').textContent = 'Yanlış şifrə';
+  }
+}
+
+if (adminPwd) {
+  fetch(`${FN}/admin-licenses?action=list`, { headers: h() }).then(r => {
+    if (r.status === 200) {
+      document.getElementById('loginBox').classList.add('hidden');
+      document.getElementById('panel').classList.remove('hidden');
+      loadLicenses();
+    }
+  });
+}
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('t-licenses').classList.toggle('hidden', t.dataset.t !== 'licenses');
+  document.getElementById('t-attempts').classList.toggle('hidden', t.dataset.t !== 'attempts');
+  document.getElementById('t-messages').classList.toggle('hidden', t.dataset.t !== 'messages');
+  document.getElementById('t-broadcast').classList.toggle('hidden', t.dataset.t !== 'broadcast');
+  document.getElementById('t-reviews').classList.toggle('hidden', t.dataset.t !== 'reviews');
+  if (t.dataset.t === 'attempts') loadAttempts();
+  if (t.dataset.t === 'messages') loadMessages();
+  if (t.dataset.t === 'reviews') loadReviews();
+}));
+
+async function loadReviews() {
+  const r = await fetch(`${FN}/platform?action=reviews`);
+  const j = await r.json();
+  const tbody = document.querySelector('#revTable tbody');
+  tbody.innerHTML = '';
+  (j.reviews || []).forEach(rv => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(rv.created_at).toLocaleString('az-AZ')}</td>
+      <td>${rv.name || '-'}</td>
+      <td>${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</td>
+      <td style="max-width:320px;white-space:pre-wrap;">${rv.comment || '-'}</td>
+      <td><button class="btn danger" style="font-size:11px;padding:5px 8px;" onclick="deleteReview('${rv.id}')">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  if (!(j.reviews || []).length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">Hələ rəy yoxdur</td></tr>';
+  }
+}
+
+async function deleteReview(id) {
+  if (!confirm('Bu rəyi silmək istəyirsən?')) return;
+  await fetch(`${FN}/admin-licenses?action=delete_review`, { method: 'POST', headers: h(), body: JSON.stringify({ id }) });
+  loadReviews();
+}
+
+function loadBroadcastTemplate() {
+  document.getElementById('bcSubject').value = '✨ Yeniliklər və Dəyişikliklər';
+  document.getElementById('bcMessage').value =
+`Artıq sistemdə bir sıra yeniliklər istifadəyə verilib:
+
+🔹 [Yenilik 1 buraya yaz]
+🔹 [Yenilik 2 buraya yaz]
+🔹 [Yenilik 3 buraya yaz]
+
+🚀 Daha rahat, funksional və müasir istifadə üçün yeniliklər davam edir.
+
+Sizi daha gözəl yeniliklər gözləyir! ❤️`;
+}
+
+async function sendBroadcast() {
+  const subject = document.getElementById('bcSubject').value.trim();
+  const message = document.getElementById('bcMessage').value.trim();
+  const resultBox = document.getElementById('bcResult');
+  if (!subject || !message) {
+    resultBox.style.color = '#ef4444';
+    resultBox.textContent = 'Mövzu və mətn doldurulmalıdır.';
+    return;
+  }
+  if (!confirm('Bu mesaj BÜTÜN aktiv müştərilərə göndəriləcək. Davam edilsin?')) return;
+  resultBox.style.color = 'var(--muted)';
+  resultBox.textContent = 'Göndərilir...';
+  try {
+    const r = await fetch(`${FN}/broadcast-announcement`, {
+      method: 'POST', headers: h(), body: JSON.stringify({ subject, message })
+    });
+    const j = await r.json();
+    if (j.success) {
+      resultBox.style.color = '#22c55e';
+      let html = `✅ ${j.sent}/${j.total} müştəriyə göndərildi.`;
+      if (j.skipped) {
+        html += `<br><span style="color:#f59e0b;">⚠️ ${j.skipped} müştəriyə göndərilmədi:</span>` +
+          `<ul style="margin:6px 0 0 18px;padding:0;">` +
+          j.skippedList.map(s => `<li style="margin-bottom:3px;">${s}</li>`).join('') +
+          `</ul>`;
+      }
+      resultBox.innerHTML = html;
+    } else {
+      resultBox.style.color = '#ef4444';
+      resultBox.textContent = 'Xəta: ' + (j.reason || j.error || 'bilinməyən');
+    }
+  } catch (e) {
+    resultBox.style.color = '#ef4444';
+    resultBox.textContent = 'Şəbəkə xətası.';
+  }
+}
+
+async function loadMessages() {
+  const r = await fetch(`${FN}/admin-licenses?action=messages`, { headers: h() });
+  const j = await r.json();
+  const tbody = document.querySelector('#msgTable tbody');
+  tbody.innerHTML = '';
+  (j.messages || []).forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(m.created_at).toLocaleString('az-AZ')}</td>
+      <td><code>${m.license_key || '-'}</code></td>
+      <td>${m.name || '-'}</td>
+      <td>${m.email || '-'}</td>
+      <td style="max-width:280px;white-space:pre-wrap;">${m.message || '-'}</td>
+      <td><button class="btn danger" style="font-size:11px;padding:5px 8px;" onclick="deleteMessage('${m.id}')">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  if (!(j.messages || []).length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">Hələ mesaj yoxdur</td></tr>';
+  }
+}
+
+async function deleteMessage(id) {
+  if (!confirm('Bu mesajı silmək istəyirsən?')) return;
+  await fetch(`${FN}/admin-licenses?action=delete_message`, { method: 'POST', headers: h(), body: JSON.stringify({ id }) });
+  loadMessages();
+}
+
+async function createLicense() {
+  const owner_name = document.getElementById('newOwner').value.trim();
+  const license_key = document.getElementById('newKey').value.trim().toUpperCase();
+  const max_devices = document.getElementById('newMaxDevices').value || 1;
+  const r = await fetch(`${FN}/admin-licenses?action=create`, { method: 'POST', headers: h(), body: JSON.stringify({ owner_name, license_key: license_key || undefined, max_devices }) });
+  const j = await r.json();
+  if (j.license) {
+    document.getElementById('newOwner').value = '';
+    document.getElementById('newKey').value = '';
+    document.getElementById('newMaxDevices').value = '1';
+    loadLicenses();
+    alert(`Yaradıldı!\nAçar: ${j.license.license_key}\nİcazəli cihaz sayı: ${j.license.max_devices}\nBu açarı müştəriyə göndər — o özü hər cihazda ayrıca aktivləşdirsin.`);
+  } else {
+    alert('Xəta: ' + (j.error || 'bilinməyən — bu açar artıq istifadə olunub ola bilər'));
+  }
+}
+
+async function loadLicenses() {
+  const r = await fetch(`${FN}/admin-licenses?action=list`, { headers: h() });
+  const j = await r.json();
+  const tbody = document.querySelector('#licTable tbody');
+  tbody.innerHTML = '';
+  (j.licenses || []).forEach(l => {
+    const tr = document.createElement('tr');
+    const maxDev = l.max_devices || 1;
+    const devices = l.devices || [];
+
+    const devicesHtml = devices.length
+      ? devices.map(d => `
+          <div style="margin-bottom:6px;padding:6px;background:var(--card2);border-radius:6px;">
+            <div style="font-size:11px;">${(d.device_info && d.device_info.platform) || 'Naməlum'}</div>
+            <div style="font-size:10px;color:var(--muted);">${((d.device_info && d.device_info.userAgent) || '').slice(0, 34)}...</div>
+            <button class="btn red" style="margin-top:4px;font-size:10px;padding:3px 7px;" onclick="resetOneDevice('${l.license_key}','${d.device_fingerprint}')">Bu cihazı sil</button>
+          </div>`).join('')
+      : '<span class="pill free">Heç bir cihaz yoxdur</span>';
+
+    tr.innerHTML = `
+      <td><code>${l.license_key}</code></td>
+      <td>${l.owner_name || '-'}</td>
+      <td><span class="pill ${l.is_active ? 'active' : 'inactive'}">${l.is_active ? 'Aktiv' : 'Deaktiv'}</span></td>
+      <td style="min-width:200px;">
+        <div style="margin-bottom:6px;">
+          <span class="pill ${devices.length >= maxDev ? 'bound' : 'free'}">${devices.length}/${maxDev} cihaz</span>
+        </div>
+        ${devicesHtml}
+        <div class="row" style="margin-top:6px;">
+          <input type="number" min="1" max="10" value="${maxDev}" id="maxdev-${l.license_key}" style="width:60px;padding:5px;">
+          <button class="btn gray" style="font-size:11px;padding:5px 8px;" onclick="setMaxDevices('${l.license_key}')">Limiti yenilə</button>
+        </div>
+      </td>
+      <td>${l.profile_slug ? `<a href="/p/${l.profile_slug}" target="_blank" style="color:var(--accent);font-size:11px;">/p/${l.profile_slug}</a>` : '-'}</td>
+      <td class="actions">
+        ${l.is_active
+          ? `<button class="btn red" onclick="revoke('${l.license_key}')">Söndür</button>`
+          : `<button class="btn gray" onclick="activate('${l.license_key}')">Aktivləşdir</button>`}
+        <button class="btn gray" onclick="resetDevice('${l.license_key}')">Bütün cihazları sıfırla</button>
+        <button class="btn red" onclick="del('${l.license_key}')">Sil</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function revoke(key) { await fetch(`${FN}/admin-licenses?action=revoke`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function activate(key) { await fetch(`${FN}/admin-licenses?action=activate`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function resetDevice(key) { if(!confirm('Bu açarın BÜTÜN cihaz bağlantılarını sıfırlamaq istəyirsən? Bütün cihazlar yenidən açar daxil etməli olacaq.')) return; await fetch(`${FN}/admin-licenses?action=reset_device`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+async function resetOneDevice(key, deviceFingerprint) { if(!confirm('Yalnız bu cihazı silmək istəyirsən? Digər cihazlar toxunulmaz qalacaq.')) return; await fetch(`${FN}/admin-licenses?action=reset_device`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key, device_fingerprint: deviceFingerprint }) }); loadLicenses(); }
+async function setMaxDevices(key) { const val = document.getElementById(`maxdev-${key}`).value; await fetch(`${FN}/admin-licenses?action=set_max_devices`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key, max_devices: val }) }); loadLicenses(); }
+async function del(key) { if(!confirm('Silmək istədiyinə əminsən?')) return; await fetch(`${FN}/admin-licenses?action=delete`, { method: 'POST', headers: h(), body: JSON.stringify({ license_key: key }) }); loadLicenses(); }
+
+async function loadAttempts() {
+  const r = await fetch(`${FN}/admin-licenses?action=attempts`, { headers: h() });
+  const j = await r.json();
+  const tbody = document.querySelector('#attTable tbody');
+  tbody.innerHTML = '';
+  (j.attempts || []).forEach(a => {
+    const tr = document.createElement('tr');
+    const geo = a.geo
+      ? `📍 ${a.geo.city || '-'}, ${a.geo.region || '-'}, ${a.geo.country || '-'}<br><span style="color:var(--muted)">${a.geo.isp || ''} (${a.geo.ip || a.ip})</span>`
+      : (a.ip || '-');
+    tr.innerHTML = `
+      <td>${new Date(a.attempted_at).toLocaleString('az-AZ')}</td>
+      <td><code>${a.license_key}</code></td>
+      <td><span class="pill ${a.allowed ? 'active' : 'inactive'}">${a.allowed ? 'İcazəli' : 'İCAZƏSİZ'}</span></td>
+      <td style="font-size:12px;">${geo}</td>
+      <td style="font-size:11px;color:var(--muted);">${a.device_info ? `${a.device_info.platform || ''}<br>${(a.device_info.userAgent || '').slice(0, 50)}...` : '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+</script>
+</body>
+</html>
