@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Profile Card — bütün sosial şəbəkələrin, tək bir peşəkar profildə</title>
-<meta name="description" content="Sosial şəbəkələrini, əlaqə məlumatlarını, albomlarını və vizitkanı tək bir QR kod və link altında peşəkar şəkildə təqdim et.">
+<title data-i18n="page_title">QR Profile Card — bütün sosial şəbəkələrin, tək bir peşəkar profildə</title>
+<meta name="description" data-i18n-content="page_desc" content="Sosial şəbəkələrini, əlaqə məlumatlarını, albomlarını və vizitkanı tək bir QR kod və link altında peşəkar şəkildə təqdim et.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --navy:#0b2545; --blue:#1458c4; --blue-dark:#0f4499; --blue-tint:#eaf1fc; --blue-tint2:#f5f8fd;
@@ -22,12 +23,12 @@
   img{max-width:100%;}
 
   header.nav{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:50;}
-  .nav-row{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:var(--maxw);margin:0 auto;}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--navy);text-decoration:none;}
+  .nav-row{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:var(--maxw);margin:0 auto;gap:14px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--navy);text-decoration:none;flex-shrink:0;}
   .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;}
   .nav-links{display:flex;align-items:center;gap:26px;font-size:14px;font-weight:600;color:var(--muted);}
   .nav-links a:hover{color:var(--navy);}
-  .nav-cta{display:flex;gap:10px;}
+  .nav-cta{display:flex;gap:10px;align-items:center;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;}
   .btn-primary{background:var(--blue);color:#fff;}
   .btn-primary:hover{background:var(--blue-dark);}
@@ -35,6 +36,10 @@
   .btn-ghost:hover{border-color:var(--blue);}
   .btn-block{width:100%;}
   @media (max-width:820px){ .nav-links{display:none;} }
+
+  .lang-switch{display:flex;gap:2px;background:var(--blue-tint2);border:1px solid var(--line);border-radius:9px;padding:2px;flex-shrink:0;}
+  .lang-btn{border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:800;padding:7px 9px;border-radius:7px;cursor:pointer;font-family:inherit;letter-spacing:.3px;}
+  .lang-btn.active{background:var(--navy);color:#fff;}
 
   .hero{background:linear-gradient(180deg,var(--blue-tint2) 0%,#fff 65%);padding:64px 0 40px;}
   .hero-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;}
@@ -102,16 +107,28 @@
   @media (max-width:820px){ .rev-grid{grid-template-columns:1fr 1fr;} }
   @media (max-width:560px){ .rev-grid{grid-template-columns:1fr;} }
   .rev-card{border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:#fff;}
-  .rev-card .stars{font-size:13px;margin-bottom:8px;display:block;}
+  .rev-card .stars{font-size:13px;margin-bottom:2px;display:block;}
   .rev-card p{font-size:13.5px;color:var(--ink);margin:0 0 10px;}
-  .rev-card .who{font-size:12.5px;color:var(--muted);font-weight:700;}
+  .rev-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .rev-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;background:linear-gradient(135deg,var(--blue),var(--navy));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+  .rev-who-wrap{min-width:0;}
+  .rev-card .who{font-size:12.5px;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rev-card .who a{color:var(--blue);text-decoration:none;}
+  .rev-card .who a:hover{text-decoration:underline;}
+  .rev-link-ic{font-size:11px;flex-shrink:0;}
   .rev-empty{color:var(--muted);font-size:14px;text-align:center;padding:20px 0;grid-column:1/-1;}
 
   .rev-form{max-width:480px;margin:0 auto;border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:var(--blue-tint2);}
-  .rev-form h3{margin:0 0 14px;font-size:15.5px;text-align:center;}
+  .rev-form h3{margin:0 0 4px;font-size:15.5px;text-align:center;}
+  .rev-form .hint{font-size:12px;color:var(--muted);text-align:center;margin:0 0 14px;}
   .star-pick{display:flex;justify-content:center;gap:6px;font-size:26px;margin-bottom:16px;cursor:pointer;color:#d1d9e6;}
   .star-pick span.sel{color:var(--gold);}
   .rev-form textarea{width:100%;background:#fff;border:1px solid var(--line);color:var(--ink);padding:11px 13px;border-radius:9px;font-size:13.5px;outline:none;font-family:inherit;resize:vertical;min-height:70px;margin-bottom:12px;}
+  .rev-form .field{margin-bottom:10px;}
+  .rev-form .field label{font-size:11.5px;}
+  .rev-photo-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .rev-photo-preview{width:46px;height:46px;border-radius:50%;object-fit:cover;background:#fff;border:1px dashed var(--line);flex-shrink:0;}
+  .rev-photo-btn{background:#fff;border:1px solid var(--line);color:var(--navy);border-radius:8px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
   .rev-msg{font-size:13px;text-align:center;margin-top:10px;display:none;}
 
   .collab{background:linear-gradient(135deg,var(--blue),var(--navy));color:#fff;border-radius:20px;margin:0 24px;padding:40px;text-align:center;max-width:calc(var(--maxw) - 0px);margin-left:auto;margin-right:auto;}
@@ -119,6 +136,8 @@
   .collab p{color:#dbe6fb;font-size:14.5px;max-width:520px;margin:0 auto 22px;}
   footer{padding:34px 24px 40px;text-align:center;color:var(--muted);font-size:13px;}
   footer a{color:var(--blue);font-weight:700;text-decoration:none;}
+
+  @media (max-width:560px){ .lang-switch{position:fixed;bottom:16px;right:16px;z-index:60;background:#fff;box-shadow:0 10px 26px -10px rgba(11,37,69,.35);} }
 </style>
 </head>
 <body>
@@ -127,14 +146,19 @@
   <div class="nav-row">
     <a class="brand" href="#top"><span class="mark">QR</span> QR Profile Card</a>
     <nav class="nav-links">
-      <a href="#features">Xüsusiyyətlər</a>
-      <a href="#how">Necə işləyir</a>
-      <a href="#reviews">Rəylər</a>
-      <a href="#collab">Əməkdaşlıq</a>
+      <a href="#features" data-i18n="nav_features">Xüsusiyyətlər</a>
+      <a href="#how" data-i18n="nav_how">Necə işləyir</a>
+      <a href="#reviews" data-i18n="nav_reviews">Rəylər</a>
+      <a href="#collab" data-i18n="nav_collab">Əməkdaşlıq</a>
     </nav>
     <div class="nav-cta">
-      <a class="btn btn-ghost" href="/">Daxil ol</a>
-      <a class="btn btn-primary" href="#register">Qeydiyyat</a>
+      <div class="lang-switch" id="langSwitch">
+        <button class="lang-btn" data-lang="az">AZ</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="ru">RU</button>
+      </div>
+      <a class="btn btn-ghost" href="/" data-i18n="nav_login">Daxil ol</a>
+      <a class="btn btn-primary" href="#register" data-i18n="nav_register">Qeydiyyat</a>
     </div>
   </div>
 </header>
@@ -143,16 +167,16 @@
 <section class="hero">
   <div class="container hero-grid">
     <div>
-      <h1>Bütün əlaqələrin, tək bir peşəkar profildə.</h1>
-      <p class="lead">Sosial şəbəkələrini, telefon nömrəni, iş nümunələrini və vizitkanı bir QR kod və bir link altında topla. Skan olunan kimi ziyarətçi hər şeyi anında görür.</p>
+      <h1 data-i18n="hero_title">Bütün əlaqələrin, tək bir peşəkar profildə.</h1>
+      <p class="lead" data-i18n="hero_lead">Sosial şəbəkələrini, telefon nömrəni, iş nümunələrini və vizitkanı bir QR kod və bir link altında topla. Skan olunan kimi ziyarətçi hər şeyi anında görür.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#register">Pulsuz qeydiyyatdan keç</a>
-        <a class="btn btn-ghost" href="#how">Necə işlədiyinə bax</a>
+        <a class="btn btn-primary" href="#register" data-i18n="hero_cta_primary">Pulsuz qeydiyyatdan keç</a>
+        <a class="btn btn-ghost" href="#how" data-i18n="hero_cta_secondary">Necə işlədiyinə bax</a>
       </div>
       <div class="stat-row">
-        <div class="stat"><b id="statUsers">—</b><span>aktiv istifadəçi</span></div>
-        <div class="stat"><b id="statRating">—</b><span>ortalama qiymət</span></div>
-        <div class="stat"><b id="statReviews">—</b><span>istifadəçi rəyi</span></div>
+        <div class="stat"><b id="statUsers">—</b><span data-i18n="stat_users">aktiv istifadəçi</span></div>
+        <div class="stat"><b id="statRating">—</b><span data-i18n="stat_rating">ortalama qiymət</span></div>
+        <div class="stat"><b id="statReviews">—</b><span data-i18n="stat_reviews">istifadəçi rəyi</span></div>
       </div>
     </div>
     <div class="mock-frame">
@@ -162,7 +186,7 @@
         <div class="mock-role"></div>
         <div class="mock-pills"><div class="mock-pill"></div><div class="mock-pill"></div><div class="mock-pill"></div><div class="mock-pill"></div></div>
         <div class="mock-qr"></div>
-        <div class="mock-caption">Skan et — profil açılır</div>
+        <div class="mock-caption" data-i18n="mock_caption">Skan et — profil açılır</div>
       </div>
     </div>
   </div>
@@ -171,16 +195,16 @@
 <section class="features" id="features">
   <div class="container">
     <div class="section-head">
-      <h2>Bir profildə hər şey</h2>
-      <p>Ayrı-ayrı linkləri paylaşmaq yerinə, hamısını bir səhifədə peşəkar şəkildə göstər.</p>
+      <h2 data-i18n="features_title">Bir profildə hər şey</h2>
+      <p data-i18n="features_sub">Ayrı-ayrı linkləri paylaşmaq yerinə, hamısını bir səhifədə peşəkar şəkildə göstər.</p>
     </div>
     <div class="feat-grid">
-      <div class="feat-card"><div class="feat-icon">🔗</div><h3>Bütün sosial şəbəkələr bir yerdə</h3><p>Instagram, WhatsApp, LinkedIn, telefon, ünvan — hamısı tək profildə, rəngli ikonlarla.</p></div>
-      <div class="feat-card"><div class="feat-icon">📱</div><h3>Çox-cihaz dəstəyi</h3><p>Eyni profili telefon və kompyuterdə paralel istifadə et, hər ikisində eyni məlumat görünür.</p></div>
-      <div class="feat-card"><div class="feat-icon">🖼️</div><h3>Albomlar</h3><p>İş nümunələrini, layihələrini şəkil və video albomları şəklində qalereyada göstər.</p></div>
-      <div class="feat-card"><div class="feat-icon">🗺️</div><h3>Xəritə və iş saatları</h3><p>Ünvanını əlavə et, ziyarətçi bir toxunuşla Google Maps-də tapsın, iş saatın avtomatik göstərilsin.</p></div>
-      <div class="feat-card"><div class="feat-icon">🏆</div><h3>Sertifikat və diplomlar</h3><p>Nailiyyətlərini, sertifikatlarını ayrıca qalereya bölmələrində nümayiş etdir.</p></div>
-      <div class="feat-card"><div class="feat-icon">✉️</div><h3>Birbaşa əlaqə forması</h3><p>Ziyarətçi profildən birbaşa sənə yaza bilər, mesaj birbaşa sənin email-inə düşür.</p></div>
+      <div class="feat-card"><div class="feat-icon">🔗</div><h3 data-i18n="feat1_title">Bütün sosial şəbəkələr bir yerdə</h3><p data-i18n="feat1_desc">Instagram, WhatsApp, LinkedIn, telefon, ünvan — hamısı tək profildə, rəngli ikonlarla.</p></div>
+      <div class="feat-card"><div class="feat-icon">📱</div><h3 data-i18n="feat2_title">Çox-cihaz dəstəyi</h3><p data-i18n="feat2_desc">Eyni profili telefon və kompyuterdə paralel istifadə et, hər ikisində eyni məlumat görünür.</p></div>
+      <div class="feat-card"><div class="feat-icon">🖼️</div><h3 data-i18n="feat3_title">Albomlar</h3><p data-i18n="feat3_desc">İş nümunələrini, layihələrini şəkil və video albomları şəklində qalereyada göstər.</p></div>
+      <div class="feat-card"><div class="feat-icon">🗺️</div><h3 data-i18n="feat4_title">Xəritə və iş saatları</h3><p data-i18n="feat4_desc">Ünvanını əlavə et, ziyarətçi bir toxunuşla Google Maps-də tapsın, iş saatın avtomatik göstərilsin.</p></div>
+      <div class="feat-card"><div class="feat-icon">🏆</div><h3 data-i18n="feat5_title">Sertifikat və diplomlar</h3><p data-i18n="feat5_desc">Nailiyyətlərini, sertifikatlarını ayrıca qalereya bölmələrində nümayiş etdir.</p></div>
+      <div class="feat-card"><div class="feat-icon">🌐</div><h3 data-i18n="feat6_title">3 dildə profil</h3><p data-i18n="feat6_desc">Bio və "Haqqımda" mətnini Azərbaycan, ingilis və rus dillərində yaz — xarici ziyarətçi öz dilində oxusun.</p></div>
     </div>
   </div>
 </section>
@@ -188,13 +212,13 @@
 <section id="how">
   <div class="container">
     <div class="section-head">
-      <h2>Necə işləyir</h2>
-      <p>Üç addımda hazır — texniki bilik tələb olunmur.</p>
+      <h2 data-i18n="how_title">Necə işləyir</h2>
+      <p data-i18n="how_sub">Üç addımda hazır — texniki bilik tələb olunmur.</p>
     </div>
     <div class="steps">
-      <div class="step"><div class="num">1</div><h3>Qeydiyyatdan keç</h3><p>Adını və email-ini yaz, sorğu göndər — hesabın həmin anda aktivləşir.</p></div>
-      <div class="step"><div class="num">2</div><h3>Profilini qur</h3><p>Şəklini, telefonun, sosial şəbəkələrini əlavə et — dəyişiklik dərhal görünür.</p></div>
-      <div class="step"><div class="num">3</div><h3>QR kodunu paylaş</h3><p>Vizitkana, vitrininə və ya Instagram bio-na yerləşdir, ziyarətçi skan edən kimi hər şeyi görür.</p></div>
+      <div class="step"><div class="num">1</div><h3 data-i18n="step1_title">Qeydiyyatdan keç</h3><p data-i18n="step1_desc">Adını və email-ini yaz, sorğu göndər — hesabın həmin anda aktivləşir.</p></div>
+      <div class="step"><div class="num">2</div><h3 data-i18n="step2_title">Profilini qur</h3><p data-i18n="step2_desc">Şəklini, telefonun, sosial şəbəkələrini əlavə et — dəyişiklik dərhal görünür.</p></div>
+      <div class="step"><div class="num">3</div><h3 data-i18n="step3_title">QR kodunu paylaş</h3><p data-i18n="step3_desc">Vizitkana, vitrininə və ya Instagram bio-na yerləşdir, ziyarətçi skan edən kimi hər şeyi görür.</p></div>
     </div>
   </div>
 </section>
@@ -202,38 +226,49 @@
 <section class="register" id="register">
   <div class="container">
     <div class="section-head">
-      <h2>Qeydiyyatdan keç</h2>
-      <p>Sorğunu göndər, hesabın dərhal aktivləşir — gözləmə yoxdur.</p>
+      <h2 data-i18n="register_title">Qeydiyyatdan keç</h2>
+      <p data-i18n="register_sub">Sorğunu göndər, hesabın dərhal aktivləşir — gözləmə yoxdur.</p>
     </div>
 
     <div class="reg-card">
       <div id="form">
-        <div class="field">
-          <label>Adın / Brend adın</label>
-          <input type="text" id="ownerName" placeholder="məs: Elvin Məmmədov / Casa Eleganza">
+        <div id="googleSignupBox" style="display:none;margin-bottom:16px;">
+          <div id="googleBtnContainer" style="display:flex;justify-content:center;"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:12px;" data-i18n="or_divider">
+            <div style="flex:1;height:1px;background:var(--line);"></div>
+            <span data-i18n="or">və ya</span>
+            <div style="flex:1;height:1px;background:var(--line);"></div>
+          </div>
+        </div>
+        <div class="field" id="googleVerifiedNote" style="display:none;background:#e8f7ee;border:1px solid #bbe8cc;border-radius:9px;padding:10px 12px;font-size:12.5px;color:#166534;">
+          ✓ <span data-i18n="google_verified">Google hesabından təsdiqləndi</span>
         </div>
         <div class="field">
-          <label>Email (məcburi)</label>
-          <input type="email" id="ownerEmail" placeholder="sənin.email@gmail.com">
+          <label data-i18n="label_name">Adın / Brend adın</label>
+          <input type="text" id="ownerName" data-i18n-placeholder="placeholder_name" placeholder="məs: Elvin Məmmədov / Casa Eleganza">
         </div>
         <div class="field">
-          <label>Telefon (istəyə görə)</label>
+          <label data-i18n="label_email">Email (məcburi)</label>
+          <input type="email" id="ownerEmail" data-i18n-placeholder="placeholder_email" placeholder="sənin.email@gmail.com">
+        </div>
+        <div class="field">
+          <label data-i18n="label_phone">Telefon (istəyə görə)</label>
           <input type="text" id="contactInfo" placeholder="+994 XX XXX XX XX">
         </div>
         <div class="field">
-          <label>Öz açarını yaz (istəyə görə)</label>
-          <input type="text" id="customKey" placeholder="boş saxlasan avtomatik yaranır" style="text-transform:uppercase;">
+          <label data-i18n="label_customkey">Öz açarını yaz (istəyə görə)</label>
+          <input type="text" id="customKey" data-i18n-placeholder="placeholder_customkey" placeholder="boş saxlasan avtomatik yaranır" style="text-transform:uppercase;">
         </div>
-        <button class="btn btn-primary btn-block" onclick="submitRequest()">Sorğu göndər</button>
+        <button class="btn btn-primary btn-block" onclick="submitRequest()" data-i18n="btn_submit_request">Sorğu göndər</button>
         <div class="err" id="errMsg"></div>
       </div>
 
       <div class="result" id="result">
         <div class="check">✓</div>
-        <h3>Qeydiyyatın tamamlandı</h3>
-        <p>Hesabın artıq aktivdir. Açarını email-inə də göndərdik (istifadə qaydası ilə birlikdə).</p>
+        <h3 data-i18n="result_title">Qeydiyyatın tamamlandı</h3>
+        <p data-i18n="result_desc">Hesabın artıq aktivdir. Açarını email-inə də göndərdik (istifadə qaydası ilə birlikdə).</p>
         <div class="key-box" id="resultKey"></div>
-        <a class="btn btn-primary btn-block" id="openProfileBtn" href="#">Profilimi indi qur →</a>
+        <a class="btn btn-primary btn-block" id="openProfileBtn" href="#" data-i18n="btn_open_profile">Profilimi indi qur →</a>
       </div>
     </div>
   </div>
@@ -242,27 +277,40 @@
 <section id="reviews">
   <div class="container">
     <div class="section-head">
-      <h2>İstifadəçilər nə deyir</h2>
-      <p>Platforma haqqında rəylər — həqiqi istifadəçilərdən.</p>
+      <h2 data-i18n="reviews_title">İstifadəçilər nə deyir</h2>
+      <p data-i18n="reviews_sub">Platforma haqqında rəylər — həqiqi istifadəçilərdən.</p>
     </div>
     <div class="reviews-summary">
       <div class="rev-score"><b id="revAvg">—</b></div>
       <div>
         <div class="stars" id="revStars">☆☆☆☆☆</div>
-        <div style="color:var(--muted);font-size:13px;" id="revCount">Hələ rəy yoxdur</div>
+        <div style="color:var(--muted);font-size:13px;" id="revCount" data-i18n="reviews_empty">Hələ rəy yoxdur</div>
       </div>
     </div>
     <div class="rev-grid" id="revGrid">
-      <div class="rev-empty">Yüklənir...</div>
+      <div class="rev-empty" data-i18n="reviews_loading">Yüklənir...</div>
     </div>
     <div class="rev-form">
-      <h3>Rəyini yaz</h3>
+      <h3 data-i18n="rev_form_title">Rəyini yaz</h3>
+      <p class="hint" data-i18n="rev_form_hint">Şəklin və profil linkin rəyinin yanında görünsün</p>
       <div class="star-pick" id="starPick">
         <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
       </div>
-      <div class="field"><input type="text" id="revName" placeholder="Adın"></div>
-      <textarea id="revComment" placeholder="Fikrini yaz..."></textarea>
-      <button class="btn btn-primary btn-block" onclick="submitReview()">Rəyi göndər</button>
+      <div class="rev-photo-row">
+        <img class="rev-photo-preview" id="revPhotoPreview" alt="">
+        <label class="rev-photo-btn" for="revPhotoInput" data-i18n="rev_photo_btn">📷 Şəkil seç</label>
+        <input type="file" id="revPhotoInput" accept="image/*" style="display:none;">
+      </div>
+      <div class="field"><input type="text" id="revName" data-i18n-placeholder="placeholder_rev_name" placeholder="Adın"></div>
+      <button type="button" class="rev-photo-btn" id="revLinkToggle" style="width:100%;margin-bottom:10px;" onclick="toggleRevLinkBox()">
+        🔗 <span data-i18n="rev_add_link_btn">QR profilimin linkini əlavə et</span>
+      </button>
+      <div id="revLinkBox" style="display:none;">
+        <div class="field"><input type="text" id="revQrSlug" data-i18n-placeholder="placeholder_rev_qrslug" placeholder="QR profilinin linki — məs: https://sayt.az/p/elvin-mammadov"></div>
+        <div class="field"><input type="text" id="revSocialUrl" data-i18n-placeholder="placeholder_rev_social" placeholder="və ya sosial şəbəkə linki (Instagram/Facebook/LinkedIn)"></div>
+      </div>
+      <textarea id="revComment" data-i18n-placeholder="placeholder_rev_comment" placeholder="Fikrini yaz..."></textarea>
+      <button class="btn btn-primary btn-block" onclick="submitReview()" data-i18n="btn_submit_review">Rəyi göndər</button>
       <div class="rev-msg" id="revMsg"></div>
     </div>
   </div>
@@ -270,19 +318,189 @@
 
 <section id="collab">
   <div class="collab">
-    <h2>Biznesin üçün əməkdaşlıq</h2>
-    <p>Agentlik, mağaza şəbəkəsi və ya çoxlu işçisi olan biznessən? Toplu lisenziya, xüsusi dizayn və inteqrasiya barədə birbaşa danış.</p>
-    <a class="btn" style="background:#fff;color:var(--navy);" id="collabBtn" href="#register">Bizimlə əlaqə saxla</a>
+    <h2 data-i18n="collab_title">Biznesin üçün əməkdaşlıq</h2>
+    <p data-i18n="collab_desc">Agentlik, mağaza şəbəkəsi və ya çoxlu işçisi olan biznessən? Toplu lisenziya, xüsusi dizayn və inteqrasiya barədə birbaşa danış.</p>
+    <a class="btn" style="background:#fff;color:var(--navy);" id="collabBtn" href="#register" data-i18n="collab_btn">Bizimlə əlaqə saxla</a>
   </div>
 </section>
 
 <footer>
-  © <span id="year"></span> QR Profile Card · <a href="/">Daxil ol</a> · <a href="/admin">Admin</a>
+  © <span id="year"></span> QR Profile Card · <a href="/" data-i18n="nav_login">Daxil ol</a> · <a href="/admin">Admin</a>
 </footer>
 
 <script>
 const FN = '/.netlify/functions';
 document.getElementById('year').textContent = new Date().getFullYear();
+
+// ==================== I18N ====================
+const I18N = {
+  az: {
+    page_title: 'QR Profile Card — bütün sosial şəbəkələrin, tək bir peşəkar profildə',
+    page_desc: 'Sosial şəbəkələrini, əlaqə məlumatlarını, albomlarını və vizitkanı tək bir QR kod və link altında peşəkar şəkildə təqdim et.',
+    nav_features: 'Xüsusiyyətlər', nav_how: 'Necə işləyir', nav_reviews: 'Rəylər', nav_collab: 'Əməkdaşlıq',
+    nav_login: 'Daxil ol', nav_register: 'Qeydiyyat',
+    hero_title: 'Bütün əlaqələrin, tək bir peşəkar profildə.',
+    hero_lead: 'Sosial şəbəkələrini, telefon nömrəni, iş nümunələrini və vizitkanı bir QR kod və bir link altında topla. Skan olunan kimi ziyarətçi hər şeyi anında görür.',
+    hero_cta_primary: 'Pulsuz qeydiyyatdan keç', hero_cta_secondary: 'Necə işlədiyinə bax',
+    stat_users: 'aktiv istifadəçi', stat_rating: 'ortalama qiymət', stat_reviews: 'istifadəçi rəyi',
+    mock_caption: 'Skan et — profil açılır',
+    features_title: 'Bir profildə hər şey', features_sub: 'Ayrı-ayrı linkləri paylaşmaq yerinə, hamısını bir səhifədə peşəkar şəkildə göstər.',
+    feat1_title: 'Bütün sosial şəbəkələr bir yerdə', feat1_desc: 'Instagram, WhatsApp, LinkedIn, telefon, ünvan — hamısı tək profildə, rəngli ikonlarla.',
+    feat2_title: 'Çox-cihaz dəstəyi', feat2_desc: 'Eyni profili telefon və kompyuterdə paralel istifadə et, hər ikisində eyni məlumat görünür.',
+    feat3_title: 'Albomlar', feat3_desc: 'İş nümunələrini, layihələrini şəkil və video albomları şəklində qalereyada göstər.',
+    feat4_title: 'Xəritə və iş saatları', feat4_desc: 'Ünvanını əlavə et, ziyarətçi bir toxunuşla Google Maps-də tapsın, iş saatın avtomatik göstərilsin.',
+    feat5_title: 'Sertifikat və diplomlar', feat5_desc: 'Nailiyyətlərini, sertifikatlarını ayrıca qalereya bölmələrində nümayiş etdir.',
+    feat6_title: '3 dildə profil', feat6_desc: 'Bio və "Haqqımda" mətnini Azərbaycan, ingilis və rus dillərində yaz — xarici ziyarətçi öz dilində oxusun.',
+    how_title: 'Necə işləyir', how_sub: 'Üç addımda hazır — texniki bilik tələb olunmur.',
+    step1_title: 'Qeydiyyatdan keç', step1_desc: 'Adını və email-ini yaz, sorğu göndər — hesabın həmin anda aktivləşir.',
+    step2_title: 'Profilini qur', step2_desc: 'Şəklini, telefonun, sosial şəbəkələrini əlavə et — dəyişiklik dərhal görünür.',
+    step3_title: 'QR kodunu paylaş', step3_desc: 'Vizitkana, vitrininə və ya Instagram bio-na yerləşdir, ziyarətçi skan edən kimi hər şeyi görür.',
+    register_title: 'Qeydiyyatdan keç', register_sub: 'Sorğunu göndər, hesabın dərhal aktivləşir — gözləmə yoxdur.',
+    label_name: 'Adın / Brend adın', placeholder_name: 'məs: Elvin Məmmədov / Casa Eleganza',
+    label_email: 'Email (məcburi)', placeholder_email: 'sənin.email@gmail.com',
+    label_phone: 'Telefon (istəyə görə)', label_customkey: 'Öz açarını yaz (istəyə görə)', placeholder_customkey: 'boş saxlasan avtomatik yaranır',
+    btn_submit_request: 'Sorğu göndər',
+    result_title: 'Qeydiyyatın tamamlandı', result_desc: 'Hesabın artıq aktivdir. Açarını email-inə də göndərdik (istifadə qaydası ilə birlikdə).',
+    btn_open_profile: 'Profilimi indi qur →',
+    reviews_title: 'İstifadəçilər nə deyir', reviews_sub: 'Platforma haqqında rəylər — həqiqi istifadəçilərdən.',
+    reviews_empty: 'Hələ rəy yoxdur', reviews_loading: 'Yüklənir...', reviews_load_failed: 'Rəylər yüklənmədi.', reviews_none: 'Hələ rəy yoxdur — birinci ol!',
+    review_suffix: ' rəy', qr_profile_label: 'QR profili', social_label: 'Sosial şəbəkə',
+    rev_form_title: 'Rəyini yaz', rev_form_hint: 'Şəklin və profil linkin rəyinin yanında görünsün',
+    rev_photo_btn: '📷 Şəkil seç', rev_add_link_btn: 'QR profilimin linkini əlavə et',
+    placeholder_rev_name: 'Adın', placeholder_rev_qrslug: 'QR profilinin açarı (varsa) — məs: elvin-mammadov',
+    placeholder_rev_social: 'Sosial şəbəkə linki (Instagram/Facebook/LinkedIn)', placeholder_rev_comment: 'Fikrini yaz...',
+    btn_submit_review: 'Rəyi göndər',
+    collab_title: 'Biznesin üçün əməkdaşlıq', collab_desc: 'Agentlik, mağaza şəbəkəsi və ya çoxlu işçisi olan biznessən? Toplu lisenziya, xüsusi dizayn və inteqrasiya barədə birbaşa danış.',
+    collab_btn: 'Bizimlə əlaqə saxla', collab_whatsapp_msg: 'Salam, biznesim üçün QR Profile Card ilə əməkdaşlıq etmək istəyirəm.',
+    err_name_required: 'Zəhmət olmasa adını yaz.', err_email_invalid: 'Zəhmət olmasa düzgün email yaz.',
+    err_key_taken: 'Bu açar artıq götürülüb, başqa bir açar yaz.', err_generic: 'Xəta baş verdi, bir az sonra cəhd et.', err_network: 'Şəbəkə xətası.',
+    rev_err_name: 'Zəhmət olmasa adını yaz.', rev_err_comment: 'Zəhmət olmasa rəyini yaz.',
+    rev_sending: 'Göndərilir...', rev_success: 'Təşəkkürlər! Rəyin əlavə olundu.',
+    or: 'və ya', google_verified: 'Google hesabından təsdiqləndi', err_google_taken: 'Bu Google hesabı ilə artıq qeydiyyat var. "Daxil ol" düyməsindən profilinə keç.'
+  },
+  en: {
+    page_title: 'QR Profile Card — all your social links, one professional profile',
+    page_desc: 'Present your social links, contact details, galleries and business card under one QR code and link.',
+    nav_features: 'Features', nav_how: 'How it works', nav_reviews: 'Reviews', nav_collab: 'Partnership',
+    nav_login: 'Log in', nav_register: 'Sign up',
+    hero_title: 'All your links, one professional profile.',
+    hero_lead: 'Collect your social links, phone number, work samples and business card under one QR code and one link. The moment it gets scanned, the visitor sees everything instantly.',
+    hero_cta_primary: 'Sign up for free', hero_cta_secondary: 'See how it works',
+    stat_users: 'active users', stat_rating: 'average rating', stat_reviews: 'user reviews',
+    mock_caption: 'Scan — the profile opens',
+    features_title: 'Everything in one profile', features_sub: 'Instead of sharing separate links, show everything on one professional page.',
+    feat1_title: 'All social networks in one place', feat1_desc: 'Instagram, WhatsApp, LinkedIn, phone, address — all in one profile, with colorful icons.',
+    feat2_title: 'Multi-device support', feat2_desc: 'Use the same profile on your phone and computer at the same time — both show the same data.',
+    feat3_title: 'Albums', feat3_desc: 'Showcase your work samples and projects as photo and video albums in a gallery.',
+    feat4_title: 'Map & working hours', feat4_desc: 'Add your address so visitors can find you on Google Maps in one tap, with your hours shown automatically.',
+    feat5_title: 'Certificates & diplomas', feat5_desc: 'Display your achievements and certificates in dedicated gallery sections.',
+    feat6_title: 'Profile in 3 languages', feat6_desc: 'Write your bio and "About" text in Azerbaijani, English and Russian — foreign visitors read it in their own language.',
+    how_title: 'How it works', how_sub: 'Ready in three steps — no technical knowledge required.',
+    step1_title: 'Sign up', step1_desc: 'Enter your name and email, submit — your account activates instantly.',
+    step2_title: 'Build your profile', step2_desc: 'Add your photo, phone number, social links — changes appear immediately.',
+    step3_title: 'Share your QR code', step3_desc: 'Put it on your business card, storefront or Instagram bio — visitors see everything the moment they scan it.',
+    register_title: 'Sign up', register_sub: 'Submit the form, your account activates instantly — no waiting.',
+    label_name: 'Your name / brand name', placeholder_name: 'e.g. Elvin Mammadov / Casa Eleganza',
+    label_email: 'Email (required)', placeholder_email: 'your.email@gmail.com',
+    label_phone: 'Phone (optional)', label_customkey: 'Choose your own key (optional)', placeholder_customkey: 'leave empty to generate automatically',
+    btn_submit_request: 'Submit request',
+    result_title: 'Registration complete', result_desc: 'Your account is now active. We also sent your key to your email (with usage instructions).',
+    btn_open_profile: 'Set up my profile now →',
+    reviews_title: 'What users say', reviews_sub: 'Reviews about the platform — from real users.',
+    reviews_empty: 'No reviews yet', reviews_loading: 'Loading...', reviews_load_failed: 'Reviews failed to load.', reviews_none: 'No reviews yet — be the first!',
+    review_suffix: ' reviews', qr_profile_label: 'QR profile', social_label: 'Social network',
+    rev_form_title: 'Write a review', rev_form_hint: 'Your photo and profile link will appear next to your review',
+    rev_photo_btn: '📷 Choose photo', rev_add_link_btn: 'Add my QR profile link',
+    placeholder_rev_name: 'Your name', placeholder_rev_qrslug: 'Your QR profile key (if any) — e.g. elvin-mammadov',
+    placeholder_rev_social: 'Social network link (Instagram/Facebook/LinkedIn)', placeholder_rev_comment: 'Write your feedback...',
+    btn_submit_review: 'Submit review',
+    collab_title: 'Partnership for your business', collab_desc: 'Are you an agency, a store chain, or a business with many employees? Talk to us directly about bulk licenses, custom design and integrations.',
+    collab_btn: 'Contact us', collab_whatsapp_msg: 'Hi, I would like to partner with QR Profile Card for my business.',
+    err_name_required: 'Please enter your name.', err_email_invalid: 'Please enter a valid email.',
+    err_key_taken: 'This key is already taken, please choose another one.', err_generic: 'Something went wrong, please try again shortly.', err_network: 'Network error.',
+    rev_err_name: 'Please enter your name.', rev_err_comment: 'Please write your feedback.',
+    rev_sending: 'Sending...', rev_success: 'Thank you! Your review has been added.',
+    or: 'or', google_verified: 'Verified via Google account', err_google_taken: 'This Google account is already registered. Use "Log in" to open your profile.'
+  },
+  ru: {
+    page_title: 'QR Profile Card — все твои соцсети в одном профессиональном профиле',
+    page_desc: 'Покажи свои соцсети, контакты, галереи и визитку под одним QR-кодом и одной ссылкой.',
+    nav_features: 'Возможности', nav_how: 'Как это работает', nav_reviews: 'Отзывы', nav_collab: 'Сотрудничество',
+    nav_login: 'Войти', nav_register: 'Регистрация',
+    hero_title: 'Все твои контакты в одном профессиональном профиле.',
+    hero_lead: 'Собери соцсети, номер телефона, примеры работ и визитку под одним QR-кодом и одной ссылкой. После сканирования посетитель сразу видит всё.',
+    hero_cta_primary: 'Зарегистрироваться бесплатно', hero_cta_secondary: 'Посмотреть как это работает',
+    stat_users: 'активных пользователей', stat_rating: 'средняя оценка', stat_reviews: 'отзывов пользователей',
+    mock_caption: 'Сканируй — открывается профиль',
+    features_title: 'Всё в одном профиле', features_sub: 'Вместо того чтобы делиться отдельными ссылками, покажи всё на одной профессиональной странице.',
+    feat1_title: 'Все соцсети в одном месте', feat1_desc: 'Instagram, WhatsApp, LinkedIn, телефон, адрес — всё в одном профиле с цветными иконками.',
+    feat2_title: 'Поддержка нескольких устройств', feat2_desc: 'Используй один и тот же профиль на телефоне и компьютере — везде одинаковые данные.',
+    feat3_title: 'Альбомы', feat3_desc: 'Покажи примеры работ и проекты в виде фото- и видеоальбомов в галерее.',
+    feat4_title: 'Карта и часы работы', feat4_desc: 'Добавь адрес — посетитель найдёт тебя на Google Maps в один клик, часы работы отображаются автоматически.',
+    feat5_title: 'Сертификаты и дипломы', feat5_desc: 'Покажи свои достижения и сертификаты в отдельных разделах галереи.',
+    feat6_title: 'Профиль на 3 языках', feat6_desc: 'Напиши био и текст "Обо мне" на азербайджанском, английском и русском — иностранный посетитель прочитает на своём языке.',
+    how_title: 'Как это работает', how_sub: 'Готово за три шага — технические знания не нужны.',
+    step1_title: 'Зарегистрируйся', step1_desc: 'Введи имя и email, отправь заявку — аккаунт активируется сразу же.',
+    step2_title: 'Настрой профиль', step2_desc: 'Добавь фото, телефон, соцсети — изменения видны мгновенно.',
+    step3_title: 'Поделись QR-кодом', step3_desc: 'Размести на визитке, витрине или в био Instagram — посетитель увидит всё сразу после сканирования.',
+    register_title: 'Регистрация', register_sub: 'Отправь заявку — аккаунт активируется сразу, без ожидания.',
+    label_name: 'Имя / название бренда', placeholder_name: 'напр.: Эльвин Мамедов / Casa Eleganza',
+    label_email: 'Email (обязательно)', placeholder_email: 'твой.email@gmail.com',
+    label_phone: 'Телефон (по желанию)', label_customkey: 'Свой ключ (по желанию)', placeholder_customkey: 'оставь пустым — сгенерируется автоматически',
+    btn_submit_request: 'Отправить заявку',
+    result_title: 'Регистрация завершена', result_desc: 'Твой аккаунт уже активен. Мы также отправили ключ на твой email (с инструкцией по использованию).',
+    btn_open_profile: 'Настроить профиль сейчас →',
+    reviews_title: 'Что говорят пользователи', reviews_sub: 'Отзывы о платформе — от реальных пользователей.',
+    reviews_empty: 'Пока нет отзывов', reviews_loading: 'Загрузка...', reviews_load_failed: 'Не удалось загрузить отзывы.', reviews_none: 'Пока нет отзывов — будь первым!',
+    review_suffix: ' отзывов', qr_profile_label: 'QR-профиль', social_label: 'Соцсеть',
+    rev_form_title: 'Оставить отзыв', rev_form_hint: 'Твоё фото и ссылка на профиль появятся рядом с отзывом',
+    rev_photo_btn: '📷 Выбрать фото', rev_add_link_btn: 'Добавить ссылку на мой QR-профиль',
+    placeholder_rev_name: 'Твоё имя', placeholder_rev_qrslug: 'Ключ твоего QR-профиля (если есть) — напр. elvin-mammadov',
+    placeholder_rev_social: 'Ссылка на соцсеть (Instagram/Facebook/LinkedIn)', placeholder_rev_comment: 'Напиши свой отзыв...',
+    btn_submit_review: 'Отправить отзыв',
+    collab_title: 'Сотрудничество для бизнеса', collab_desc: 'Агентство, сеть магазинов или бизнес с множеством сотрудников? Обсудим напрямую массовые лицензии, индивидуальный дизайн и интеграции.',
+    collab_btn: 'Связаться с нами', collab_whatsapp_msg: 'Здравствуйте, хочу сотрудничать с QR Profile Card для своего бизнеса.',
+    err_name_required: 'Пожалуйста, введи имя.', err_email_invalid: 'Пожалуйста, введи корректный email.',
+    err_key_taken: 'Этот ключ уже занят, выбери другой.', err_generic: 'Произошла ошибка, попробуй чуть позже.', err_network: 'Ошибка сети.',
+    rev_err_name: 'Пожалуйста, введи имя.', rev_err_comment: 'Пожалуйста, напиши отзыв.',
+    rev_sending: 'Отправка...', rev_success: 'Спасибо! Твой отзыв добавлен.',
+    or: 'или', google_verified: 'Подтверждено через Google', err_google_taken: 'Этот Google-аккаунт уже зарегистрирован. Используй "Войти", чтобы открыть профиль.'
+  }
+};
+
+function detectLang() {
+  const saved = localStorage.getItem('qrlang');
+  if (saved && I18N[saved]) return saved;
+  const nav = (navigator.language || 'az').toLowerCase();
+  if (nav.startsWith('ru')) return 'ru';
+  if (nav.startsWith('en')) return 'en';
+  return 'az';
+}
+let currentLang = detectLang();
+
+function applyLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('qrlang', lang);
+  document.documentElement.lang = lang;
+  const dict = I18N[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) el.textContent = dict[key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
+  });
+  const metaDesc = document.querySelector('[data-i18n-content="page_desc"]');
+  if (metaDesc) metaDesc.setAttribute('content', dict.page_desc);
+  document.title = dict.page_title;
+  document.querySelectorAll('#langSwitch .lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  const revCount = document.getElementById('revCount');
+  if (revCount && revCount.dataset.count === undefined) revCount.textContent = dict.reviews_empty;
+  loadReviews();
+}
+document.querySelectorAll('#langSwitch .lang-btn').forEach(b => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+// ================== /I18N ==================
 
 fetch(`${FN}/platform?action=stats`).then(r => r.json()).then(j => {
   document.getElementById('statUsers').textContent = (j.totalUsers || 0) + '+';
@@ -293,23 +511,45 @@ fetch(`${FN}/platform?action=stats`).then(r => r.json()).then(j => {
 fetch(`${FN}/public-config`).then(r => r.json()).then(j => {
   if (j.adminContactPhone) {
     const digits = j.adminContactPhone.replace(/[^\d+]/g, '').replace('+', '');
-    const msg = encodeURIComponent('Salam, biznesim üçün QR Profile Card ilə əməkdaşlıq etmək istəyirəm.');
-    document.getElementById('collabBtn').href = `https://wa.me/${digits}?text=${msg}`;
-    document.getElementById('collabBtn').target = '_blank';
+    document.getElementById('collabBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      const msg = encodeURIComponent(I18N[currentLang].collab_whatsapp_msg);
+      window.open(`https://wa.me/${digits}?text=${msg}`, '_blank');
+    });
+  }
+  if (j.googleClientId && window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({ client_id: j.googleClientId, callback: handleGoogleSignup });
+    document.getElementById('googleSignupBox').style.display = 'block';
+    google.accounts.id.renderButton(document.getElementById('googleBtnContainer'), {
+      theme: 'outline', size: 'large', text: 'signup_with', shape: 'pill', width: 260
+    });
   }
 }).catch(() => {});
 
+let googleIdToken = '';
+function handleGoogleSignup(response) {
+  googleIdToken = response.credential;
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    if (payload.name && !document.getElementById('ownerName').value) document.getElementById('ownerName').value = payload.name;
+    if (payload.email) document.getElementById('ownerEmail').value = payload.email;
+    document.getElementById('ownerEmail').setAttribute('readonly', 'readonly');
+    document.getElementById('googleVerifiedNote').style.display = 'block';
+  } catch (e) {}
+}
+
 async function submitRequest() {
+  const t = I18N[currentLang];
   const owner_name = document.getElementById('ownerName').value.trim();
   const owner_email = document.getElementById('ownerEmail').value.trim();
   const contact_info = document.getElementById('contactInfo').value.trim();
   const custom_key = document.getElementById('customKey').value.trim();
   const errMsg = document.getElementById('errMsg');
   errMsg.style.display = 'none';
-  if (!owner_name) { errMsg.textContent = 'Zəhmət olmasa adını yaz.'; errMsg.style.display = 'block'; return; }
-  if (!owner_email || !owner_email.includes('@')) { errMsg.textContent = 'Zəhmət olmasa düzgün email yaz.'; errMsg.style.display = 'block'; return; }
+  if (!owner_name) { errMsg.textContent = t.err_name_required; errMsg.style.display = 'block'; return; }
+  if (!owner_email || !owner_email.includes('@')) { errMsg.textContent = t.err_email_invalid; errMsg.style.display = 'block'; return; }
   try {
-    const r = await fetch(`${FN}/request-license`, { method: 'POST', body: JSON.stringify({ owner_name, owner_email, contact_info, custom_key }) });
+    const r = await fetch(`${FN}/request-license`, { method: 'POST', body: JSON.stringify({ owner_name, owner_email, contact_info, custom_key, google_id_token: googleIdToken || undefined }) });
     const j = await r.json();
     if (j.success) {
       document.getElementById('form').style.display = 'none';
@@ -317,12 +557,14 @@ async function submitRequest() {
       document.getElementById('resultKey').textContent = j.license_key;
       document.getElementById('openProfileBtn').href = j.activateUrl || `/?key=${encodeURIComponent(j.license_key)}`;
     } else if (j.reason === 'key_taken') {
-      errMsg.textContent = 'Bu açar artıq götürülüb, başqa bir açar yaz.'; errMsg.style.display = 'block';
+      errMsg.textContent = t.err_key_taken; errMsg.style.display = 'block';
+    } else if (j.reason === 'google_already_registered') {
+      errMsg.textContent = t.err_google_taken; errMsg.style.display = 'block';
     } else {
-      errMsg.textContent = 'Xəta baş verdi, bir az sonra cəhd et.'; errMsg.style.display = 'block';
+      errMsg.textContent = t.err_generic; errMsg.style.display = 'block';
     }
   } catch (e) {
-    errMsg.textContent = 'Şəbəkə xətası.'; errMsg.style.display = 'block';
+    errMsg.textContent = t.err_network; errMsg.style.display = 'block';
   }
 }
 
@@ -338,6 +580,7 @@ paintStars();
 function starsHtml(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
 
 async function loadReviews() {
+  const t = I18N[currentLang];
   const grid = document.getElementById('revGrid');
   try {
     const [statsR, listR] = await Promise.all([
@@ -346,51 +589,107 @@ async function loadReviews() {
     ]);
     document.getElementById('revAvg').textContent = statsR.avgRating ? statsR.avgRating.toFixed(1) : '—';
     document.getElementById('revStars').textContent = starsHtml(Math.round(statsR.avgRating || 0));
-    document.getElementById('revCount').textContent = (statsR.totalReviews || 0) + ' rəy';
+    const revCount = document.getElementById('revCount');
+    revCount.dataset.count = '1';
+    revCount.textContent = (statsR.totalReviews || 0) + t.review_suffix;
 
     const reviews = listR.reviews || [];
     if (!reviews.length) {
-      grid.innerHTML = '<div class="rev-empty">Hələ rəy yoxdur — birinci ol!</div>';
+      grid.innerHTML = `<div class="rev-empty">${t.reviews_none}</div>`;
       return;
     }
-    grid.innerHTML = reviews.slice(0, 9).map(rv => `
+    grid.innerHTML = reviews.slice(0, 9).map(rv => {
+      const profileLink = rv.qr_profile_url || rv.social_url || '';
+      const avatarHtml = rv.avatar_url
+        ? `<img class="rev-avatar" src="${escapeHtml(rv.avatar_url)}" alt="">`
+        : `<div class="rev-avatar">${escapeHtml((rv.name || '?').trim().slice(0, 1).toUpperCase())}</div>`;
+      const linkTitle = rv.qr_profile_url ? t.qr_profile_label : t.social_label;
+      const nameHtml = profileLink
+        ? `<a href="${escapeHtml(profileLink)}" target="_blank" rel="noopener nofollow">${escapeHtml(rv.name)}</a> <span class="rev-link-ic" title="${linkTitle}">🔗</span>`
+        : escapeHtml(rv.name);
+      return `
       <div class="rev-card">
-        <span class="stars">${starsHtml(rv.rating)}</span>
+        <div class="rev-head">
+          ${profileLink ? `<a href="${escapeHtml(profileLink)}" target="_blank" rel="noopener nofollow">${avatarHtml}</a>` : avatarHtml}
+          <div class="rev-who-wrap">
+            <span class="stars">${starsHtml(rv.rating)}</span>
+            <div class="who">${nameHtml}</div>
+          </div>
+        </div>
         <p>${escapeHtml(rv.comment)}</p>
-        <div class="who">${escapeHtml(rv.name)}</div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   } catch (e) {
-    grid.innerHTML = '<div class="rev-empty">Rəylər yüklənmədi.</div>';
+    grid.innerHTML = `<div class="rev-empty">${t.reviews_load_failed}</div>`;
   }
 }
 function escapeHtml(s) { return String(s || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
-loadReviews();
+
+function toggleRevLinkBox() {
+  const box = document.getElementById('revLinkBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+let revAvatarDataUri = '';
+document.getElementById('revPhotoInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    img.onload = () => {
+      const size = 160;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      revAvatarDataUri = canvas.toDataURL('image/jpeg', 0.82);
+      document.getElementById('revPhotoPreview').src = revAvatarDataUri;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
 
 async function submitReview() {
+  const t = I18N[currentLang];
   const name = document.getElementById('revName').value.trim();
   const comment = document.getElementById('revComment').value.trim();
+  const qr_slug = document.getElementById('revQrSlug').value.trim();
+  const social_url = document.getElementById('revSocialUrl').value.trim();
   const msg = document.getElementById('revMsg');
   msg.style.display = 'block';
-  if (!name || name.length < 2) { msg.style.color = '#dc2626'; msg.textContent = 'Zəhmət olmasa adını yaz.'; return; }
-  if (!comment || comment.length < 3) { msg.style.color = '#dc2626'; msg.textContent = 'Zəhmət olmasa rəyini yaz.'; return; }
-  msg.style.color = 'var(--muted)'; msg.textContent = 'Göndərilir...';
+  if (!name || name.length < 2) { msg.style.color = '#dc2626'; msg.textContent = t.rev_err_name; return; }
+  if (!comment || comment.length < 3) { msg.style.color = '#dc2626'; msg.textContent = t.rev_err_comment; return; }
+  msg.style.color = 'var(--muted)'; msg.textContent = t.rev_sending;
   try {
-    const r = await fetch(`${FN}/platform`, { method: 'POST', body: JSON.stringify({ name, rating: pickedRating, comment }) });
+    const r = await fetch(`${FN}/platform`, {
+      method: 'POST',
+      body: JSON.stringify({ name, rating: pickedRating, comment, qr_slug, social_url, avatar_base64: revAvatarDataUri || undefined })
+    });
     const j = await r.json();
     if (j.success) {
-      msg.style.color = '#16a34a'; msg.textContent = 'Təşəkkürlər! Rəyin əlavə olundu.';
+      msg.style.color = '#16a34a'; msg.textContent = t.rev_success;
       document.getElementById('revName').value = '';
       document.getElementById('revComment').value = '';
+      document.getElementById('revQrSlug').value = '';
+      document.getElementById('revSocialUrl').value = '';
+      document.getElementById('revPhotoInput').value = '';
+      document.getElementById('revPhotoPreview').src = '';
+      revAvatarDataUri = '';
       pickedRating = 5; paintStars();
       loadReviews();
     } else {
-      msg.style.color = '#dc2626'; msg.textContent = 'Xəta baş verdi, bir az sonra cəhd et.';
+      msg.style.color = '#dc2626'; msg.textContent = t.err_generic;
     }
   } catch (e) {
-    msg.style.color = '#dc2626'; msg.textContent = 'Şəbəkə xətası.';
+    msg.style.color = '#dc2626'; msg.textContent = t.err_network;
   }
 }
+
+applyLang(currentLang);
 </script>
 </body>
 </html>

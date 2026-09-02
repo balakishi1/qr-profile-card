@@ -1,9 +1,47 @@
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 function esc(s) {
   return String(s || '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+}
+
+function normalizeUrl(u) {
+  const v = String(u || '').trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) return `https://${v}`;
+  return v;
+}
+
+// Rəy yazan öz QR profilinin açarını (slug) yazıbsa, oradan ad/şəkil/link çəkirik
+async function lookupQrProfile(qrSlugRaw, host) {
+  const slug = String(qrSlugRaw || '').trim().toLowerCase().replace(/^https?:\/\/[^/]+\/(p\/)?/i, '').replace(/[^a-z0-9-]/g, '');
+  if (!slug) return null;
+  const { data: lic } = await supabase
+    .from('licenses')
+    .select('profile_slug, profile_data, is_active')
+    .eq('profile_slug', slug)
+    .single();
+  if (!lic || !lic.is_active) return null;
+  return {
+    avatarUrl: (lic.profile_data && lic.profile_data.avatar) || null,
+    profileUrl: `https://${host}/p/${lic.profile_slug}`
+  };
+}
+
+// Client-dən gələn kiçik (base64) şəkli 'media' bucket-ə (reviews/ qovluğu) yükləyirik
+async function uploadReviewAvatar(dataUri) {
+  const m = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/.exec(String(dataUri || ''));
+  if (!m) return null;
+  const ext = m[1] === 'image/png' ? 'png' : (m[1] === 'image/webp' ? 'webp' : 'jpg');
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > 900 * 1024) return null; // ~900KB limit
+  const path = `reviews/${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+  const { error } = await supabase.storage.from('media').upload(path, buf, { contentType: m[1], upsert: false });
+  if (error) return null;
+  const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
+  return pub.publicUrl;
 }
 
 async function notifyTelegram(text) {
@@ -50,7 +88,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'GET' && action === 'reviews') {
     const { data, error } = await supabase
       .from('platform_reviews')
-      .select('id, name, rating, comment, created_at')
+      .select('id, name, rating, comment, avatar_url, social_url, qr_profile_url, created_at')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
@@ -68,7 +106,28 @@ exports.handler = async (event) => {
     if (!comment || comment.length < 3) return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_comment' }) };
     if (!rating || rating < 1 || rating > 5) rating = 5;
 
-    const { error } = await supabase.from('platform_reviews').insert({ name, rating, comment });
+    const host = event.headers['x-forwarded-host'] || event.headers.host || 'qrprofilcard.netlify.app';
+
+    let avatar_url = null;
+    let qr_profile_url = null;
+    const social_url = body.social_url ? normalizeUrl(body.social_url).slice(0, 300) : null;
+
+    if (body.qr_slug) {
+      const qp = await lookupQrProfile(body.qr_slug, host);
+      if (qp) {
+        avatar_url = qp.avatarUrl;
+        qr_profile_url = qp.profileUrl;
+      } else {
+        // Bu platformada uyğun profil tapılmadı (məs. başqa domenə aid link ola bilər) —
+        // yenə də linki saxlayırıq ki, rəydə "kliklənə bilən" görünsün, sadəcə avatar çəkilmir.
+        qr_profile_url = normalizeUrl(body.qr_slug).slice(0, 300) || null;
+      }
+    }
+    if (!avatar_url && body.avatar_base64) {
+      avatar_url = await uploadReviewAvatar(body.avatar_base64);
+    }
+
+    const { error } = await supabase.from('platform_reviews').insert({ name, rating, comment, avatar_url, social_url, qr_profile_url });
     if (error) return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
 
     await notifyTelegram(

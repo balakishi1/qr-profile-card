@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --bg:#0b1220; --card:#131c2e; --card2:#0f1729; --border:#243049;
@@ -63,6 +64,9 @@
   .card h3{font-size:14px;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
   .field{margin-bottom:12px;}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .lang-tabs{display:flex;gap:6px;margin-bottom:8px;}
+  .lang-tab{background:var(--card2);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit;}
+  .lang-tab.active{background:var(--accent,#1458c4);border-color:transparent;color:#fff;}
 
   .link-row{display:flex;gap:8px;align-items:center;}
   .link-row select{flex:1;}
@@ -125,13 +129,33 @@
   <!-- GATE -->
   <div class="gate" id="gate">
     <div class="icon">🔑</div>
-    <h2>Lisenziya açarını daxil et</h2>
+    <h2>Profilinə daxil ol</h2>
     <p>Bu cihaz ilk dəfə açırsan, açar avtomatik bu cihaza bağlanacaq. Başqa cihazdan açmaq mümkün olmayacaq.</p>
+
+    <div id="googleLoginBox" style="display:none;margin-bottom:16px;">
+      <div id="googleBtnContainer" style="display:flex;justify-content:center;"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:12px;">
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <span data-i18n="or">və ya</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>
+    </div>
+
     <div class="field">
       <input type="text" id="licenseInput" placeholder="məs: A1B2C3D4" style="text-align:center;letter-spacing:2px;text-transform:uppercase;">
     </div>
     <button class="btn" onclick="doActivate()">Aktivləşdir</button>
     <div class="err" id="gateErr"></div>
+    <p class="muted" style="margin-top:14px;">
+      <a href="#" onclick="toggleRecoverBox(event)" style="color:var(--accent);font-weight:600;">Açarımı unutmuşam</a>
+    </p>
+    <div id="recoverBox" style="display:none;margin-top:6px;text-align:left;">
+      <div class="field">
+        <input type="email" id="recoverEmail" placeholder="qeydiyyatda istifadə etdiyin email">
+      </div>
+      <button class="btn secondary small" style="width:100%;" onclick="recoverKey()">Açarımı email-ə göndər</button>
+      <div class="err" id="recoverMsg" style="color:var(--green);"></div>
+    </div>
     <p class="muted" style="margin-top:16px;">Hələ açarınız yoxdur? <a href="/register" style="color:var(--accent);font-weight:600;">Qeydiyyatdan keçin →</a></p>
   </div>
 
@@ -183,8 +207,16 @@
           <p class="muted" style="margin-top:6px;">Profil səhifəndəki əlaqə formundan kimsə yazanda, mesaj bura göndəriləcək. Boş saxlasan, linklərində "E-mail" tipli link varsa ora göndərilir.</p>
         </div>
         <div class="field">
-          <label>Haqqımda (bio)</label>
-          <textarea id="bioText" rows="3" placeholder="Qısa məlumat yaz..."></textarea>
+          <label>Haqqımda (bio) — dillərə görə yaz</label>
+          <p class="muted" style="margin:2px 0 8px;">Yalnız AZ doldursan kifayətdir — digər dillər boş qalsa, ziyarətçiyə avtomatik AZ mətn göstərilir. Xarici müştərilər üçün EN/RU-nu da doldurmağın tövsiyə olunur.</p>
+          <div class="lang-tabs" data-target="bio">
+            <button type="button" class="lang-tab active" data-lang="az" onclick="switchLangTab('bio','az')">🇦🇿 AZ</button>
+            <button type="button" class="lang-tab" data-lang="en" onclick="switchLangTab('bio','en')">🇬🇧 EN</button>
+            <button type="button" class="lang-tab" data-lang="ru" onclick="switchLangTab('bio','ru')">🇷🇺 RU</button>
+          </div>
+          <textarea id="bioText_az" rows="3" placeholder="Qısa məlumat yaz..." oninput="currentProfileData.bio.az = this.value"></textarea>
+          <textarea id="bioText_en" rows="3" placeholder="Write a short bio in English..." style="display:none;" oninput="currentProfileData.bio.en = this.value"></textarea>
+          <textarea id="bioText_ru" rows="3" placeholder="Напиши краткое био на русском..." style="display:none;" oninput="currentProfileData.bio.ru = this.value"></textarea>
         </div>
       </div>
 
@@ -215,8 +247,15 @@
           </div>
         </div>
         <div class="field">
-          <label>Ətraflı haqqımda mətni</label>
-          <textarea id="aboutText" rows="5" placeholder="Mən [Ad] — 2005-ci ildən bu sahədə fəaliyyət göstərirəm..."></textarea>
+          <label>Ətraflı haqqımda mətni — dillərə görə yaz</label>
+          <div class="lang-tabs" data-target="about">
+            <button type="button" class="lang-tab active" data-lang="az" onclick="switchLangTab('about','az')">🇦🇿 AZ</button>
+            <button type="button" class="lang-tab" data-lang="en" onclick="switchLangTab('about','en')">🇬🇧 EN</button>
+            <button type="button" class="lang-tab" data-lang="ru" onclick="switchLangTab('about','ru')">🇷🇺 RU</button>
+          </div>
+          <textarea id="aboutText_az" rows="5" placeholder="Mən [Ad] — 2005-ci ildən bu sahədə fəaliyyət göstərirəm..." oninput="currentProfileData.aboutText.az = this.value"></textarea>
+          <textarea id="aboutText_en" rows="5" placeholder="I am [Name] — I've been working in this field since 2005..." style="display:none;" oninput="currentProfileData.aboutText.en = this.value"></textarea>
+          <textarea id="aboutText_ru" rows="5" placeholder="Меня зовут [Имя] — я работаю в этой сфере с 2005 года..." style="display:none;" oninput="currentProfileData.aboutText.ru = this.value"></textarea>
         </div>
         <div class="field">
           <label>Statistika (məs: "15+" / "İl peşəkar təcrübə")</label>
@@ -386,7 +425,22 @@ if (window.pdfjsLib) {
 const FN = '/.netlify/functions';
 let session = JSON.parse(localStorage.getItem('qpc_session') || 'null');
 let deviceId = null;
-let currentProfileData = { bio: '', links: [] };
+let currentProfileData = { bio: { az: '', en: '', ru: '' }, aboutText: { az: '', en: '', ru: '' }, links: [] };
+
+// Köhnə profillərdə bio/aboutText sadə mətn (string) kimi saxlanılırdı.
+// Bunu {az,en,ru} formatına çeviririk ki, həm köhnə data işləsin, həm də çox-dilli redaktə mümkün olsun.
+function normalizeI18nField(val) {
+  if (val && typeof val === 'object' && !Array.isArray(val)) return { az: val.az || '', en: val.en || '', ru: val.ru || '' };
+  return { az: val || '', en: '', ru: '' };
+}
+
+function switchLangTab(field, lang) {
+  document.querySelectorAll(`.lang-tabs[data-target="${field}"] .lang-tab`).forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  ['az', 'en', 'ru'].forEach(l => {
+    const ta = document.getElementById(`${field === 'bio' ? 'bioText' : 'aboutText'}_${l}`);
+    if (ta) ta.style.display = (l === lang) ? '' : 'none';
+  });
+}
 let currentSlug = null;
 let qrColor = '#0f172a';
 let qrObj = null;
@@ -416,6 +470,70 @@ async function getDeviceId() {
 }
 
 /* ---------- BOOT / GATE ---------- */
+let googleClientIdCache = null;
+async function initGoogleLogin() {
+  try {
+    const r = await fetch(`${FN}/public-config`);
+    const cfg = await r.json();
+    if (!cfg.googleClientId || !window.google || !google.accounts || !google.accounts.id) return;
+    googleClientIdCache = cfg.googleClientId;
+    google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: handleGoogleLoginResponse });
+    document.getElementById('googleLoginBox').style.display = 'block';
+    google.accounts.id.renderButton(document.getElementById('googleBtnContainer'), {
+      theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 260
+    });
+  } catch (e) { console.error('Google login init error', e); }
+}
+
+async function handleGoogleLoginResponse(response) {
+  const errBox = document.getElementById('gateErr');
+  errBox.style.display = 'none';
+  try {
+    const r = await fetch(`${FN}/google-login`, { method: 'POST', body: JSON.stringify({ id_token: response.credential }) });
+    const j = await r.json();
+    if (j.success && j.license_key) {
+      document.getElementById('licenseInput').value = j.license_key;
+      doActivate();
+    } else if (j.reason === 'not_registered') {
+      errBox.textContent = 'Bu Google hesabı ilə qeydiyyat tapılmadı. Zəhmət olmasa əvvəlcə qeydiyyatdan keç.';
+      errBox.style.display = 'block';
+      setTimeout(() => { window.location.href = '/register'; }, 2200);
+    } else if (j.reason === 'inactive') {
+      errBox.textContent = 'Hesabın deaktiv edilib. Admin ilə əlaqə saxla.';
+      errBox.style.display = 'block';
+    } else {
+      errBox.textContent = 'Google ilə giriş alınmadı, bir az sonra cəhd et.';
+      errBox.style.display = 'block';
+    }
+  } catch (e) {
+    errBox.textContent = 'Şəbəkə xətası.';
+    errBox.style.display = 'block';
+  }
+}
+
+function toggleRecoverBox(e) {
+  e.preventDefault();
+  const box = document.getElementById('recoverBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+async function recoverKey() {
+  const email = document.getElementById('recoverEmail').value.trim();
+  const msg = document.getElementById('recoverMsg');
+  msg.style.display = 'block'; msg.style.color = 'var(--muted)';
+  if (!email || !email.includes('@')) { msg.style.color = '#ef4444'; msg.textContent = 'Zəhmət olmasa düzgün email yaz.'; return; }
+  msg.textContent = 'Göndərilir...';
+  try {
+    const r = await fetch(`${FN}/recover-key`, { method: 'POST', body: JSON.stringify({ email }) });
+    const j = await r.json();
+    // Təhlükəsizlik üçün hər zaman eyni mesaj (hesab olub-olmadığını bildirmirik)
+    msg.style.color = 'var(--green)';
+    msg.textContent = 'Əgər bu email ilə hesab varsa, açar ora göndərildi. Poçt qutunu (Spam qovluğunu da) yoxla.';
+  } catch (e) {
+    msg.style.color = '#ef4444'; msg.textContent = 'Şəbəkə xətası.';
+  }
+}
+
 async function boot() {
   deviceId = await getDeviceId();
   if (session && session.license_key && session.token) {
@@ -428,6 +546,7 @@ async function boot() {
     session = null;
   }
   document.getElementById('gate').style.display = 'block';
+  initGoogleLogin();
 
   // Qeydiyyatdan (/register) gələn link: ?key=XXXX ilə açar avtomatik doldurulur və aktivləşdirilir
   const urlKey = new URLSearchParams(window.location.search).get('key');
@@ -516,11 +635,17 @@ function enterApp(j) {
   if (!currentProfileData.hours) currentProfileData.hours = { days: ['mon','tue','wed','thu','fri'], open: '09:00', close: '18:00' };
   if (!currentProfileData.otherProfile) currentProfileData.otherProfile = { label: '', url: '' };
   currentSlug = j.profile_slug;
-  document.getElementById('bioText').value = currentProfileData.bio || '';
+  currentProfileData.bio = normalizeI18nField(currentProfileData.bio);
+  currentProfileData.aboutText = normalizeI18nField(currentProfileData.aboutText);
+  document.getElementById('bioText_az').value = currentProfileData.bio.az || '';
+  document.getElementById('bioText_en').value = currentProfileData.bio.en || '';
+  document.getElementById('bioText_ru').value = currentProfileData.bio.ru || '';
   document.getElementById('phoneInput').value = currentProfileData.phone || '';
   document.getElementById('whatsappMsgInput').value = currentProfileData.whatsappMessage || '';
   document.getElementById('contactEmailInput').value = currentProfileData.contactEmail || '';
-  document.getElementById('aboutText').value = currentProfileData.aboutText || '';
+  document.getElementById('aboutText_az').value = currentProfileData.aboutText.az || '';
+  document.getElementById('aboutText_en').value = currentProfileData.aboutText.en || '';
+  document.getElementById('aboutText_ru').value = currentProfileData.aboutText.ru || '';
   document.getElementById('otherProfileLabel').value = currentProfileData.otherProfile.label || '';
   document.getElementById('otherProfileUrl').value = currentProfileData.otherProfile.url || '';
   document.getElementById('hoursOpen').value = currentProfileData.hours.open || '09:00';
@@ -1187,12 +1312,20 @@ function addTestimonialRow() {
 }
 
 async function saveProfile() {
-  currentProfileData.bio = document.getElementById('bioText').value;
+  currentProfileData.bio = {
+    az: document.getElementById('bioText_az').value,
+    en: document.getElementById('bioText_en').value,
+    ru: document.getElementById('bioText_ru').value
+  };
   currentProfileData.tagline = document.getElementById('taglineInput').value;
   currentProfileData.phone = document.getElementById('phoneInput').value;
   currentProfileData.whatsappMessage = document.getElementById('whatsappMsgInput').value;
   currentProfileData.contactEmail = document.getElementById('contactEmailInput').value;
-  currentProfileData.aboutText = document.getElementById('aboutText').value;
+  currentProfileData.aboutText = {
+    az: document.getElementById('aboutText_az').value,
+    en: document.getElementById('aboutText_en').value,
+    ru: document.getElementById('aboutText_ru').value
+  };
   currentProfileData.otherProfile = {
     label: document.getElementById('otherProfileLabel').value,
     url: document.getElementById('otherProfileUrl').value

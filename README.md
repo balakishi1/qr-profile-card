@@ -1,5 +1,24 @@
 # QR Profile Card — Quraşdırma
 
+## v22 dəyişiklikləri (bu versiya)
+- **3 dil (AZ/EN/RU):**
+  - `register.html` — tam UI tərcüməsi, sağ yuxarıda AZ/EN/RU dil düymələri.
+  - İctimai profil (`profile.js`, `/p/:slug`) — bütün başlıq/düymə/mesaj mətnləri 3 dildə, sağ yuxarıda üzən dil düymələri (AZ/EN/RU). Ziyarətçinin brauzer dilinə görə ilkin dil avtomatik seçilir, sonra localStorage-də yadda saxlanılır.
+  - `index.html` (redaktor) — "Haqqımda (bio)" və "Ətraflı haqqımda mətni" indi **AZ/EN/RU tab-larla** ayrıca yazılır. Yalnız AZ doldursan kifayətdir (digər dillər avtomatik AZ-a "fallback" edir), amma xarici müştərilər üçün EN/RU-nu da doldurmaq tövsiyə olunur. Köhnə (tək dilli) profillər problemsiz işləməyə davam edir.
+- **Google (Gmail) ilə qeydiyyat və giriş:**
+  - `register.html`-də "Google ilə davam et" düyməsi — ad/email avtomatik dolur.
+  - `index.html`-də "Google ilə daxil ol" düyməsi — əvvəllər Google (və ya eyni email) ilə qeydiyyatdan keçmisənsə, açar yazmadan birbaşa profilə keçir.
+  - **VACİB:** Bunun işləməsi üçün Google Cloud Console-da bir **OAuth 2.0 Client ID (Web application)** yaratmalısan, "Authorized JavaScript origins" hissəsinə saytının domenini (`https://sənin-domenin.az`) əlavə et, sonra Netlify-da `GOOGLE_CLIENT_ID` env dəyişənini həmin Client ID ilə təyin et. Təyin etməsən, Google düymələri sadəcə görünməyəcək, sistemin qalan hissəsi normal işləyəcək.
+- **"Açarımı unutmuşam" bərpası** — `index.html`-də email yazıb açarını yenidən email-ə göndərə bilərsən (`recover-key.js`).
+- **Rəy formasında QR profil linki** — indi "🔗 QR profilimin linkini əlavə et" düyməsinə basınca sahə açılır, tam link və ya sosial şəbəkə linki yazıla bilər; link tapılmasa belə klikable şəkildə saxlanılır.
+- **VACİB:** Bu versiyanı yükləmədən əvvəl Supabase SQL Editor-də yenidən `supabase-schema.sql`-i işə sal (yeni sütunlar: `licenses.google_sub`, `licenses.google_email`) — mövcud data silinmir.
+
+## v21 dəyişiklikləri
+- Qeydiyyat səhifəsindəki (`register.html`) rəy formasına: rəy yazanın şəkli (avtomatik kiçildilib yüklənir), öz QR profilinin açarı (varsa avatar+link avtomatik oradan çəkilir) və sosial şəbəkə linki əlavə olundu.
+- İctimai profil səhifəsi (`/p/:slug`, `profile.js`) tünd göy-bənövşəyi mövzudan **açıq, modern, LinkedIn tərzli göy mövzuya** keçirildi.
+- Profilə yeni funksionallıqlar əlavə olundu: baxış sayğacı + keçid/albom statistikası, "Öz QR kodumu göstər" düyməsi (modal), təsdiqlənmiş profil nişanı dəstəyi (`profile_data.verified = true`).
+
+
 ## Necə işləyir
 - `index.html` — məhsulun özü (istifadəçi görür): lisenziya açarı ilə aktivləşir. Admin hər lisenziya üçün icazə verilən **cihaz sayını** təyin edir (məs. 2 — telefon + kompyuter). O sayda cihaza qədər eyni açarla aktivləşmək olar, hamısında **eyni profil** (linklər, şəkillər, albomlar) görünür — heç birində məlumatı təkrar doldurmaq lazım deyil.
 - `admin.html` (`/admin`) — sənin idarəetmə panelin: yeni açar yarat (cihaz limiti ilə), ayrı-ayrı cihazları sil, kimin cəhd etdiyini məkanı ilə birlikdə gör.

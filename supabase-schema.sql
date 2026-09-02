@@ -19,6 +19,14 @@ create table if not exists licenses (
 -- Əgər "licenses" cədvəli artıq mövcud idisə (CREATE TABLE IF NOT EXISTS keçdi), sütunu əl ilə əlavə et:
 alter table licenses add column if not exists max_devices int not null default 1;
 
+-- Profilə baxış sayğacı (ictimai profil səhifəsində göstərilir)
+alter table licenses add column if not exists profile_views bigint not null default 0;
+
+-- Google (Gmail) ilə qeydiyyat/giriş dəstəyi
+alter table licenses add column if not exists google_sub text;
+alter table licenses add column if not exists google_email text;
+create unique index if not exists licenses_google_sub_idx on licenses (google_sub) where google_sub is not null;
+
 -- Bir lisenziyaya bağlanan bütün cihazlar (max_devices sayına qədər)
 create table if not exists license_devices (
   id uuid primary key default gen_random_uuid(),
@@ -66,8 +74,14 @@ create table if not exists platform_reviews (
   name text not null,
   rating int not null default 5,
   comment text not null,
+  avatar_url text,
+  social_url text,
+  qr_profile_url text,
   created_at timestamptz default now()
 );
+alter table platform_reviews add column if not exists avatar_url text;
+alter table platform_reviews add column if not exists social_url text;
+alter table platform_reviews add column if not exists qr_profile_url text;
 alter table platform_reviews enable row level security;
 
 -- Netlify Functions service_role key ilə işlədiyi üçün RLS-i bağlı saxlamaq kifayətdir

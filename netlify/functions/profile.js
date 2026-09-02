@@ -58,7 +58,7 @@ exports.handler = async (event) => {
 
   const { data: license, error } = await supabase
     .from('licenses')
-    .select('owner_name, profile_data, is_active')
+    .select('owner_name, profile_data, is_active, profile_views')
     .eq('profile_slug', slug)
     .single();
 
@@ -66,7 +66,25 @@ exports.handler = async (event) => {
     return { statusCode: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' }, body: '<h1>Profil tapılmadı və ya deaktivdir</h1>' };
   }
 
+  const newViews = (license.profile_views || 0) + 1;
+  try { await supabase.from('licenses').update({ profile_views: newViews }).eq('profile_slug', slug); } catch (e) {}
+
   const d = license.profile_data || {};
+
+  // Çox-dilli mətn sahəsindən (bio/aboutText) müəyyən dilin mətnini seçir.
+  // Köhnə profillərdə bu sahələr sadə mətn (string) kimi saxlanılıb — həm ona, həm də
+  // yeni {az,en,ru} formatına dəstək verir.
+  function pickLang(field, lang) {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    return field[lang] || field.az || field.en || field.ru || '';
+  }
+  const bioI18n = (d.bio && typeof d.bio === 'object') ? d.bio : { az: d.bio || '', en: '', ru: '' };
+  const aboutI18n = (d.aboutText && typeof d.aboutText === 'object') ? d.aboutText : { az: d.aboutText || '', en: '', ru: '' };
+
+  // Ziyarətçinin brauzer dilinə görə ilkin dil (server-side ilk render üçün) — sonra JS ilə anında dəyişdirilə bilər
+  const acceptLang = ((event.headers && event.headers['accept-language']) || '').toLowerCase();
+  const defaultLang = acceptLang.startsWith('ru') ? 'ru' : (acceptLang.startsWith('en') ? 'en' : (acceptLang.includes('az') ? 'az' : 'az'));
 
   const host = event.headers['x-forwarded-host'] || event.headers.host || 'qrprofilcard.netlify.app';
   const fullProfileUrl = `https://${host}/p/${slug}`;
@@ -111,35 +129,51 @@ exports.handler = async (event) => {
     d.phone ? `TEL;TYPE=CELL:${d.phone}` : '',
     emailLink ? `EMAIL:${emailLink.url}` : '',
     websiteLink ? `URL:${websiteLink.url}` : '',
-    d.bio ? `NOTE:${d.bio.replace(/\n/g, ' ')}` : '',
+    (bioI18n.az || bioI18n.en || bioI18n.ru) ? `NOTE:${pickLang(bioI18n, defaultLang).replace(/\n/g, ' ')}` : '',
     'END:VCARD'
   ].filter(Boolean).join('\n');
   const vcardDataUri = 'data:text/vcard;charset=utf-8,' + encodeURIComponent(vcardLines);
   const vcardBlock = `
     <a class="vcard-btn reveal" href="${vcardDataUri}" download="${esc((license.owner_name || 'kontakt').replace(/\s+/g, '_'))}.vcf">
-      📇 Kontaktı yadda saxla
+      <span data-i18n="save_contact">📇 Kontaktı yadda saxla</span>
     </a>`;
 
   // Digər profil / biznes keçidi
   const otherProfileBlock = (d.otherProfile && d.otherProfile.url) ? `
     <a class="other-profile-btn reveal" href="${esc(d.otherProfile.url)}" target="_blank" rel="noopener">
-      <span>${esc(d.otherProfile.label || 'Digər profilimə bax')}</span>
+      <span${d.otherProfile.label ? '' : ' data-i18n="other_profile"'}>${esc(d.otherProfile.label || 'Digər profilimə bax')}</span>
       <span class="arrow-circle">→</span>
     </a>` : '';
 
   // İş saatları (klient tərəfdə Bakı vaxtı ilə hesablanacaq)
   const hoursBlock = (d.hours && d.hours.days && d.hours.days.length) ? `
     <div class="hours-badge reveal" id="hoursBadge" data-days="${(d.hours.days || []).join(',')}" data-open="${esc(d.hours.open || '')}" data-close="${esc(d.hours.close || '')}">
-      <span id="hoursDot">●</span> <span id="hoursText">Yoxlanılır...</span>
+      <span id="hoursDot">●</span> <span id="hoursText" data-i18n="checking">Yoxlanılır...</span>
     </div>` : '';
 
   const allLinks = d.links || [];
+
+  // Sosial-media tərzi statistika zolağı: baxış / keçid / albom sayı
+  const albumsCountRaw = (d.albums || []).filter(a => a.items && a.items.length).length;
+  const statBarHtml = `
+    <div class="stat-bar reveal">
+      <div class="sb-item"><b>${newViews}</b><span data-i18n="views">baxış</span></div>
+      <div class="sb-item"><b>${allLinks.length}</b><span data-i18n="links_count">keçid</span></div>
+      ${albumsCountRaw ? `<div class="sb-item"><b>${albumsCountRaw}</b><span data-i18n="albums_count">albom</span></div>` : ''}
+    </div>`;
+
+  // Təsdiqlənmiş profil nişanı (profile_data.verified = true olduqda göstərilir)
+  const verifiedBadgeHtml = d.verified ? `
+    <svg class="verified-badge" viewBox="0 0 24 24" fill="none" title="Təsdiqlənmiş profil">
+      <path d="M12 2l2.4 2.2 3.2-.6 1 3.1 3.1 1-.6 3.2L23.3 13l-2.2 2.4.6 3.2-3.1 1-1 3.1-3.2-.6L12 24l-2.4-2.2-3.2.6-1-3.1-3.1-1 .6-3.2L0.7 13l2.2-2.4-.6-3.2 3.1-1 1-3.1 3.2.6L12 2z" fill="#1458c4"/>
+      <path d="M8.5 12.3l2.4 2.4 4.6-4.9" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>` : '';
 
   // Fəaliyyət sahələri seçici (bir neçə fərqli biznesi olan istifadəçilər üçün)
   const categories = d.categories || [];
   const categoryTabsHtml = categories.length ? `
     <div class="cat-tabs reveal" id="catTabs">
-      <button class="cat-tab active" data-cat="">Hamısı</button>
+      <button class="cat-tab active" data-cat="" data-i18n="all">Hamısı</button>
       ${categories.map(c => `<button class="cat-tab" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}
     </div>` : '';
 
@@ -168,7 +202,7 @@ exports.handler = async (event) => {
 
   // Öz haqqımda / statistika bölməsi
   const stats = (d.stats || []).filter(s => s.number || s.label);
-  const hasAbout = !!(d.aboutText || d.aboutPhoto || stats.length);
+  const hasAbout = !!(aboutI18n.az || aboutI18n.en || aboutI18n.ru || d.aboutPhoto || stats.length);
   const aboutPhotoImg = d.aboutPhoto || d.avatar;
   const statsHtml = stats.map(s => `
     <div class="stat-item reveal">
@@ -177,12 +211,12 @@ exports.handler = async (event) => {
     </div>`).join('');
   const aboutHtml = hasAbout ? `
     <div class="about-section">
-      <div class="about-title reveal">ÖZ HAQQIMDA</div>
+      <div class="about-title reveal" data-i18n="about_title">ÖZ HAQQIMDA</div>
       <div class="about-flex">
         ${aboutPhotoImg ? `<div class="about-photo reveal"><img src="${esc(aboutPhotoImg)}" loading="lazy"></div>` : ''}
         ${statsHtml ? `<div class="stats-col">${statsHtml}</div>` : ''}
       </div>
-      ${d.aboutText ? `<div class="about-text reveal">${esc(d.aboutText)}</div>` : ''}
+      ${(aboutI18n.az || aboutI18n.en || aboutI18n.ru) ? `<div class="about-text reveal" id="aboutTextEl"${pickLang(aboutI18n, defaultLang) ? '' : ' style="display:none;"'}>${esc(pickLang(aboutI18n, defaultLang))}</div>` : ''}
     </div>` : '';
 
   const albums = (d.albums || []).filter(a => a.items && a.items.length);
@@ -209,7 +243,7 @@ exports.handler = async (event) => {
   const certificates = d.certificates || [];
   const certHtml = certificates.length ? `
     <div class="cert-section">
-      <div class="cert-title reveal">🏆 SERTİFİKATLAR</div>
+      <div class="cert-title reveal">🏆 <span data-i18n="certificates">SERTİFİKATLAR</span></div>
       <div class="cert-strip">
         ${certificates.map((c, idx) => `
           <div class="cert-badge reveal" style="transition-delay:${Math.min(idx * 50, 300)}ms" onclick="openLightbox('${esc(c.url)}','image')">
@@ -222,7 +256,7 @@ exports.handler = async (event) => {
   const diplomas = d.diplomas || [];
   const diplomaHtml = diplomas.length ? `
     <div class="cert-section">
-      <div class="cert-title reveal">🎓 DİPLOMLAR</div>
+      <div class="cert-title reveal">🎓 <span data-i18n="diplomas">DİPLOMLAR</span></div>
       <div class="cert-strip">
         ${diplomas.map((c, idx) => `
           <div class="cert-badge reveal" style="transition-delay:${Math.min(idx * 50, 300)}ms" onclick="openLightbox('${esc(c.url)}','image')">
@@ -235,7 +269,7 @@ exports.handler = async (event) => {
   const testimonials = (d.testimonials || []).filter(t => t.text);
   const testimonialsHtml = testimonials.length ? `
     <div class="testimonials-section">
-      <div class="testimonials-title reveal">💬 MÜŞTƏRİ RƏYLƏRİ</div>
+      <div class="testimonials-title reveal">💬 <span data-i18n="testimonials">MÜŞTƏRİ RƏYLƏRİ</span></div>
       ${testimonials.map((t) => `
         <div class="testimonial-card reveal">
           <div class="testimonial-stars">${'⭐'.repeat(t.stars || 5)}</div>
@@ -245,10 +279,10 @@ exports.handler = async (event) => {
     </div>` : '';
 
   const html = `<!DOCTYPE html>
-<html lang="az"><head><meta charset="UTF-8">
+<html lang="${defaultLang}"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(license.owner_name || 'Profil')}</title>
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#f5f8fd">
 <link rel="manifest" href="/.netlify/functions/site-manifest?slug=${encodeURIComponent(slug)}">
 ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
 <link rel="icon" href="${esc(d.avatar)}">` : ''}
@@ -256,204 +290,233 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
 <meta name="apple-mobile-web-app-title" content="${esc(license.owner_name || 'Profil')}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   * { box-sizing: border-box; margin:0; padding:0; -webkit-tap-highlight-color: transparent; }
   html { scroll-behavior:smooth; }
+  :root{
+    --navy:#0b2545; --blue:#1458c4; --blue-dark:#0f4499; --blue-tint:#eaf1fc; --tint2:#f5f8fd;
+    --paper:#ffffff; --ink:#101a2b; --muted:#5b6b85; --line:#e2e8f3; --gold:#c9982e;
+  }
   body {
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
     background:
-      radial-gradient(circle at 50% -10%, #24325c 0%, #0b1220 55%),
-      repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0px, rgba(255,255,255,.025) 1px, transparent 1px, transparent 42px),
-      repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0px, rgba(255,255,255,.025) 1px, transparent 1px, transparent 42px);
-    background-color:#0b1220;
+      radial-gradient(circle at 50% -10%, #eaf1fc 0%, #f5f8fd 55%),
+      repeating-linear-gradient(0deg, rgba(11,37,69,.025) 0px, rgba(11,37,69,.025) 1px, transparent 1px, transparent 42px),
+      repeating-linear-gradient(90deg, rgba(11,37,69,.025) 0px, rgba(11,37,69,.025) 1px, transparent 1px, transparent 42px);
+    background-color:#f5f8fd;
     min-height:100vh; padding:28px 20px 50px; display:flex; justify-content:center;
   }
   .page { width:100%; max-width:440px; animation: fadeUp .6s ease both; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(16px);} to { opacity:1; transform:translateY(0);} }
   @keyframes pop { 0%{transform:scale(.9);opacity:0;} 100%{transform:scale(1);opacity:1;} }
-  @keyframes ringPulse { 0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,.35);} 50%{box-shadow:0 0 0 10px rgba(139,92,246,0);} }
+  @keyframes ringPulse { 0%,100%{box-shadow:0 0 0 0 rgba(20,88,196,.28);} 50%{box-shadow:0 0 0 10px rgba(20,88,196,0);} }
 
-  .cover { position:relative; width:100%; height:280px; border-radius:28px; overflow:hidden; margin-bottom:20px; }
+  .cover { position:relative; width:100%; height:280px; border-radius:28px; overflow:hidden; margin-bottom:20px; box-shadow:0 20px 40px -22px rgba(11,37,69,.28); }
   .cover-img { width:100%; height:100%; object-fit:cover; display:block; transform:scale(1.02); will-change:transform; }
-  .cover-fade { position:absolute; left:0; right:0; bottom:0; height:110px; background:linear-gradient(to bottom, rgba(13,21,38,0) 0%, rgba(13,21,38,.55) 100%); }
+  .cover-fade { position:absolute; left:0; right:0; bottom:0; height:110px; background:linear-gradient(to bottom, rgba(245,248,253,0) 0%, rgba(245,248,253,.85) 100%); }
 
   .reveal { opacity:0; transform:translateY(18px); transition:opacity .55s ease, transform .55s ease; }
   .reveal.in { opacity:1; transform:translateY(0); }
 
-  .top { text-align:center; margin-bottom:20px; }
+  .top { text-align:center; margin-bottom:14px; }
   .avatar-wrap { position:relative; width:140px; height:140px; margin:0 auto 18px; animation: pop .5s ease .05s both; }
   .avatar {
     width:140px; height:140px; border-radius:50%; overflow:hidden;
-    background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center;
-    color:#fff; font-size:48px; font-weight:700; border:4px solid rgba(255,255,255,.14);
+    background:linear-gradient(135deg,var(--blue),var(--navy)); display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:48px; font-weight:700; border:4px solid #fff;
+    box-shadow:0 10px 26px rgba(20,88,196,.28);
     animation: ringPulse 2.6s ease-in-out infinite;
   }
 
   h1 {
-    font-family:'Baloo 2', -apple-system, sans-serif; font-size:27px; color:#f7f9ff; font-weight:800;
-    letter-spacing:.3px; margin-bottom:6px; text-shadow:0 2px 18px rgba(99,102,241,.35);
+    font-family:'Baloo 2', -apple-system, sans-serif; font-size:27px; color:var(--navy); font-weight:800;
+    letter-spacing:.3px; margin-bottom:6px; display:inline-flex; align-items:center; gap:7px; justify-content:center;
   }
-  .bio { color:#9aa8ca; font-size:14px; line-height:1.55; white-space:pre-wrap; max-width:340px; margin:0 auto; }
+  .verified-badge{ width:19px; height:19px; flex-shrink:0; }
+  .bio { color:var(--muted); font-size:14px; line-height:1.55; white-space:pre-wrap; max-width:340px; margin:0 auto; }
+
+  .stat-bar { display:flex; justify-content:center; gap:26px; margin:14px auto 4px; }
+  .stat-bar .sb-item { text-align:center; }
+  .stat-bar b { display:block; font-size:16px; color:var(--navy); font-weight:800; line-height:1.1; }
+  .stat-bar span { font-size:10.5px; color:var(--muted); font-weight:600; }
 
   .ibadge { border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
 
   .phone-row { display:flex; gap:10px; margin-bottom:20px; align-items:center; }
   .phone-btn {
     flex:1; display:flex; align-items:center; justify-content:center; gap:10px;
-    background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; text-decoration:none;
+    background:linear-gradient(135deg,var(--blue),var(--navy)); color:#fff; text-decoration:none;
     font-weight:700; font-size:15px; padding:12px 16px; border-radius:16px;
-    box-shadow:0 10px 26px rgba(99,102,241,.4);
+    box-shadow:0 10px 24px rgba(20,88,196,.3);
   }
   .phone-icon-btn {
     width:52px; height:52px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:16px;
+    background:var(--blue-tint); border:1px solid var(--line); border-radius:16px;
     text-decoration:none;
   }
 
   .links-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px; }
   .link-tile {
-    display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.045);
-    border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:13px 14px;
-    text-decoration:none; color:#eef1fb; font-weight:600; font-size:13.5px; transition:.15s;
+    display:flex; align-items:center; gap:10px; background:var(--paper);
+    border:1px solid var(--line); border-radius:16px; padding:13px 14px;
+    text-decoration:none; color:var(--ink); font-weight:600; font-size:13.5px; transition:.15s;
+    box-shadow:0 1px 2px rgba(11,37,69,.04);
   }
-  .link-tile:active { background:rgba(139,92,246,.18); border-color:#8b5cf6; transform:scale(.97); }
+  .link-tile:active { background:var(--blue-tint); border-color:var(--blue); transform:scale(.97); }
   .link-tile .label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   .vcard-btn {
     display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
-    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-radius:15px;
-    padding:13px; color:#eef1fb; font-weight:700; font-size:14px; text-decoration:none; margin-bottom:14px;
+    background:var(--paper); border:1px solid var(--line); border-radius:15px;
+    padding:13px; color:var(--navy); font-weight:700; font-size:14px; text-decoration:none; margin-bottom:14px;
+    box-shadow:0 1px 2px rgba(11,37,69,.04);
   }
-  .vcard-btn:active { background:rgba(255,255,255,.1); }
+  .vcard-btn:active { background:var(--blue-tint); }
 
   .other-profile-btn {
     display:flex; align-items:center; justify-content:space-between; width:100%;
-    background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(139,92,246,.18));
-    border:1px solid rgba(139,92,246,.4); border-radius:16px; padding:15px 18px;
-    color:#eef1fb; font-weight:700; font-size:14px; text-decoration:none; margin-bottom:16px;
+    background:linear-gradient(135deg,var(--blue-tint),#eef4ff);
+    border:1px solid var(--blue); border-radius:16px; padding:15px 18px;
+    color:var(--navy); font-weight:700; font-size:14px; text-decoration:none; margin-bottom:16px;
   }
   .arrow-circle {
-    width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.12);
+    width:28px; height:28px; border-radius:50%; background:var(--blue); color:#fff;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
 
   .cat-tabs { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:18px; }
   .cat-tab {
-    flex-shrink:0; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:#c7d0e8;
+    flex-shrink:0; background:var(--paper); border:1px solid var(--line); color:var(--muted);
     padding:9px 16px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
   }
-  .cat-tab.active { background:linear-gradient(135deg,#6366f1,#8b5cf6); border-color:transparent; color:#fff; }
+  .cat-tab.active { background:linear-gradient(135deg,var(--blue),var(--navy)); border-color:transparent; color:#fff; }
 
   .hours-badge {
-    display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:8px 16px; font-size:12.5px;
-    color:#c7d0e8; margin:0 auto 18px; width:fit-content; font-weight:600;
+    display:inline-flex; align-items:center; gap:7px; background:var(--paper);
+    border:1px solid var(--line); border-radius:20px; padding:8px 16px; font-size:12.5px;
+    color:var(--muted); margin:0 auto 18px; width:fit-content; font-weight:600;
   }
-  .hours-badge.open #hoursDot { color:#22c55e; }
-  .hours-badge.closed #hoursDot { color:#ef4444; }
+  .hours-badge.open #hoursDot { color:#16a34a; }
+  .hours-badge.closed #hoursDot { color:#dc2626; }
 
-  .map-card { display:block; text-decoration:none; margin-bottom:16px; border-radius:18px; overflow:hidden; border:1px solid rgba(255,255,255,.1); }
-  .map-card iframe { width:100%; height:160px; border:none; display:block; filter:grayscale(.2) invert(.92) contrast(.9) brightness(.95); pointer-events:none; }
-  .map-card-label { background:rgba(255,255,255,.04); color:#c7d0e8; font-size:12.5px; padding:10px 14px; font-weight:600; }
+  .map-card { display:block; text-decoration:none; margin-bottom:16px; border-radius:18px; overflow:hidden; border:1px solid var(--line); }
+  .map-card iframe { width:100%; height:160px; border:none; display:block; filter:grayscale(.1) contrast(1.02); pointer-events:none; }
+  .map-card-label { background:var(--paper); color:var(--muted); font-size:12.5px; padding:10px 14px; font-weight:600; }
 
   .cert-section { margin-top:28px; }
-  .cert-title { font-size:14px; font-weight:700; color:#c7d0e8; letter-spacing:1px; margin-bottom:12px; text-align:center; }
+  .cert-title { font-size:14px; font-weight:700; color:var(--navy); letter-spacing:1px; margin-bottom:12px; text-align:center; }
   .cert-strip { display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
   .cert-badge {
     flex:0 0 90px; height:110px; border-radius:12px; overflow:hidden; cursor:pointer;
-    border:2px solid rgba(255,255,255,.15); box-shadow:0 8px 18px rgba(0,0,0,.3);
+    border:2px solid var(--line); box-shadow:0 8px 18px rgba(11,37,69,.12);
   }
   .cert-badge img { width:100%; height:100%; object-fit:cover; }
 
   .testimonials-section { margin-top:28px; }
-  .testimonials-title { font-size:14px; font-weight:700; color:#c7d0e8; letter-spacing:1px; margin-bottom:14px; text-align:center; }
+  .testimonials-title { font-size:14px; font-weight:700; color:var(--navy); letter-spacing:1px; margin-bottom:14px; text-align:center; }
   .testimonial-card {
-    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:16px;
-    padding:16px 18px; margin-bottom:12px;
+    background:var(--paper); border:1px solid var(--line); border-radius:16px;
+    padding:16px 18px; margin-bottom:12px; box-shadow:0 1px 2px rgba(11,37,69,.04);
   }
   .testimonial-stars { font-size:13px; margin-bottom:8px; }
-  .testimonial-text { color:#dbe1f3; font-size:13.5px; line-height:1.55; font-style:italic; }
-  .testimonial-name { color:#8b9bb8; font-size:12.5px; margin-top:8px; text-align:right; }
+  .testimonial-text { color:var(--ink); font-size:13.5px; line-height:1.55; font-style:italic; }
+  .testimonial-name { color:var(--muted); font-size:12.5px; margin-top:8px; text-align:right; }
 
   .about-section { margin-top:30px; }
   .about-title {
-    font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:#f7f9ff;
+    font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:var(--navy);
     text-align:center; margin-bottom:18px; letter-spacing:.5px;
   }
   .about-flex { display:flex; gap:16px; align-items:stretch; margin-bottom:16px; }
-  .about-photo { width:38%; flex-shrink:0; border-radius:20px; overflow:hidden; box-shadow:0 16px 34px rgba(0,0,0,.45); aspect-ratio:3/4; }
+  .about-photo { width:38%; flex-shrink:0; border-radius:20px; overflow:hidden; box-shadow:0 16px 34px rgba(11,37,69,.18); aspect-ratio:3/4; }
   .about-photo img { width:100%; height:100%; object-fit:cover; display:block; }
   .stats-col { flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; }
-  .stat-number { font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:28px; color:#a78bfa; line-height:1; }
-  .stat-label { font-size:12px; color:#9aa8ca; margin-top:3px; }
-  .about-text { color:#9aa8ca; font-size:13.5px; line-height:1.65; white-space:pre-wrap; }
+  .stat-number { font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:28px; color:var(--blue); line-height:1; }
+  .stat-label { font-size:12px; color:var(--muted); margin-top:3px; }
+  .about-text { color:var(--muted); font-size:13.5px; line-height:1.65; white-space:pre-wrap; }
 
-  .footer { margin-top:30px; text-align:center; font-size:10.5px; letter-spacing:2px; color:#3f4d6b; font-weight:700; }
+  .footer { margin-top:30px; text-align:center; font-size:10.5px; letter-spacing:2px; color:#9fb0cc; font-weight:700; }
 
   .album-section { margin-top:26px; }
-  .album-title { color:#c7d0e8; font-weight:700; font-size:15px; margin-bottom:10px; padding-left:2px; }
+  .album-title { color:var(--navy); font-weight:700; font-size:15px; margin-bottom:10px; padding-left:2px; }
   .media-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .media-cell {
     position:relative; aspect-ratio:1; border-radius:14px; overflow:hidden; cursor:pointer;
-    background:#0d1526; border:1px solid rgba(255,255,255,.07);
+    background:var(--blue-tint); border:1px solid var(--line);
   }
   .media-cell img, .media-cell video { width:100%; height:100%; object-fit:cover; display:block; }
   .play-icon {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:34px; height:34px; background:rgba(0,0,0,.6); color:#fff; border-radius:50%;
+    width:34px; height:34px; background:rgba(11,37,69,.6); color:#fff; border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-size:13px;
   }
 
   .contact-section {
-    margin-top:32px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.09);
-    border-radius:22px; padding:24px 20px;
+    margin-top:32px; background:var(--paper); border:1px solid var(--line);
+    border-radius:22px; padding:24px 20px; box-shadow:0 20px 44px -28px rgba(11,37,69,.22);
   }
-  .contact-title { font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:#f7f9ff; margin-bottom:6px; text-align:center; }
-  .contact-sub { font-size:12.5px; color:#8b9bb8; margin-bottom:18px; text-align:center; line-height:1.5; }
+  .contact-title { font-family:'Baloo 2', -apple-system, sans-serif; font-weight:800; font-size:21px; color:var(--navy); margin-bottom:6px; text-align:center; }
+  .contact-sub { font-size:12.5px; color:var(--muted); margin-bottom:18px; text-align:center; line-height:1.5; }
   .contact-input, .contact-textarea {
-    width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:13px;
-    padding:13px 15px; color:#eef1fb; font-size:14px; margin-bottom:11px; font-family:inherit; outline:none;
+    width:100%; background:var(--tint2); border:1px solid var(--line); border-radius:13px;
+    padding:13px 15px; color:var(--ink); font-size:14px; margin-bottom:11px; font-family:inherit; outline:none;
   }
-  .contact-input:focus, .contact-textarea:focus { border-color:#8b5cf6; }
+  .contact-input:focus, .contact-textarea:focus { border-color:var(--blue); background:#fff; }
   .contact-textarea { resize:vertical; min-height:90px; }
   .contact-submit {
-    width:100%; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none;
+    width:100%; background:linear-gradient(135deg,var(--blue),var(--navy)); color:#fff; border:none;
     padding:14px; border-radius:13px; font-weight:700; font-size:15px; cursor:pointer;
-    box-shadow:0 10px 26px rgba(99,102,241,.35);
+    box-shadow:0 10px 24px rgba(20,88,196,.3);
   }
   .contact-submit:active { transform:scale(.98); }
   .contact-feedback { margin-top:12px; font-size:13px; text-align:center; min-height:18px; }
 
   .share-row { display:flex; gap:10px; margin-top:24px; align-items:center; }
   .share-btn {
-    flex:1; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); border-radius:15px;
-    padding:13px; color:#eef1fb; font-weight:700; font-size:13.5px; cursor:pointer;
+    flex:1; background:var(--paper); border:1px solid var(--line); border-radius:15px;
+    padding:13px; color:var(--navy); font-weight:700; font-size:13.5px; cursor:pointer;
   }
   .share-icon-btn {
     width:48px; height:48px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:15px; text-decoration:none;
+    background:var(--paper); border:1px solid var(--line); border-radius:15px; text-decoration:none; cursor:pointer;
   }
+
+  .qr-modal {
+    display:none; position:fixed; inset:0; background:rgba(11,37,69,.55); z-index:998;
+    align-items:center; justify-content:center; padding:24px; backdrop-filter:blur(2px);
+  }
+  .qr-modal.open { display:flex; }
+  .qr-modal-box { background:#fff; border-radius:20px; padding:26px; text-align:center; max-width:280px; width:100%; box-shadow:0 30px 60px -20px rgba(11,37,69,.5); }
+  .qr-modal-box h4 { color:var(--navy); margin-bottom:14px; font-size:15px; }
+  .qr-modal-box p { color:var(--muted); font-size:12px; margin-top:12px; }
+  #qrCanvasWrap { display:flex; justify-content:center; margin-bottom:6px; }
+  .qr-modal-close { margin-top:10px; background:var(--blue-tint); color:var(--navy); border:none; border-radius:10px; padding:10px 18px; font-weight:700; cursor:pointer; font-size:13px; }
 
   .promo-card {
     display:flex; align-items:center; gap:14px; margin-top:26px; padding:16px 18px;
-    background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(99,102,241,.1));
-    border:1px dashed rgba(255,255,255,.2); border-radius:18px; text-decoration:none;
+    background:linear-gradient(135deg,var(--blue-tint),#eef8f0);
+    border:1px dashed var(--blue); border-radius:18px; text-decoration:none;
   }
   .promo-icon { font-size:24px; flex-shrink:0; }
   .promo-text { flex:1; }
-  .promo-title { color:#eef1fb; font-weight:700; font-size:13.5px; margin-bottom:2px; }
-  .promo-sub { color:#9aa8ca; font-size:12px; }
-  .promo-arrow { color:#8b9bb8; font-size:16px; flex-shrink:0; }
+  .promo-title { color:var(--navy); font-weight:700; font-size:13.5px; margin-bottom:2px; }
+  .promo-sub { color:var(--muted); font-size:12px; }
+  .promo-arrow { color:var(--blue); font-size:16px; flex-shrink:0; }
+
+  .lang-switch { position:fixed; top:16px; right:16px; z-index:60; display:flex; gap:2px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:3px; box-shadow:0 8px 20px -8px rgba(11,37,69,.3); }
+  .lang-pill { border:none; background:transparent; color:var(--muted); font-size:11.5px; font-weight:800; padding:6px 8px; border-radius:7px; cursor:pointer; font-family:inherit; letter-spacing:.3px; }
+  .lang-pill.active { background:var(--navy); color:#fff; }
 
   .lightbox {
-    display:none; position:fixed; inset:0; background:rgba(5,8,16,.94); z-index:999;
+    display:none; position:fixed; inset:0; background:rgba(11,37,69,.92); z-index:999;
     align-items:center; justify-content:center; padding:24px;
   }
   .lightbox.open { display:flex; }
   .lightbox img, .lightbox video { max-width:100%; max-height:90vh; border-radius:14px; }
   .lightbox-close {
     position:absolute; top:20px; right:20px; width:42px; height:42px; border-radius:50%;
-    background:rgba(255,255,255,.12); color:#fff; border:none; font-size:20px; cursor:pointer;
+    background:rgba(255,255,255,.18); color:#fff; border:none; font-size:20px; cursor:pointer;
   }
 </style></head>
 <body>
@@ -461,8 +524,9 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     ${coverHtml}
     <div class="top">
       ${fallbackAvatarHtml}
-      <h1>${esc(license.owner_name || '')}</h1>
-      ${d.bio ? `<div class="bio">${esc(d.bio)}</div>` : ''}
+      <h1>${esc(license.owner_name || '')}${verifiedBadgeHtml}</h1>
+      ${(bioI18n.az || bioI18n.en || bioI18n.ru) ? `<div class="bio" id="bioEl"${pickLang(bioI18n, defaultLang) ? '' : ' style="display:none;"'}>${esc(pickLang(bioI18n, defaultLang))}</div>` : ''}
+      ${statBarHtml}
     </div>
     ${categoryTabsHtml}
     ${hoursBlock ? `<div style="text-align:center;">${hoursBlock}</div>` : ''}
@@ -478,17 +542,18 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     ${albumsHtml}
 
     <div class="contact-section reveal">
-      <div class="contact-title">Mənimlə əlaqə et</div>
-      <div class="contact-sub">Sual və ya təklifinizi qeyd edə bilərsiniz. Sizə ən qısa zamanda cavab verək.</div>
-      <input type="text" id="cName" class="contact-input" placeholder="Adınız">
-      <input type="email" id="cEmail" class="contact-input" placeholder="E-poçt ünvanınız">
-      <textarea id="cMsg" class="contact-textarea" placeholder="Mesajınızı yazın"></textarea>
-      <button class="contact-submit" onclick="submitContact()">Göndər</button>
+      <div class="contact-title" data-i18n="contact_title">Mənimlə əlaqə et</div>
+      <div class="contact-sub" data-i18n="contact_sub">Sual və ya təklifinizi qeyd edə bilərsiniz. Sizə ən qısa zamanda cavab verək.</div>
+      <input type="text" id="cName" class="contact-input" placeholder="Adınız" data-i18n-placeholder="ph_name">
+      <input type="email" id="cEmail" class="contact-input" placeholder="E-poçt ünvanınız" data-i18n-placeholder="ph_email">
+      <textarea id="cMsg" class="contact-textarea" placeholder="Mesajınızı yazın" data-i18n-placeholder="ph_message"></textarea>
+      <button class="contact-submit" onclick="submitContact()" data-i18n="send">Göndər</button>
       <div class="contact-feedback" id="contactFeedback"></div>
     </div>
 
     <div class="share-row reveal">
-      <button class="share-btn" onclick="shareProfile()">📤 Bu profili paylaş</button>
+      <button class="share-btn" onclick="shareProfile()">📤 <span data-i18n="share_profile">Bu profili paylaş</span></button>
+      <button class="share-icon-btn" onclick="openQrModal()" title="QR kodunu göstər" data-i18n-title="show_qr">▦</button>
       <a class="share-icon-btn" href="https://wa.me/?text=${encodeURIComponent((license.owner_name || 'Bu profilə bax') + ': ' + fullProfileUrl)}" target="_blank" rel="noopener" title="WhatsApp-da paylaş">${iconBadge('whatsapp', 30)}</a>
       <a class="share-icon-btn" href="https://t.me/share/url?url=${encodeURIComponent(fullProfileUrl)}&text=${encodeURIComponent(license.owner_name || '')}" target="_blank" rel="noopener" title="Telegram-da paylaş">${iconBadge('telegram', 30)}</a>
     </div>
@@ -496,6 +561,21 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     ${promoBlock}
 
     <div class="footer">QR PROFILE CARD</div>
+  </div>
+
+  <div class="lang-switch" id="langSwitch">
+    <button class="lang-pill" data-lang="az">AZ</button>
+    <button class="lang-pill" data-lang="en">EN</button>
+    <button class="lang-pill" data-lang="ru">RU</button>
+  </div>
+
+  <div class="qr-modal" id="qrModal" onclick="closeQrModal(event)">
+    <div class="qr-modal-box" onclick="event.stopPropagation()">
+      <h4 data-i18n="qr_modal_title">Profilin QR kodu</h4>
+      <div id="qrCanvasWrap"></div>
+      <p data-i18n="qr_modal_sub">Ekranı göstərərək başqasının telefonuna skan etdir</p>
+      <button class="qr-modal-close" onclick="closeQrModal(event)" data-i18n="close">Bağla</button>
+    </div>
   </div>
 
   <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
@@ -507,6 +587,100 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
     const PROFILE_SLUG = ${JSON.stringify(slug)};
     const PROFILE_URL = ${JSON.stringify(fullProfileUrl)};
     const OWNER_NAME = ${JSON.stringify(license.owner_name || 'Profil')};
+    const CONTENT_I18N = { bio: ${JSON.stringify(bioI18n)}, about: ${JSON.stringify(aboutI18n)} };
+
+    // ==================== I18N (ictimai profil) ====================
+    const I18N = {
+      az: {
+        all: 'Hamısı', about_title: 'ÖZ HAQQIMDA', certificates: 'SERTİFİKATLAR', diplomas: 'DİPLOMLAR', testimonials: 'MÜŞTƏRİ RƏYLƏRİ',
+        views: 'baxış', links_count: 'keçid', albums_count: 'albom', checking: 'Yoxlanılır...', open_now: 'Hazırda açıqdır', closed_now: 'Hazırda bağlıdır',
+        save_contact: '📇 Kontaktı yadda saxla', other_profile: 'Digər profilimə bax',
+        contact_title: 'Mənimlə əlaqə et', contact_sub: 'Sual və ya təklifinizi qeyd edə bilərsiniz. Sizə ən qısa zamanda cavab verək.',
+        ph_name: 'Adınız', ph_email: 'E-poçt ünvanınız', ph_message: 'Mesajınızı yazın', send: 'Göndər',
+        share_profile: 'Bu profili paylaş', show_qr: 'QR kodunu göstər',
+        qr_modal_title: 'Profilin QR kodu', qr_modal_sub: 'Ekranı göstərərək başqasının telefonuna skan etdir', close: 'Bağla',
+        err_name_message: 'Zəhmət olmasa ad və mesaj yazın.', sending: 'Göndərilir...',
+        msg_sent: '✅ Mesajınız göndərildi! Tezliklə sizinlə əlaqə saxlanılacaq.',
+        msg_saved_no_email: '⚠️ Mesajınız qeydə alındı, amma email göndərilə bilmədi. Zəhmət olmasa telefonla əlaqə saxlayın.',
+        err_generic: 'Xəta baş verdi, bir az sonra cəhd edin.', err_network: 'Şəbəkə xətası.',
+        link_copied: 'Link kopyalandı: ', copy_link: 'Linki kopyala:'
+      },
+      en: {
+        all: 'All', about_title: 'ABOUT ME', certificates: 'CERTIFICATES', diplomas: 'DIPLOMAS', testimonials: 'TESTIMONIALS',
+        views: 'views', links_count: 'links', albums_count: 'albums', checking: 'Checking...', open_now: 'Open now', closed_now: 'Closed now',
+        save_contact: '📇 Save contact', other_profile: 'See my other profile',
+        contact_title: 'Get in touch', contact_sub: 'Leave your question or suggestion, we\\u2019ll get back to you shortly.',
+        ph_name: 'Your name', ph_email: 'Your email', ph_message: 'Your message', send: 'Send',
+        share_profile: 'Share this profile', show_qr: 'Show QR code',
+        qr_modal_title: 'Profile QR code', qr_modal_sub: 'Show the screen so someone can scan it with their phone', close: 'Close',
+        err_name_message: 'Please enter your name and message.', sending: 'Sending...',
+        msg_sent: '✅ Your message has been sent! We will get back to you shortly.',
+        msg_saved_no_email: '⚠️ Your message was saved, but the email could not be sent. Please contact by phone instead.',
+        err_generic: 'Something went wrong, please try again shortly.', err_network: 'Network error.',
+        link_copied: 'Link copied: ', copy_link: 'Copy link:'
+      },
+      ru: {
+        all: 'Все', about_title: 'ОБО МНЕ', certificates: 'СЕРТИФИКАТЫ', diplomas: 'ДИПЛОМЫ', testimonials: 'ОТЗЫВЫ КЛИЕНТОВ',
+        views: 'просмотров', links_count: 'ссылок', albums_count: 'альбомов', checking: 'Проверка...', open_now: 'Сейчас открыто', closed_now: 'Сейчас закрыто',
+        save_contact: '📇 Сохранить контакт', other_profile: 'Смотреть другой мой профиль',
+        contact_title: 'Связаться со мной', contact_sub: 'Оставьте свой вопрос или предложение, мы ответим в ближайшее время.',
+        ph_name: 'Ваше имя', ph_email: 'Ваш email', ph_message: 'Ваше сообщение', send: 'Отправить',
+        share_profile: 'Поделиться профилем', show_qr: 'Показать QR-код',
+        qr_modal_title: 'QR-код профиля', qr_modal_sub: 'Покажи экран, чтобы кто-то отсканировал его телефоном', close: 'Закрыть',
+        err_name_message: 'Пожалуйста, введите имя и сообщение.', sending: 'Отправка...',
+        msg_sent: '✅ Ваше сообщение отправлено! Мы скоро свяжемся с вами.',
+        msg_saved_no_email: '⚠️ Сообщение сохранено, но email не отправлен. Пожалуйста, свяжитесь по телефону.',
+        err_generic: 'Произошла ошибка, попробуйте чуть позже.', err_network: 'Ошибка сети.',
+        link_copied: 'Ссылка скопирована: ', copy_link: 'Скопируй ссылку:'
+      }
+    };
+
+    function detectLang() {
+      const saved = localStorage.getItem('qrlang');
+      if (saved && I18N[saved]) return saved;
+      return ${JSON.stringify(defaultLang)};
+    }
+    let currentLang = detectLang();
+
+    function applyLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('qrlang', lang);
+      document.documentElement.lang = lang;
+      const dict = I18N[lang];
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key] !== undefined) el.textContent = dict[key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
+      });
+      document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-title');
+        if (dict[key] !== undefined) el.setAttribute('title', dict[key]);
+      });
+      // Bio / Haqqımda mətnini seçilmiş dildə göstər (owner o dildə yazmayıbsa, AZ-a qayıdır)
+      const bioEl = document.getElementById('bioEl');
+      if (bioEl) {
+        const txt = CONTENT_I18N.bio[lang] || CONTENT_I18N.bio.az || CONTENT_I18N.bio.en || CONTENT_I18N.bio.ru || '';
+        bioEl.textContent = txt;
+        bioEl.style.display = txt ? '' : 'none';
+      }
+      const aboutEl = document.getElementById('aboutTextEl');
+      if (aboutEl) {
+        const txt = CONTENT_I18N.about[lang] || CONTENT_I18N.about.az || CONTENT_I18N.about.en || CONTENT_I18N.about.ru || '';
+        aboutEl.textContent = txt;
+        aboutEl.style.display = txt ? '' : 'none';
+      }
+      // İş saatları statusunu yeni dildə yenidən yaz
+      const hoursBadge = document.getElementById('hoursBadge');
+      if (hoursBadge && hoursBadge.dataset.openState !== undefined) {
+        document.getElementById('hoursText').textContent = hoursBadge.dataset.openState === '1' ? dict.open_now : dict.closed_now;
+      }
+      document.querySelectorAll('#langSwitch .lang-pill').forEach((b) => b.classList.toggle('active', b.dataset.lang === lang));
+    }
+    document.querySelectorAll('#langSwitch .lang-pill').forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+    // ================== /I18N ==================
 
     async function shareProfile() {
       if (navigator.share) {
@@ -514,10 +688,24 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
       }
       try {
         await navigator.clipboard.writeText(PROFILE_URL);
-        alert('Link kopyalandı: ' + PROFILE_URL);
+        alert(I18N[currentLang].link_copied + PROFILE_URL);
       } catch (e) {
-        prompt('Linki kopyala:', PROFILE_URL);
+        prompt(I18N[currentLang].copy_link, PROFILE_URL);
       }
+    }
+
+    let qrRendered = false;
+    function openQrModal() {
+      const wrap = document.getElementById('qrCanvasWrap');
+      if (!qrRendered && window.QRCode) {
+        wrap.innerHTML = '';
+        new QRCode(wrap, { text: PROFILE_URL, width: 200, height: 200, colorDark: '#0b2545', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+        qrRendered = true;
+      }
+      document.getElementById('qrModal').classList.add('open');
+    }
+    function closeQrModal(e) {
+      document.getElementById('qrModal').classList.remove('open');
     }
 
     function openLightbox(url, type) {
@@ -539,13 +727,14 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
       const email = document.getElementById('cEmail').value.trim();
       const message = document.getElementById('cMsg').value.trim();
       const feedback = document.getElementById('contactFeedback');
+      const t = I18N[currentLang];
       if (!name || !message) {
         feedback.style.color = '#ef4444';
-        feedback.textContent = 'Zəhmət olmasa ad və mesaj yazın.';
+        feedback.textContent = t.err_name_message;
         return;
       }
       feedback.style.color = '#9aa8ca';
-      feedback.textContent = 'Göndərilir...';
+      feedback.textContent = t.sending;
       try {
         const r = await fetch('/.netlify/functions/contact-submit', {
           method: 'POST',
@@ -554,20 +743,20 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
         const j = await r.json();
         if (j.success && j.emailSent) {
           feedback.style.color = '#22c55e';
-          feedback.textContent = '✅ Mesajınız göndərildi! Tezliklə sizinlə əlaqə saxlanılacaq.';
+          feedback.textContent = t.msg_sent;
           document.getElementById('cName').value = '';
           document.getElementById('cEmail').value = '';
           document.getElementById('cMsg').value = '';
         } else if (j.success && !j.emailSent) {
           feedback.style.color = '#f59e0b';
-          feedback.textContent = '⚠️ Mesajınız qeydə alındı, amma email göndərilə bilmədi. Zəhmət olmasa telefonla əlaqə saxlayın.';
+          feedback.textContent = t.msg_saved_no_email;
         } else {
           feedback.style.color = '#ef4444';
-          feedback.textContent = 'Xəta baş verdi, bir az sonra cəhd edin.';
+          feedback.textContent = t.err_generic;
         }
       } catch (e) {
         feedback.style.color = '#ef4444';
-        feedback.textContent = 'Şəbəkə xətası.';
+        feedback.textContent = t.err_network;
       }
     }
 
@@ -622,11 +811,14 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
         const openMinutes = oh * 60 + om, closeMinutes = ch * 60 + cm;
         const isOpen = workDays.includes(day) && minutesNow >= openMinutes && minutesNow < closeMinutes;
         hoursBadge.classList.add(isOpen ? 'open' : 'closed');
+        hoursBadge.dataset.openState = isOpen ? '1' : '0';
         document.getElementById('hoursText').textContent = isOpen
-          ? 'Hazırda açıqdır'
-          : 'Hazırda bağlıdır';
+          ? I18N[currentLang].open_now
+          : I18N[currentLang].closed_now;
       } catch (e) {}
     }
+
+    applyLang(currentLang);
   </script>
 </body></html>`;
 

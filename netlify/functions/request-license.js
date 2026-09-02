@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { sendEmail } = require('./lib/sendEmail');
+const { verifyGoogleToken } = require('./lib/googleAuth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -73,11 +74,31 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ success: false }) };
   }
 
-  const { owner_name, owner_email, contact_info, custom_key } = body;
-  if (!owner_name || owner_name.trim().length < 2) {
+  const { owner_name, owner_email, contact_info, custom_key, google_id_token } = body;
+
+  let googleProfile = null;
+  if (google_id_token) {
+    googleProfile = await verifyGoogleToken(google_id_token);
+    if (googleProfile) {
+      // Bu Google hesabı artıq başqa bir açara bağlıdırsa, yeni hesab yaratma — mövcud açarı bildir
+      const { data: already } = await supabase
+        .from('licenses')
+        .select('license_key')
+        .eq('google_sub', googleProfile.sub)
+        .maybeSingle();
+      if (already) {
+        return { statusCode: 409, body: JSON.stringify({ success: false, reason: 'google_already_registered', license_key_hint: true }) };
+      }
+    }
+  }
+
+  const finalName = (owner_name && owner_name.trim()) || (googleProfile && googleProfile.name) || '';
+  const finalEmail = (owner_email && owner_email.trim()) || (googleProfile && googleProfile.email) || '';
+
+  if (!finalName || finalName.trim().length < 2) {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_name' }) };
   }
-  if (!owner_email || !owner_email.includes('@')) {
+  if (!finalEmail || !finalEmail.includes('@')) {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_email' }) };
   }
 
@@ -94,15 +115,18 @@ exports.handler = async (event) => {
     .from('licenses')
     .insert({
       license_key,
-      owner_name: owner_name.trim().slice(0, 100),
+      owner_name: finalName.trim().slice(0, 100),
       is_active: true, // avtomatik aktivləşir, admin təsdiqi lazım deyil
       profile_slug,
       max_devices: 1,
+      google_sub: googleProfile ? googleProfile.sub : null,
+      google_email: googleProfile ? googleProfile.email : null,
       profile_data: {
-        bio: '',
-        links: [{ type: 'email', url: owner_email.trim().slice(0, 200), label: 'E-mail', category: '' }],
+        bio: { az: '', en: '', ru: '' },
+        avatar: (googleProfile && googleProfile.picture) || undefined,
+        links: [{ type: 'email', url: finalEmail.trim().slice(0, 200), label: 'E-mail', category: '' }],
         phone: (contact_info || '').slice(0, 50), // telefon indi profildəki "Telefon" sahəsində düzgün görünür
-        contactEmail: owner_email.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
+        contactEmail: finalEmail.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
         requestNote: (contact_info || '').slice(0, 300)
       }
     })
@@ -118,8 +142,8 @@ exports.handler = async (event) => {
 
   await notifyTelegram(
     `🆕 <b>Yeni istifadəçi qeydiyyatdan keçdi (avtomatik aktivləşdi)</b>\n\n` +
-    `👤 Ad: ${esc(owner_name)}\n` +
-    `✉️ Email: ${esc(owner_email)}\n` +
+    `👤 Ad: ${esc(finalName)}\n` +
+    `✉️ Email: ${esc(finalEmail)}${googleProfile ? ' (Google)' : ''}\n` +
     `📞 Əlaqə: ${esc(contact_info || '-')}\n` +
     `🔑 Açar: <code>${license_key}</code>\n\n` +
     `Bu açar artıq AKTİVDİR, istifadəçi dərhal öz cihazında aktivləşdirə bilər. Əməliyyat lazım deyil, sadəcə məlumat üçün.`
@@ -130,14 +154,14 @@ exports.handler = async (event) => {
   const activateUrl = host ? `${proto}://${host}/?key=${encodeURIComponent(license_key)}` : `/?key=${encodeURIComponent(license_key)}`;
 
   const emailResult = await sendEmail({
-    to: owner_email.trim(),
+    to: finalEmail.trim(),
     subject: '🎉 QR Profile Card — hesabın aktivdir, profilini indi qur',
     text:
-      `Salam ${owner_name},\n\nQeydiyyatın tamamlandı, hesabın artıq AKTİVDİR.\n\n` +
+      `Salam ${finalName},\n\nQeydiyyatın tamamlandı, hesabın artıq AKTİVDİR.\n\n` +
       `Açarın: ${license_key}\n\nProfilini qurmaq üçün bu linki aç: ${activateUrl}\n\n` +
       `Necə istifadə etməli:\n1) Linkə keç, açar avtomatik doldurulacaq.\n2) Profil bölməsində ad, şəkil, telefon, sosial şəbəkə linklərini doldur.\n` +
       `3) QR Kod bölməsindən öz QR kodunu yüklə.\n4) Albomlar bölməsinə iş nümunələrini əlavə et.\n\nSualın olsa bu email-ə cavab yaz.`,
-    html: welcomeEmailHtml({ owner_name: owner_name.trim(), license_key, activateUrl })
+    html: welcomeEmailHtml({ owner_name: finalName.trim(), license_key, activateUrl })
   });
 
   return { statusCode: 200, body: JSON.stringify({ success: true, license_key, activateUrl, emailSent: emailResult.sent }) };
