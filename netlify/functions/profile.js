@@ -63,6 +63,17 @@ exports.handler = async (event) => {
     .single();
 
   if (error || !license || !license.is_active) {
+    console.error('PROFILE_LOOKUP_FAIL', {
+      slug,
+      hasEnvUrl: !!process.env.SUPABASE_URL,
+      envUrl: process.env.SUPABASE_URL,
+      hasEnvKey: !!process.env.SUPABASE_SERVICE_KEY,
+      errorMessage: error && error.message,
+      errorCode: error && error.code,
+      errorDetails: error && error.details,
+      errorHint: error && error.hint,
+      license
+    });
     return { statusCode: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' }, body: '<h1>Profil tapılmadı və ya deaktivdir</h1>' };
   }
 
