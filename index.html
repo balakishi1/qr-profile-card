@@ -2189,9 +2189,13 @@ function debouncedFriendSearch() {
   friendSearchDebounce = setTimeout(runFriendSearch, 400);
 }
 async function runFriendSearch() {
-  const q = document.getElementById('friendSearchInput').value.trim();
+  let q = document.getElementById('friendSearchInput').value.trim();
   const box = document.getElementById('friendSearchResults');
   if (q.length < 2) { box.innerHTML = ''; return; }
+  // Tam profil linki yapışdırılıbsa (https://.../p/SLUG), yalnız SLUG hissəsini çıxar —
+  // backend "profile_slug" sütununa görə axtarır, tam URL-ə görə yox.
+  const slugMatch = q.match(/\/p\/([a-zA-Z0-9_-]+)/);
+  if (slugMatch) q = slugMatch[1];
   box.innerHTML = '<div class="empty-hint">Axtarılır...</div>';
   try {
     const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'search', q })) });
