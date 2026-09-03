@@ -54,11 +54,76 @@
   .blocked .icon{color:var(--red);}
 
   /* TABS */
-  .tabs{display:flex;gap:6px;background:var(--card2);padding:5px;border-radius:12px;margin-bottom:18px;}
-  .tab{flex:1;text-align:center;padding:10px 6px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .tabs{display:flex;gap:6px;background:var(--card2);padding:5px;border-radius:12px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:0 0 auto;text-align:center;padding:10px 14px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;position:relative;}
   .tab.active{background:var(--accent);color:#fff;}
+  .tab .badge-dot{position:absolute;top:4px;right:4px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
   .panel{display:none;}
   .panel.active{display:block;}
+
+  /* SOCIAL: friends & messages */
+  .social-search{display:flex;gap:8px;margin-bottom:14px;}
+  .social-search input{flex:1;}
+  .person-row{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:12px;transition:.15s;}
+  .person-row:hover{background:var(--card2);}
+  .person-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0;overflow:hidden;position:relative;}
+  .person-avatar img{width:100%;height:100%;object-fit:cover;}
+  .person-avatar .dot{position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:var(--muted);border:2px solid var(--card);}
+  .person-avatar .dot.online{background:var(--green);}
+  .person-info{flex:1;min-width:0;}
+  .person-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .person-sub{font-size:12px;color:var(--muted);}
+  .person-actions{display:flex;gap:6px;flex-shrink:0;}
+  .icon-btn{background:var(--card2);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;}
+  .icon-btn.accept{background:var(--green);border-color:transparent;color:#fff;}
+  .icon-btn.decline{background:var(--red);border-color:transparent;color:#fff;}
+  .empty-hint{color:var(--muted);font-size:13px;text-align:center;padding:24px 10px;}
+  .section-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:18px 0 8px;}
+  .section-label:first-child{margin-top:0;}
+
+  .conv-row{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:12px;cursor:pointer;transition:.15s;}
+  .conv-row:hover, .conv-row:active{background:var(--card2);}
+  .conv-title-row{display:flex;justify-content:space-between;align-items:baseline;gap:6px;}
+  .conv-time{font-size:11px;color:var(--muted);flex-shrink:0;}
+  .conv-preview{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .conv-unread{background:var(--accent);color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;}
+  .fab{position:fixed;bottom:24px;right:calc(50% - 260px + 20px);max-width:520px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 24px rgba(99,102,241,.4);z-index:40;}
+  @media (max-width:600px){ .fab{right:20px;} }
+
+  /* CHAT OVERLAY — tam ekran, sabit, sürüşməyən (mobil-friendly) */
+  .chat-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;height:100dvh;}
+  .chat-overlay.open{display:flex;}
+  .chat-header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:14px 14px;border-bottom:1px solid var(--border);background:var(--card);}
+  .chat-back{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 6px;flex-shrink:0;}
+  .chat-header-info{flex:1;min-width:0;display:flex;align-items:center;gap:10px;}
+  .chat-header-name{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chat-header-status{font-size:11.5px;color:var(--muted);}
+  .chat-header-status.online{color:var(--green);}
+  .chat-header-actions{display:flex;gap:6px;flex-shrink:0;}
+  .chat-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain;}
+  .msg-bubble{max-width:78%;padding:9px 13px;border-radius:16px;font-size:13.5px;line-height:1.45;word-wrap:break-word;white-space:pre-wrap;}
+  .msg-row{display:flex;flex-direction:column;}
+  .msg-row.mine{align-items:flex-end;}
+  .msg-row.theirs{align-items:flex-start;}
+  .msg-row.mine .msg-bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-bottom-right-radius:5px;}
+  .msg-row.theirs .msg-bubble{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:5px;}
+  .msg-sender{font-size:10.5px;color:var(--muted);margin-bottom:2px;padding:0 4px;}
+  .msg-time{font-size:9.5px;color:var(--muted);margin-top:3px;padding:0 4px;}
+  .chat-input-bar{flex:0 0 auto;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--card);padding-bottom:calc(10px + env(safe-area-inset-bottom));}
+  .chat-input-bar textarea{flex:1;resize:none;max-height:100px;min-height:40px;padding:10px 14px;border-radius:20px;background:var(--card2);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:inherit;}
+  .chat-send-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+  .chat-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:20px;}
+
+  /* Modal (yeni qrup, dost tap və s.) */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:210;display:none;align-items:flex-end;justify-content:center;}
+  .modal-backdrop.open{display:flex;}
+  .modal-sheet{background:var(--card);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px;max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  @media (min-width:601px){ .modal-backdrop{align-items:center;} .modal-sheet{border-radius:16px;max-height:80vh;} }
+  .modal-sheet h3{font-size:15px;margin-bottom:14px;}
+  .modal-close-row{display:flex;justify-content:flex-end;margin-bottom:6px;}
+  .checkbox-row{display:flex;align-items:center;gap:10px;padding:9px 4px;}
+  .checkbox-row input{width:auto;}
 
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
   .card h3{font-size:14px;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
@@ -176,6 +241,8 @@
       <div class="tab" data-tab="qr">QR Kod</div>
       <div class="tab" data-tab="albums">Albomlar</div>
       <div class="tab" data-tab="compose">Post üzərinə</div>
+      <div class="tab" data-tab="friends">👥 Dostlar<span class="badge-dot" id="friendsBadge" style="display:none;">0</span></div>
+      <div class="tab" data-tab="messages">💬 Mesajlar<span class="badge-dot" id="messagesBadge" style="display:none;">0</span></div>
     </div>
 
     <!-- PROFILE PANEL -->
@@ -411,9 +478,76 @@
       </div>
     </div>
 
+    <!-- FRIENDS PANEL -->
+    <div class="panel" id="panel-friends">
+      <div class="card">
+        <h3>Dost tap</h3>
+        <div class="social-search">
+          <input type="text" id="friendSearchInput" placeholder="Ad və ya profil açarı ilə axtar..." oninput="debouncedFriendSearch()">
+        </div>
+        <div id="friendSearchResults"></div>
+      </div>
+
+      <div class="card">
+        <div id="incomingRequestsWrap" style="display:none;">
+          <div class="section-label">Gələn sorğular</div>
+          <div id="incomingRequestsList"></div>
+        </div>
+        <div class="section-label" style="margin-top:0;">Dostlarım</div>
+        <div id="friendsListWrap"><div class="empty-hint">Yüklənir...</div></div>
+      </div>
+    </div>
+
+    <!-- MESSAGES PANEL -->
+    <div class="panel" id="panel-messages">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div class="section-label" style="margin:0;">Söhbətlər</div>
+          <button class="btn secondary small" onclick="openNewGroupModal()">👥 Yeni qrup</button>
+        </div>
+        <div id="conversationsListWrap"><div class="empty-hint">Yüklənir...</div></div>
+      </div>
+    </div>
+
     <div style="text-align:center;margin-top:20px;">
       <span class="badge">✅ Bu cihaz aktivdir</span>
     </div>
+  </div>
+</div>
+
+<!-- YENİ QRUP MODALI -->
+<div class="modal-backdrop" id="newGroupModal">
+  <div class="modal-sheet">
+    <div class="modal-close-row"><button class="icon-btn" onclick="closeNewGroupModal()">✕</button></div>
+    <h3>Yeni qrup yarat</h3>
+    <div class="field">
+      <label>Qrup adı</label>
+      <input type="text" id="newGroupName" placeholder="məs: Casa Eleganza komandası">
+    </div>
+    <div class="section-label" style="margin-top:14px;">Dostlarından üzv seç</div>
+    <div id="newGroupMemberPicker"><div class="empty-hint">Yüklənir...</div></div>
+    <button class="btn" style="margin-top:14px;" onclick="submitNewGroup()">Qrupu yarat</button>
+    <div class="err" id="newGroupMsg" style="color:var(--green);"></div>
+  </div>
+</div>
+
+<!-- TAM EKRAN ÇAT -->
+<div class="chat-overlay" id="chatOverlay">
+  <div class="chat-header">
+    <button class="chat-back" onclick="closeChatOverlay()">←</button>
+    <div class="chat-header-info">
+      <div class="person-avatar" id="chatHeaderAvatar" style="width:36px;height:36px;font-size:13px;"></div>
+      <div>
+        <div class="chat-header-name" id="chatHeaderName">—</div>
+        <div class="chat-header-status" id="chatHeaderStatus"></div>
+      </div>
+    </div>
+    <div class="chat-header-actions" id="chatHeaderActions"></div>
+  </div>
+  <div class="chat-body" id="chatBody"><div class="chat-empty">Yüklənir...</div></div>
+  <div class="chat-input-bar">
+    <textarea id="chatInput" rows="1" placeholder="Mesaj yaz..." onkeydown="handleChatInputKey(event)" oninput="autoGrowChatInput(this)"></textarea>
+    <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
   </div>
 </div>
 
@@ -664,6 +798,7 @@ function enterApp(j) {
   buildThemeSwatches();
   renderQR();
   initSupabaseClient();
+  initSocialModule();
 }
 
 function renderAvatarPreview() {
@@ -770,6 +905,8 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'qr') renderQR();
   if (t.dataset.tab === 'compose') prepareHandleQR();
+  if (t.dataset.tab === 'friends') { loadIncomingRequests(); loadFriendsList(); }
+  if (t.dataset.tab === 'messages') loadConversations();
 }));
 
 /* ---------- LINKS ---------- */
@@ -2006,6 +2143,336 @@ async function exportComposedPDF() {
   pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
   pdf.save('post-qr.pdf');
 }
+
+/* ================== SOSİAL MODUL: dostluq + mesajlaşma ================== */
+function authBody(extra) {
+  return Object.assign({ license_key: session.license_key, device_id: deviceId, token: session.token }, extra || {});
+}
+function escHtml(s) { return String(s || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+function initials(name) { return (name || '?').trim().slice(0, 1).toUpperCase(); }
+function avatarInnerHtml(person) {
+  return person.avatar ? `<img src="${escHtml(person.avatar)}" alt="">` : initials(person.name);
+}
+function timeAgoShort(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return 'indi';
+  if (diff < 3600) return Math.floor(diff / 60) + 'd';
+  if (diff < 86400) return Math.floor(diff / 3600) + 's';
+  if (diff < 604800) return Math.floor(diff / 86400) + 'g';
+  return new Date(iso).toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
+}
+
+let presenceTimer = null;
+let friendsCache = [];
+function initSocialModule() {
+  loadIncomingRequests();
+  loadFriendsList();
+  loadConversations();
+  if (presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = setInterval(() => {
+    // Hər hansı sosial fetch onlayn statusunu (last_seen) yeniləyir — burada sadəcə
+    // fon rejimində "aktivəm" siqnalını göndəririk və sayğacları təzələyirik.
+    loadIncomingRequests();
+    if (document.getElementById('panel-messages').classList.contains('active') && !document.getElementById('chatOverlay').classList.contains('open')) {
+      loadConversations();
+    }
+    if (document.getElementById('chatOverlay').classList.contains('open') && currentChatConversationId) {
+      pollChatMessages();
+    }
+  }, 15000);
+}
+
+/* ---------- FRIEND SEARCH ---------- */
+let friendSearchDebounce = null;
+function debouncedFriendSearch() {
+  clearTimeout(friendSearchDebounce);
+  friendSearchDebounce = setTimeout(runFriendSearch, 400);
+}
+async function runFriendSearch() {
+  const q = document.getElementById('friendSearchInput').value.trim();
+  const box = document.getElementById('friendSearchResults');
+  if (q.length < 2) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="empty-hint">Axtarılır...</div>';
+  try {
+    const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'search', q })) });
+    const j = await r.json();
+    if (!j.success) { box.innerHTML = '<div class="empty-hint">Xəta baş verdi.</div>'; return; }
+    if (!j.results.length) { box.innerHTML = '<div class="empty-hint">Heç kim tapılmadı.</div>'; return; }
+    box.innerHTML = j.results.map(p => {
+      let actionHtml = '';
+      if (p.relation === 'friends') actionHtml = `<span class="person-sub" style="color:var(--green);">✓ Dost</span>`;
+      else if (p.relation === 'pending_sent') actionHtml = `<span class="person-sub">Gözlənilir...</span>`;
+      else if (p.relation === 'pending_received') actionHtml = `<button class="icon-btn accept" onclick="respondFriendRequest('${p.slug}','accept',this)">✓</button>`;
+      else actionHtml = `<button class="icon-btn" onclick="sendFriendRequest('${p.slug}', this)">➕</button>`;
+      return `
+      <div class="person-row">
+        <div class="person-avatar">${avatarInnerHtml(p)}<span class="dot ${p.isOnline ? 'online' : ''}"></span></div>
+        <div class="person-info"><div class="person-name">${escHtml(p.name)}</div><div class="person-sub">${p.isOnline ? 'Onlayn' : 'Oflayn'}</div></div>
+        <div class="person-actions">${actionHtml}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="empty-hint">Şəbəkə xətası.</div>';
+  }
+}
+
+async function sendFriendRequest(slug, btnEl) {
+  if (btnEl) btnEl.disabled = true;
+  try {
+    const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'request', to_slug: slug })) });
+    const j = await r.json();
+    if (j.success) { runFriendSearch(); loadFriendsList(); }
+  } catch (e) {}
+  if (btnEl) btnEl.disabled = false;
+}
+
+/* ---------- INCOMING REQUESTS ---------- */
+async function loadIncomingRequests() {
+  try {
+    const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'incoming' })) });
+    const j = await r.json();
+    if (!j.success) return;
+    const wrap = document.getElementById('incomingRequestsWrap');
+    const list = document.getElementById('incomingRequestsList');
+    const badge = document.getElementById('friendsBadge');
+    if (!j.requests.length) {
+      wrap.style.display = 'none';
+      badge.style.display = 'none';
+    } else {
+      wrap.style.display = 'block';
+      badge.style.display = 'flex';
+      badge.textContent = j.requests.length;
+      list.innerHTML = j.requests.map(p => `
+        <div class="person-row">
+          <div class="person-avatar">${avatarInnerHtml(p)}<span class="dot ${p.isOnline ? 'online' : ''}"></span></div>
+          <div class="person-info"><div class="person-name">${escHtml(p.name)}</div><div class="person-sub">Dostluq sorğusu göndərib</div></div>
+          <div class="person-actions">
+            <button class="icon-btn accept" onclick="respondFriendRequest('${p.slug}','accept',this)">✓</button>
+            <button class="icon-btn decline" onclick="respondFriendRequest('${p.slug}','decline',this)">✕</button>
+          </div>
+        </div>`).join('');
+    }
+  } catch (e) {}
+}
+
+async function respondFriendRequest(fromSlug, decision, btnEl) {
+  const row = btnEl ? btnEl.closest('.person-row') : null;
+  if (row) row.style.opacity = '.5';
+  try {
+    await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'respond', from_slug: fromSlug, decision })) });
+  } catch (e) {}
+  loadIncomingRequests();
+  loadFriendsList();
+  runFriendSearch();
+}
+
+/* ---------- FRIENDS LIST ---------- */
+async function loadFriendsList() {
+  const wrap = document.getElementById('friendsListWrap');
+  try {
+    const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'list' })) });
+    const j = await r.json();
+    if (!j.success) { wrap.innerHTML = '<div class="empty-hint">Xəta baş verdi.</div>'; return; }
+    friendsCache = j.friends || [];
+    if (!friendsCache.length) { wrap.innerHTML = '<div class="empty-hint">Hələ dostun yoxdur. Yuxarıdan axtar və dostluq sorğusu göndər.</div>'; return; }
+    wrap.innerHTML = friendsCache.map(p => `
+      <div class="person-row">
+        <div class="person-avatar">${avatarInnerHtml(p)}<span class="dot ${p.isOnline ? 'online' : ''}"></span></div>
+        <div class="person-info"><div class="person-name">${escHtml(p.name)}</div><div class="person-sub">${p.isOnline ? 'Onlayn' : 'Oflayn'}</div></div>
+        <div class="person-actions">
+          <a class="icon-btn" href="/p/${escHtml(p.slug)}" target="_blank" title="Profilinə bax">👁️</a>
+          <button class="icon-btn" onclick="startDirectChat('${p.slug}')" title="Yazış">💬</button>
+          <button class="icon-btn decline" onclick="removeFriend('${p.slug}', this)" title="Sil">✕</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-hint">Şəbəkə xətası.</div>';
+  }
+}
+
+async function removeFriend(slug, btnEl) {
+  if (!confirm('Bu dostu siyahından silmək istəyirsən?')) return;
+  const row = btnEl.closest('.person-row');
+  if (row) row.style.opacity = '.5';
+  try {
+    await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'remove', slug })) });
+  } catch (e) {}
+  loadFriendsList();
+}
+
+/* ---------- CONVERSATIONS ---------- */
+async function loadConversations() {
+  const wrap = document.getElementById('conversationsListWrap');
+  try {
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'conversations' })) });
+    const j = await r.json();
+    if (!j.success) return;
+    const totalUnread = j.conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
+    const badge = document.getElementById('messagesBadge');
+    if (totalUnread > 0) { badge.style.display = 'flex'; badge.textContent = totalUnread > 99 ? '99+' : totalUnread; }
+    else badge.style.display = 'none';
+
+    if (!j.conversations.length) {
+      wrap.innerHTML = '<div class="empty-hint">Hələ söhbətin yoxdur. "Dostlar" bölməsindən birinə yazış.</div>';
+      return;
+    }
+    wrap.innerHTML = j.conversations.map(c => `
+      <div class="conv-row" onclick="openChatOverlay('${c.id}', ${JSON.stringify(c.title)}, ${JSON.stringify(c.avatar)}, '${c.type}', ${c.isOnline})">
+        <div class="person-avatar">${c.avatar ? `<img src="${escHtml(c.avatar)}">` : (c.type === 'group' ? '👥' : initials(c.title))}${c.type === 'direct' ? `<span class="dot ${c.isOnline ? 'online' : ''}"></span>` : ''}</div>
+        <div class="person-info">
+          <div class="conv-title-row"><div class="person-name">${escHtml(c.title)}</div><div class="conv-time">${c.lastMessageAt ? timeAgoShort(c.lastMessageAt) : ''}</div></div>
+          <div class="conv-preview">${c.lastMessageMine ? 'Sən: ' : ''}${escHtml(c.lastMessage) || 'Söhbətə başla...'}</div>
+        </div>
+        ${c.unreadCount ? `<div class="conv-unread">${c.unreadCount}</div>` : ''}
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function startDirectChat(slug) {
+  try {
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'create_direct', slug })) });
+    const j = await r.json();
+    if (!j.success) { alert('Söhbət açıla bilmədi.'); return; }
+    const friend = friendsCache.find(f => f.slug === slug) || { name: slug, avatar: null, isOnline: false };
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    document.querySelector('.tab[data-tab="messages"]').classList.add('active');
+    document.getElementById('panel-messages').classList.add('active');
+    loadConversations();
+    openChatOverlay(j.conversation_id, friend.name, friend.avatar, 'direct', friend.isOnline);
+  } catch (e) {}
+}
+
+/* ---------- NEW GROUP MODAL ---------- */
+function openNewGroupModal() {
+  document.getElementById('newGroupModal').classList.add('open');
+  document.getElementById('newGroupName').value = '';
+  document.getElementById('newGroupMsg').style.display = 'none';
+  const picker = document.getElementById('newGroupMemberPicker');
+  if (!friendsCache.length) { picker.innerHTML = '<div class="empty-hint">Qrup yaratmaq üçün əvvəlcə dostların olmalıdır.</div>'; return; }
+  picker.innerHTML = friendsCache.map(p => `
+    <label class="checkbox-row">
+      <input type="checkbox" value="${escHtml(p.slug)}" class="ng-member-checkbox">
+      <div class="person-avatar" style="width:32px;height:32px;font-size:12px;">${avatarInnerHtml(p)}</div>
+      <span>${escHtml(p.name)}</span>
+    </label>`).join('');
+}
+function closeNewGroupModal() { document.getElementById('newGroupModal').classList.remove('open'); }
+
+async function submitNewGroup() {
+  const name = document.getElementById('newGroupName').value.trim();
+  const msg = document.getElementById('newGroupMsg');
+  msg.style.display = 'block'; msg.style.color = '#ef4444';
+  if (!name) { msg.textContent = 'Qrup adını yaz.'; return; }
+  const memberSlugs = Array.from(document.querySelectorAll('.ng-member-checkbox:checked')).map(el => el.value);
+  if (!memberSlugs.length) { msg.textContent = 'Ən azı bir üzv seç.'; return; }
+  msg.style.color = 'var(--muted)'; msg.textContent = 'Yaradılır...';
+  try {
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'create_group', name, member_slugs: memberSlugs })) });
+    const j = await r.json();
+    if (j.success) {
+      closeNewGroupModal();
+      loadConversations();
+      openChatOverlay(j.conversation_id, name, null, 'group', false);
+    } else {
+      msg.style.color = '#ef4444'; msg.textContent = 'Xəta baş verdi.';
+    }
+  } catch (e) {
+    msg.style.color = '#ef4444'; msg.textContent = 'Şəbəkə xətası.';
+  }
+}
+
+/* ---------- FULL-SCREEN CHAT ---------- */
+let currentChatConversationId = null;
+let lastMessageTimestamp = null;
+
+function openChatOverlay(conversationId, title, avatar, type, isOnline) {
+  currentChatConversationId = conversationId;
+  lastMessageTimestamp = null;
+  document.getElementById('chatHeaderName').textContent = title || (type === 'group' ? 'Qrup' : '—');
+  document.getElementById('chatHeaderStatus').textContent = type === 'group' ? '' : (isOnline ? 'Onlayn' : 'Oflayn');
+  document.getElementById('chatHeaderStatus').classList.toggle('online', !!isOnline && type !== 'group');
+  document.getElementById('chatHeaderAvatar').innerHTML = avatar ? `<img src="${escHtml(avatar)}">` : (type === 'group' ? '👥' : initials(title));
+  document.getElementById('chatHeaderActions').innerHTML = type === 'group'
+    ? `<button class="icon-btn" onclick="alert('Qrup üzvləri: tezliklə burada idarə oluna biləcək.')" title="Üzvlər">👥</button>`
+    : '';
+  document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Yüklənir...</div>';
+  document.getElementById('chatOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  loadChatHistory();
+}
+
+function closeChatOverlay() {
+  currentChatConversationId = null;
+  document.getElementById('chatOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  loadConversations();
+}
+
+function renderMessageBubbles(messages, append) {
+  const body = document.getElementById('chatBody');
+  const wasAtBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) < 60;
+  const html = messages.map(m => `
+    <div class="msg-row ${m.mine ? 'mine' : 'theirs'}">
+      ${!m.mine ? `<div class="msg-sender">${escHtml(m.senderName)}</div>` : ''}
+      <div class="msg-bubble">${escHtml(m.body)}</div>
+      <div class="msg-time">${new Date(m.createdAt).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}</div>
+    </div>`).join('');
+  if (append) body.insertAdjacentHTML('beforeend', html);
+  else body.innerHTML = html || '<div class="chat-empty">Hələ mesaj yoxdur. İlk mesajı sən yaz 👋</div>';
+  if (!append || wasAtBottom) body.scrollTop = body.scrollHeight;
+}
+
+async function loadChatHistory() {
+  try {
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'history', conversation_id: currentChatConversationId })) });
+    const j = await r.json();
+    if (!j.success) { document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Yüklənə bilmədi.</div>'; return; }
+    renderMessageBubbles(j.messages, false);
+    if (j.messages.length) lastMessageTimestamp = j.messages[j.messages.length - 1].createdAt;
+  } catch (e) {
+    document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Şəbəkə xətası.</div>';
+  }
+}
+
+async function pollChatMessages() {
+  if (!currentChatConversationId) return;
+  try {
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'poll', conversation_id: currentChatConversationId, since: lastMessageTimestamp || '1970-01-01' })) });
+    const j = await r.json();
+    if (j.success && j.messages.length) {
+      renderMessageBubbles(j.messages, true);
+      lastMessageTimestamp = j.messages[j.messages.length - 1].createdAt;
+    }
+  } catch (e) {}
+}
+// Söhbət açıq ikən daha tez-tez (3 saniyədə bir) yeni mesajları yoxla
+setInterval(() => {
+  if (document.getElementById('chatOverlay').classList.contains('open')) pollChatMessages();
+}, 3000);
+
+function autoGrowChatInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+function handleChatInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+}
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !currentChatConversationId) return;
+  input.value = ''; input.style.height = 'auto';
+  try {
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'send', conversation_id: currentChatConversationId, body: text })) });
+    const j = await r.json();
+    if (j.success) {
+      renderMessageBubbles([j.message], true);
+      lastMessageTimestamp = j.message.createdAt;
+    }
+  } catch (e) {}
+}
+/* ================== /SOSİAL MODUL ================== */
 
 boot();
 </script>

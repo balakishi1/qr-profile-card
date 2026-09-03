@@ -1,5 +1,25 @@
 # QR Profile Card — Quraşdırma
 
+## v23 dəyişiklikləri (bu versiya) — Dostluq sistemi + Mesajlaşma (Mərhələ 1)
+Bu versiya sənin özün etdiyin dəyişikliklərin (GitHub repo-dan çəkilib) üzərinə qurulub — heç nəyi əzməmişəm, `profile.js`-ə əlavə etdiyin debug logu da toxunulmadan qalıb.
+
+**Yeni funksiyalar:**
+- **Dostluq sistemi** — `index.html`-də yeni "👥 Dostlar" bölməsi: ad/profil-açarı ilə istifadəçi axtar, dostluq sorğusu göndər/qəbul et/rədd et/sil, dostlarının **onlayn/oflayn statusunu** gör, birbaşa profilinə keç.
+- **Fərdi yazışma (1-1 çat)** — yalnız qəbul edilmiş dostlarla. Yeni "💬 Mesajlar" bölməsi söhbətlərin siyahısını (son mesaj + oxunmamış say ilə) göstərir.
+- **Qrup söhbətləri** — "Yeni qrup" düyməsi ilə ad seç, dostlarından üzv seç, qrup yarat.
+- **Tam-ekran çat interfeysi** — söhbətə basanda bütün ekranı tutan, **sabit (fixed) başlıq və mesaj yazma zolağı**, ortada sürüşən mesaj lenti; mobil brauzerlərdə səhifə "sıçramır" (`overscroll-behavior:contain`, `100dvh`).
+- Söhbət açıq olanda yeni mesajlar **hər 3 saniyədə** avtomatik yoxlanılır (polling); tətbiq açıq olanda dostluq sorğuları/mesaj sayğacları 15 saniyədə bir yenilənir.
+
+**Texniki qərar (şəffaf demək istəyirəm):** Mesajlaşma **real-time WebSocket (Supabase Realtime) ilə DEYİL, tez-tez polling ilə işləyir**. Bunun səbəbi: sizin auth modeliniz (license_key + cihaz tokeni) Supabase Auth-a əsaslanmır, ona görə client birbaşa Supabase-ə qoşulub Realtime-dan istifadə edə bilmir — bütün sorğular təhlükəsizlik üçün Netlify Functions üzərindən (service_role key ilə) gedir. 3 saniyəlik polling praktikada demək olar hiss olunmayan gecikmə verir, sadə və etibarlıdır. İstəsən, sonrakı mərhələdə əsl Realtime-a keçid mümkündür (əlavə `SUPABASE_JWT_SECRET` konfiqurasiyası tələb edir).
+
+**Təhlükəsizlik qeydi:** Dostluq/mesajlaşma sistemində istifadəçilər `license_key` (məxfi aktivasiya açarı) ilə DEYİL, artıq ictimai olan `profile_slug` (QR linkindəki hissə) ilə tanınır — heç kimin məxfi açarı başqasına göstərilmir.
+
+**Sonraki mərhələ (hələ edilməyib):** Səsli/video zəng — bu, WebRTC + TURN server tələb edir (adətən pullu xidmət, məs. Twilio/Cloudflare Calls), ayrıca müzakirə lazımdır.
+
+**VACİB — bu versiyanı yükləmədən əvvəl mütləq et:**
+1. Supabase SQL Editor-də yenidən `supabase-schema.sql`-i tam işə sal (yeni cədvəllər: `friend_requests`, `conversations`, `conversation_members`, `messages`, yeni sütun: `licenses.last_seen`). Mövcud data silinmir.
+2. Netlify-da yeni funksiyalar avtomatik tanınacaq (`friends.js`, `messages.js`) — əlavə env dəyişəni lazım deyil, mövcud `SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` kifayətdir.
+
 ## v22 dəyişiklikləri (bu versiya)
 - **3 dil (AZ/EN/RU):**
   - `register.html` — tam UI tərcüməsi, sağ yuxarıda AZ/EN/RU dil düymələri.

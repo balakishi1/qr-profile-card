@@ -94,3 +94,62 @@ alter table contact_messages enable row level security;
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;
+
+-- ============================================================
+-- DOSTLUQ + MESAJLAŞMA SİSTEMİ
+-- Təhlükəsizlik qeydi: burada istifadəçi "license_key" (məxfi aktivasiya açarı) ilə DEYİL,
+-- artıq ictimai olan "profile_slug" ilə tanınır (QR linkində onsuz da paylaşılır).
+-- Bütün sorğular Netlify Functions-dan service_role key ilə gedir, client birbaşa Supabase-ə
+-- qoşulmur — ona görə RLS-i bağlı saxlamaq (policy əlavə etmədən) kifayətdir.
+-- ============================================================
+
+-- İstifadəçinin "onlayn" statusu üçün son aktivlik vaxtı
+alter table licenses add column if not exists last_seen timestamptz;
+
+-- Dostluq sorğuları (göndərilib / qəbul edilib / rədd edilib)
+create table if not exists friend_requests (
+  id uuid primary key default gen_random_uuid(),
+  from_slug text not null references licenses(profile_slug) on delete cascade,
+  to_slug text not null references licenses(profile_slug) on delete cascade,
+  status text not null default 'pending', -- pending | accepted | declined
+  created_at timestamptz default now(),
+  responded_at timestamptz,
+  unique(from_slug, to_slug)
+);
+create index if not exists friend_requests_to_idx on friend_requests(to_slug, status);
+create index if not exists friend_requests_from_idx on friend_requests(from_slug, status);
+alter table friend_requests enable row level security;
+
+-- Söhbətlər (fərdi və ya qrup)
+create table if not exists conversations (
+  id uuid primary key default gen_random_uuid(),
+  type text not null default 'direct', -- direct | group
+  name text,
+  avatar text,
+  created_by text references licenses(profile_slug),
+  created_at timestamptz default now()
+);
+alter table conversations enable row level security;
+
+-- Söhbətin üzvləri
+create table if not exists conversation_members (
+  conversation_id uuid not null references conversations(id) on delete cascade,
+  slug text not null references licenses(profile_slug) on delete cascade,
+  role text not null default 'member', -- admin | member
+  joined_at timestamptz default now(),
+  last_read_at timestamptz default now(),
+  primary key (conversation_id, slug)
+);
+create index if not exists conv_members_slug_idx on conversation_members(slug);
+alter table conversation_members enable row level security;
+
+-- Mesajlar
+create table if not exists messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references conversations(id) on delete cascade,
+  sender_slug text not null references licenses(profile_slug),
+  body text not null,
+  created_at timestamptz default now()
+);
+create index if not exists messages_conv_idx on messages(conversation_id, created_at);
+alter table messages enable row level security;
