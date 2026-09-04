@@ -1,6 +1,13 @@
 # QR Profile Card — Quraşdırma
 
-## v24 dəyişiklikləri (bu versiya) — Bug düzəlişləri + Mesaj əlavələri + "Kim baxıb" bildirişi
+## v24 (performans düzəlişi əlavəsi) — sürət optimallaşdırması
+12-13 istifadəçi ilə "ləng işləmə" şikayətinə görə tapılan və düzəldilən performans problemləri:
+- **N+1 sorğu problemi düzəldildi**: "Söhbətlər" siyahısı əvvəllər hər söhbət üçün ayrı-ayrı 2 server sorğusu göndərirdi (5 söhbət = 10 sorğu). İndi 1 toplu sorğu ilə eyni məlumat alınır — 12-13 istifadəçi eyni anda bunu açanda server yükü kəskin azalır.
+- **Arxa fon sorğuları dayandırıldı**: istifadəçi tab-ı arxa plana atanda (başqa proqrama keçəndə) 15 saniyəlik və 3 saniyəlik yoxlama taymerləri artıq işləmir (`document.hidden` yoxlanışı). Tab-a geri qayıdanda dərhal yenilənir.
+
+**Qeyd — "hər istifadəçi öz yaddaşından istifadə etsin" barədə:** dostluq/mesajlaşma kimi paylaşılan funksiyalar üçün BÜTÜN istifadəçilərin datası mütləq eyni (paylaşılan) Supabase bazasında qalmalıdır — əks halda heç kim bir-birini tapıb dost ola/yazışa bilməz. Sürət problemi database-in "paylaşılması"ndan deyil, yuxarıdakı səmərəsiz sorğu nümunəsindən qaynaqlanırdı, indi düzəldi.
+
+## v24 dəyişiklikləri — Bug düzəlişləri + Mesaj əlavələri + "Kim baxıb" bildirişi
 
 **Düzəldilən bug-lar (v23-də bildirdiyin problemlər):**
 - ✅ Söhbətə klikləyib açıla bilməmə problemi — səbəb: dostun adında dırnaq/apostrof olduqda `onclick` atributu pozulurdu. İndi söhbətlər JS-də keşlənir, `onclick` yalnız təhlükəsiz ID istifadə edir.

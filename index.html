@@ -963,6 +963,7 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
+  t.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'qr') renderQR();
   if (t.dataset.tab === 'compose') prepareHandleQR();
@@ -2279,6 +2280,7 @@ function initSocialModule() {
   refreshViewsBadge();
   if (presenceTimer) clearInterval(presenceTimer);
   presenceTimer = setInterval(() => {
+    if (document.hidden) return; // tab arxa planda ikən sorğu göndərmə — batareya/server yükünü azaldır
     // Hər hansı sosial fetch onlayn statusunu (last_seen) yeniləyir — burada sadəcə
     // fon rejimində "aktivəm" siqnalını göndəririk və sayğacları təzələyirik.
     loadIncomingRequests();
@@ -2287,6 +2289,14 @@ function initSocialModule() {
       loadConversations();
     }
   }, 15000);
+  // Tab yenidən görünən kimi (istifadəçi geri qayıdanda) dərhal təzələ
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      loadIncomingRequests();
+      refreshViewsBadge();
+      if (document.getElementById('chatOverlay').classList.contains('open')) pollChatMessages();
+    }
+  });
 }
 
 /* ---------- FRIEND SEARCH ---------- */
@@ -2627,8 +2637,9 @@ async function pollChatMessages() {
   } catch (e) {}
   isPolling = false;
 }
-// Söhbət açıq ikən daha tez-tez (3 saniyədə bir) yeni mesajları yoxla
+// Söhbət açıq ikən daha tez-tez (3 saniyədə bir) yeni mesajları yoxla (tab arxa planda deyilsə)
 setInterval(() => {
+  if (document.hidden) return;
   if (document.getElementById('chatOverlay').classList.contains('open')) pollChatMessages();
 }, 3000);
 
@@ -2710,6 +2721,8 @@ async function handleAttachFile(event, kind) {
     if (sendJ.success) {
       renderMessageBubbles([sendJ.message], true);
       lastMessageTimestamp = sendJ.message.createdAt;
+    } else {
+      alert('Mesaj göndərilə bilmədi: ' + (sendJ.reason || sendJ.error || 'naməlum xəta'));
     }
   } catch (e) {
     removeUploadingBubble(upId);
@@ -2733,8 +2746,13 @@ function sendLocationMessage() {
       });
       const j = await r.json();
       removeUploadingBubble(upId);
-      if (j.success) { renderMessageBubbles([j.message], true); lastMessageTimestamp = j.message.createdAt; }
-    } catch (e) { removeUploadingBubble(upId); }
+      if (j.success) {
+        renderMessageBubbles([j.message], true);
+        lastMessageTimestamp = j.message.createdAt;
+      } else {
+        alert('Konum göndərilə bilmədi: ' + (j.reason || j.error || 'naməlum xəta'));
+      }
+    } catch (e) { removeUploadingBubble(upId); alert('Şəbəkə xətası — konum göndərilə bilmədi.'); }
   }, () => {
     removeUploadingBubble(upId);
     alert('Konuma icazə verilmədi.');
@@ -2798,9 +2816,9 @@ function stopVoiceRecording() {
         body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
       });
       const j = await r.json();
-      if (!j.success) { removeUploadingBubble(upId); return; }
+      if (!j.success) { removeUploadingBubble(upId); alert('Yükləmə linki alına bilmədi.'); return; }
       const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
-      if (upErr) { removeUploadingBubble(upId); return; }
+      if (upErr) { removeUploadingBubble(upId); alert('Səs faylı yüklənə bilmədi: ' + upErr.message); return; }
       const sendR = await fetch(`${FN}/messages`, {
         method: 'POST',
         body: JSON.stringify(authBody({
@@ -2810,6 +2828,7 @@ function stopVoiceRecording() {
       });
       const sendJ = await sendR.json();
       removeUploadingBubble(upId);
+      if (!sendJ.success) alert('Səsli mesaj göndərilə bilmədi: ' + (sendJ.reason || sendJ.error || 'naməlum xəta'));
       if (sendJ.success) { renderMessageBubbles([sendJ.message], true); lastMessageTimestamp = sendJ.message.createdAt; }
     } catch (e) { removeUploadingBubble(upId); }
   }, { once: true });

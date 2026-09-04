@@ -158,18 +158,32 @@ exports.handler = async (event) => {
         profileMap[p.profile_slug] = { slug: p.profile_slug, name: p.owner_name || '', avatar: d.avatar || null, isOnline: !!(p.last_seen && (Date.now() - new Date(p.last_seen).getTime()) < ONLINE_WINDOW_MS) };
       });
 
+      // Performans: hər söhbət üçün ayrı-ayrı 2 sorğu (son mesaj + oxunmamış say) göndərmək
+      // əvəzinə, bütün söhbətlərin son mesajlarını TƏK sorğuda çəkirik (500 ən son mesaj,
+      // tarixə görə azalan sırada) və son mesaj + oxunmamış sayını yaddaşda hesablayırıq.
+      // Bu, 12-13 istifadəçinin eyni anda "Mesajlar" siyahısını açması zamanı Supabase-ə
+      // gedən sorğu sayını 10 qat belə azalda bilər.
+      const { data: recentMsgs } = await supabase
+        .from('messages')
+        .select('conversation_id, sender_slug, body, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false })
+        .limit(500);
+
+      const lastMsgByConv = {};
+      const unreadCountByConv = {};
+      (recentMsgs || []).forEach(m => {
+        if (!lastMsgByConv[m.conversation_id]) lastMsgByConv[m.conversation_id] = m; // ilk rast gəlinən = ən son (desc sıra)
+        const readSince = lastReadMap[m.conversation_id] || '1970-01-01';
+        if (m.sender_slug !== mySlug && m.created_at > readSince) {
+          unreadCountByConv[m.conversation_id] = (unreadCountByConv[m.conversation_id] || 0) + 1;
+        }
+      });
+
       const result = [];
       for (const conv of (convs || [])) {
-        const { data: lastMsgArr } = await supabase
-          .from('messages').select('body, sender_slug, created_at')
-          .eq('conversation_id', conv.id).order('created_at', { ascending: false }).limit(1);
-        const lastMsg = lastMsgArr && lastMsgArr[0];
-
-        const { count: unreadCount } = await supabase
-          .from('messages').select('id', { count: 'exact', head: true })
-          .eq('conversation_id', conv.id)
-          .gt('created_at', lastReadMap[conv.id] || '1970-01-01')
-          .neq('sender_slug', mySlug);
+        const lastMsg = lastMsgByConv[conv.id] || null;
+        const unreadCount = unreadCountByConv[conv.id] || 0;
 
         const memberSlugs = (memberSlugsByConv[conv.id] || []).filter(s => s !== mySlug);
         const otherProfiles = memberSlugs.map(s => profileMap[s]).filter(Boolean);
