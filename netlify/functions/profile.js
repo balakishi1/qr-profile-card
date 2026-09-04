@@ -1,6 +1,54 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+const { sign } = require('./lib/deviceAuth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+// Ziyarətçinin IP-sini birbaşa saxlamırıq (məxfilik üçün) — SESSION_SECRET ilə hash edirik.
+function hashIp(ip) {
+  return crypto.createHmac('sha256', process.env.SESSION_SECRET || 'fallback').update(String(ip || 'unknown')).digest('hex');
+}
+
+// Ziyarətçinin şəhər/ölkəsini IP-dən təyin edir (pulsuz ip-api.com, 1.5san limitlə —
+// yavaş olsa belə profil yüklənməsini gecikdirməsin deyə)
+async function geolocateIp(ip) {
+  if (!ip || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.')) return { city: null, country: null };
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    const r = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,city`, { signal: controller.signal });
+    clearTimeout(timeout);
+    const j = await r.json();
+    if (j.status === 'success') return { city: j.city || null, country: j.country || null };
+  } catch (e) {}
+  return { city: null, country: null };
+}
+
+// Profil baxışını qeyd edir (unikal ziyarətçi = IP-hash üzrə) — sahibinə "kim baxıb" bildirişi üçün
+async function logProfileView(slug, event) {
+  try {
+    const ipRaw = ((event.headers && (event.headers['x-forwarded-for'] || event.headers['client-ip'])) || '').split(',')[0].trim();
+    const ipHash = hashIp(ipRaw);
+
+    const { data: existing } = await supabase
+      .from('profile_views_log')
+      .select('id, view_count')
+      .eq('profile_slug', slug).eq('ip_hash', ipHash)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('profile_views_log')
+        .update({ last_viewed_at: new Date().toISOString(), view_count: (existing.view_count || 1) + 1 })
+        .eq('id', existing.id);
+      return;
+    }
+
+    const { city, country } = await geolocateIp(ipRaw);
+    await supabase.from('profile_views_log').insert({ profile_slug: slug, ip_hash: ipHash, city, country });
+  } catch (e) {
+    console.error('logProfileView error', e);
+  }
+}
 
 function esc(s) {
   return String(s || '').replace(/[&<>"']/g, (c) => ({
@@ -79,6 +127,9 @@ exports.handler = async (event) => {
 
   const newViews = (license.profile_views || 0) + 1;
   try { await supabase.from('licenses').update({ profile_views: newViews }).eq('profile_slug', slug); } catch (e) {}
+  // "Kim baxıb" bildirişi üçün log yazılışı. Await edirik, çünki Netlify Functions
+  // cavab qaytarıldıqdan sonra icranı dayandıra bilər — await olmasa log bəzən yazılmaz.
+  await logProfileView(slug, event);
 
   const d = license.profile_data || {};
 

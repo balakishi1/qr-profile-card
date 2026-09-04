@@ -1,6 +1,25 @@
 # QR Profile Card — Quraşdırma
 
-## v23 dəyişiklikləri (bu versiya) — Dostluq sistemi + Mesajlaşma (Mərhələ 1)
+## v24 dəyişiklikləri (bu versiya) — Bug düzəlişləri + Mesaj əlavələri + "Kim baxıb" bildirişi
+
+**Düzəldilən bug-lar (v23-də bildirdiyin problemlər):**
+- ✅ Söhbətə klikləyib açıla bilməmə problemi — səbəb: dostun adında dırnaq/apostrof olduqda `onclick` atributu pozulurdu. İndi söhbətlər JS-də keşlənir, `onclick` yalnız təhlükəsiz ID istifadə edir.
+- ✅ "Salam" yazanda mesajın 3-4 dəfə göndərilməsi/görünməsi — səbəb: iki ayrı taymer eyni anda yeni mesajları yoxlayırdı, nəticədə eyni mesaj təkrar-təkrar əlavə olunurdu. İndi: tək taymer + mesaj ID-lərinə görə dublikat filtri + eyni anda iki sorğunun getməsinin qarşısını alan qıfıl (mutex).
+- ✅ Göndərdiyin dostluq sorğuları heç yerdə görünmürdü — "Dostlar" bölməsinə **"Göndərdiyim sorğular"** siyahısı əlavə olundu (geri çağırmaq düyməsi ilə).
+
+**Yeni funksiyalar:**
+- 📷 **Şəkil**, 🎥 **Video**, 📎 **Fayl** göndərmək — çat daxilində ➕ düyməsindən.
+- 🎤 **Səsli mesaj** — mikrofon düyməsi ilə başlat/dayandır/imtina, WhatsApp-dakı kimi.
+- 📍 **Konum göndərmək** — brauzerdən icazə alıb, Google Maps linki kimi paylaşılır.
+- 👥 **Qrup şəkli** — yeni qrup yaradanda şəkil seçmək mümkündür.
+- 👁 **"Profilinə kim baxıb" bildirişi** — yeni "Baxışlar" bölməsi. Ziyarətçilərin **adları göstərilmir** (onlar anonim ictimai ziyarətçilərdir, hesabları yoxdur), amma təxmini **şəhər/ölkə** (IP-dən, pulsuz ip-api.com ilə) və neçə dəfə baxdıqları göstərilir. Yeni baxışlar bölmədə "● yeni" işarəsi ilə görünür.
+
+**Texniki qeyd — "kim baxıb" məhdudiyyəti:** İctimai profilə baxanların əksəriyyəti bu platformada hesabı olmayan tamamilə anonim insanlardır (WhatsApp/Instagram-dan fərqli olaraq, sənin profilini QR koddan/linkdən açan HƏR KƏS ola bilər) — texniki olaraq onların **adını** bilmək mümkün deyil, yalnız IP-dən təxmini məkan müəyyən edilə bilər. Bunu şəffaf demək istədim ki, gözləntin düzgün olsun.
+
+**VACİB — bu versiyanı yükləmədən əvvəl:**
+Supabase SQL Editor-də yenidən `supabase-schema.sql`-i tam işə sal (yeni: `messages` cədvəlinə `msg_type/attachment_url/attachment_name/meta` sütunları, yeni `profile_views_log` cədvəli). Mövcud data silinmir.
+
+## v23 dəyişiklikləri — Dostluq sistemi + Mesajlaşma (Mərhələ 1)
 Bu versiya sənin özün etdiyin dəyişikliklərin (GitHub repo-dan çəkilib) üzərinə qurulub — heç nəyi əzməmişəm, `profile.js`-ə əlavə etdiyin debug logu da toxunulmadan qalıb.
 
 **Yeni funksiyalar:**

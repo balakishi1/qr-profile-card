@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 const { requireAuth } = require('./lib/socialAuth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -6,6 +7,20 @@ const ONLINE_WINDOW_MS = 90 * 1000;
 
 function esc(s) { return String(s || '').slice(0, 4000); }
 function safeSlug(s) { return String(s || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60); }
+
+// Qrup şəklini (kiçik base64 thumbnail) 'media' bucket-inə yükləyir
+async function uploadGroupAvatar(dataUri) {
+  const m = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/.exec(String(dataUri || ''));
+  if (!m) return null;
+  const ext = m[1] === 'image/png' ? 'png' : (m[1] === 'image/webp' ? 'webp' : 'jpg');
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > 900 * 1024) return null;
+  const path = `groups/${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+  const { error } = await supabase.storage.from('media').upload(path, buf, { contentType: m[1], upsert: false });
+  if (error) return null;
+  const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
+  return pub.publicUrl;
+}
 
 async function areFriends(slugA, slugB) {
   const { data } = await supabase
@@ -78,18 +93,21 @@ exports.handler = async (event) => {
       const name = esc(body.name).trim().slice(0, 80) || 'Yeni qrup';
       const memberSlugs = Array.isArray(body.member_slugs) ? body.member_slugs.map(safeSlug).filter(s => s && s !== mySlug) : [];
 
+      let avatar = null;
+      if (body.avatar_base64) avatar = await uploadGroupAvatar(body.avatar_base64);
+
       // Yalnız dostlarını qrupa əlavə edə bilər
       const validMembers = [];
       for (const s of memberSlugs) {
         if (await areFriends(mySlug, s)) validMembers.push(s);
       }
 
-      const { data: conv, error } = await supabase.from('conversations').insert({ type: 'group', name, created_by: mySlug }).select().single();
+      const { data: conv, error } = await supabase.from('conversations').insert({ type: 'group', name, avatar, created_by: mySlug }).select().single();
       if (error) return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
 
       const rows = [{ conversation_id: conv.id, slug: mySlug, role: 'admin' }, ...validMembers.map(s => ({ conversation_id: conv.id, slug: s, role: 'member' }))];
       await supabase.from('conversation_members').insert(rows);
-      return { statusCode: 200, body: JSON.stringify({ success: true, conversation_id: conv.id, added: validMembers.length }) };
+      return { statusCode: 200, body: JSON.stringify({ success: true, conversation_id: conv.id, avatar, added: validMembers.length }) };
     }
 
     // ---------- Qrupa üzv əlavə et (yalnız admin, yalnız öz dostlarını) ----------
@@ -204,7 +222,7 @@ exports.handler = async (event) => {
       if (!member) return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'not_member' }) };
 
       const before = body.before || null;
-      let q = supabase.from('messages').select('id, sender_slug, body, created_at').eq('conversation_id', body.conversation_id).order('created_at', { ascending: false }).limit(50);
+      let q = supabase.from('messages').select('id, sender_slug, body, created_at, msg_type, attachment_url, attachment_name, meta').eq('conversation_id', body.conversation_id).order('created_at', { ascending: false }).limit(50);
       if (before) q = q.lt('created_at', before);
       const { data: rows } = await q;
 
@@ -219,7 +237,8 @@ exports.handler = async (event) => {
         id: r.id, senderSlug: r.sender_slug, mine: r.sender_slug === mySlug,
         senderName: (nameMap[r.sender_slug] || {}).name || '',
         senderAvatar: (nameMap[r.sender_slug] || {}).avatar || null,
-        body: r.body, createdAt: r.created_at
+        body: r.body, createdAt: r.created_at,
+        msgType: r.msg_type || 'text', attachmentUrl: r.attachment_url || null, attachmentName: r.attachment_name || null, meta: r.meta || null
       }));
 
       await supabase.from('conversation_members').update({ last_read_at: new Date().toISOString() }).eq('conversation_id', body.conversation_id).eq('slug', mySlug);
@@ -227,22 +246,48 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ success: true, messages }) };
     }
 
-    // ---------- Mesaj göndər ----------
+    // ---------- Mesaj göndər (mətn və ya əlavə: şəkil/video/səs/fayl/konum) ----------
     if (action === 'send') {
       const member = await isMember(body.conversation_id, mySlug);
       if (!member) return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'not_member' }) };
+
+      const msgType = ['text', 'image', 'video', 'audio', 'file', 'location'].includes(body.msg_type) ? body.msg_type : 'text';
       const text = esc(body.body).trim();
-      if (!text) return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'empty' }) };
+      const attachmentUrl = msgType !== 'text' ? String(body.attachment_url || '').slice(0, 600) : null;
+      const attachmentName = msgType !== 'text' ? String(body.attachment_name || '').slice(0, 200) : null;
+      let meta = null;
+      if (msgType === 'location' && body.meta && typeof body.meta.lat === 'number' && typeof body.meta.lng === 'number') {
+        meta = { lat: body.meta.lat, lng: body.meta.lng, label: String(body.meta.label || '').slice(0, 120) };
+      } else if (['audio', 'video'].includes(msgType) && body.meta && body.meta.duration) {
+        meta = { duration: Number(body.meta.duration) || 0 };
+      }
+
+      if (msgType === 'text' && !text) return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'empty' }) };
+      if (msgType !== 'text' && msgType !== 'location' && !attachmentUrl) return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_attachment' }) };
+      if (msgType === 'location' && !meta) return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_location' }) };
 
       const { data: msg, error } = await supabase
         .from('messages')
-        .insert({ conversation_id: body.conversation_id, sender_slug: mySlug, body: text })
+        .insert({
+          conversation_id: body.conversation_id, sender_slug: mySlug,
+          body: text || (msgType === 'location' ? '📍 Konum' : ''),
+          msg_type: msgType, attachment_url: attachmentUrl, attachment_name: attachmentName, meta
+        })
         .select().single();
       if (error) return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
 
       await supabase.from('conversation_members').update({ last_read_at: new Date().toISOString() }).eq('conversation_id', body.conversation_id).eq('slug', mySlug);
 
-      return { statusCode: 200, body: JSON.stringify({ success: true, message: { id: msg.id, senderSlug: mySlug, mine: true, body: text, createdAt: msg.created_at } }) };
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          message: {
+            id: msg.id, senderSlug: mySlug, mine: true, body: msg.body, createdAt: msg.created_at,
+            msgType, attachmentUrl, attachmentName, meta
+          }
+        })
+      };
     }
 
     // ---------- Yeni mesajları poll et (son bilinən mesaj vaxtından bəri) ----------
@@ -251,7 +296,7 @@ exports.handler = async (event) => {
       if (!member) return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'not_member' }) };
       const since = body.since || '1970-01-01';
       const { data: rows } = await supabase
-        .from('messages').select('id, sender_slug, body, created_at')
+        .from('messages').select('id, sender_slug, body, created_at, msg_type, attachment_url, attachment_name, meta')
         .eq('conversation_id', body.conversation_id).gt('created_at', since)
         .order('created_at', { ascending: true }).limit(100);
 
@@ -266,7 +311,8 @@ exports.handler = async (event) => {
         id: r.id, senderSlug: r.sender_slug, mine: r.sender_slug === mySlug,
         senderName: (nameMap[r.sender_slug] || {}).name || '',
         senderAvatar: (nameMap[r.sender_slug] || {}).avatar || null,
-        body: r.body, createdAt: r.created_at
+        body: r.body, createdAt: r.created_at,
+        msgType: r.msg_type || 'text', attachmentUrl: r.attachment_url || null, attachmentName: r.attachment_name || null, meta: r.meta || null
       }));
 
       if (messages.length) {

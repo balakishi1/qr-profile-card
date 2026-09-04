@@ -110,10 +110,34 @@
   .msg-row.theirs .msg-bubble{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:5px;}
   .msg-sender{font-size:10.5px;color:var(--muted);margin-bottom:2px;padding:0 4px;}
   .msg-time{font-size:9.5px;color:var(--muted);margin-top:3px;padding:0 4px;}
-  .chat-input-bar{flex:0 0 auto;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--card);padding-bottom:calc(10px + env(safe-area-inset-bottom));}
+  .chat-input-bar{flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--border);background:var(--card);padding-bottom:calc(10px + env(safe-area-inset-bottom));position:relative;}
   .chat-input-bar textarea{flex:1;resize:none;max-height:100px;min-height:40px;padding:10px 14px;border-radius:20px;background:var(--card2);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:inherit;}
   .chat-send-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+  .chat-attach-btn, .chat-mic-btn{background:var(--card2);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
   .chat-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:20px;}
+
+  .attach-menu{display:none;position:absolute;bottom:64px;left:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:0 12px 28px rgba(0,0,0,.35);flex-direction:column;gap:2px;z-index:5;}
+  .attach-menu.open{display:flex;}
+  .attach-item{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--text);padding:9px 14px;border-radius:9px;font-size:13.5px;cursor:pointer;font-family:inherit;text-align:left;white-space:nowrap;}
+  .attach-item:hover{background:var(--card2);}
+  .attach-item span{font-size:16px;}
+
+  .voice-recording-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-top:1px solid var(--border);font-size:13px;color:var(--text);}
+  .rec-dot{width:9px;height:9px;border-radius:50%;background:var(--red);animation:recPulse 1s infinite;}
+  @keyframes recPulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  .voice-recording-bar button{margin-left:auto;}
+  .voice-recording-bar button + button{margin-left:6px;}
+
+  /* Mesaj tipləri: şəkil / video / səs / fayl / konum */
+  .msg-bubble.att-image img{max-width:220px;max-height:280px;border-radius:12px;display:block;cursor:pointer;}
+  .msg-bubble.att-video video{max-width:240px;max-height:280px;border-radius:12px;display:block;}
+  .msg-bubble.att-audio{display:flex;align-items:center;gap:8px;padding:8px 12px;}
+  .msg-bubble.att-audio audio{max-width:210px;height:36px;}
+  .msg-bubble.att-file{display:flex;align-items:center;gap:10px;}
+  .msg-bubble.att-file a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:8px;}
+  .msg-bubble.att-location{display:flex;align-items:center;gap:10px;}
+  .msg-bubble.att-location a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:8px;font-weight:600;}
+  .msg-bubble.uploading{opacity:.6;}
 
   /* Modal (yeni qrup, dost tap və s.) */
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:210;display:none;align-items:flex-end;justify-content:center;}
@@ -243,6 +267,7 @@
       <div class="tab" data-tab="compose">Post üzərinə</div>
       <div class="tab" data-tab="friends">👥 Dostlar<span class="badge-dot" id="friendsBadge" style="display:none;">0</span></div>
       <div class="tab" data-tab="messages">💬 Mesajlar<span class="badge-dot" id="messagesBadge" style="display:none;">0</span></div>
+      <div class="tab" data-tab="views">👁 Baxışlar<span class="badge-dot" id="viewsBadge" style="display:none;">0</span></div>
     </div>
 
     <!-- PROFILE PANEL -->
@@ -493,6 +518,10 @@
           <div class="section-label">Gələn sorğular</div>
           <div id="incomingRequestsList"></div>
         </div>
+        <div id="outgoingRequestsWrap" style="display:none;">
+          <div class="section-label">Göndərdiyim sorğular</div>
+          <div id="outgoingRequestsList"></div>
+        </div>
         <div class="section-label" style="margin-top:0;">Dostlarım</div>
         <div id="friendsListWrap"><div class="empty-hint">Yüklənir...</div></div>
       </div>
@@ -509,6 +538,15 @@
       </div>
     </div>
 
+    <!-- PROFILE VIEWS PANEL -->
+    <div class="panel" id="panel-views">
+      <div class="card">
+        <div class="section-label" style="margin-top:0;">Profilinə kim baxıb</div>
+        <p class="muted" style="font-size:12px;margin:-4px 0 12px;">Ziyarətçilərin adları göstərilmir (anonimdirlər) — yalnız təxmini şəhər/ölkə və neçə dəfə baxdıqları göstərilir.</p>
+        <div id="profileViewsListWrap"><div class="empty-hint">Yüklənir...</div></div>
+      </div>
+    </div>
+
     <div style="text-align:center;margin-top:20px;">
       <span class="badge">✅ Bu cihaz aktivdir</span>
     </div>
@@ -520,6 +558,11 @@
   <div class="modal-sheet">
     <div class="modal-close-row"><button class="icon-btn" onclick="closeNewGroupModal()">✕</button></div>
     <h3>Yeni qrup yarat</h3>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <div class="person-avatar" id="newGroupAvatarPreview" style="width:52px;height:52px;font-size:20px;">👥</div>
+      <label class="btn secondary small" for="newGroupAvatarInput">📷 Qrup şəkli seç</label>
+      <input type="file" id="newGroupAvatarInput" accept="image/*" style="display:none;" onchange="handleNewGroupAvatarChange(event)">
+    </div>
     <div class="field">
       <label>Qrup adı</label>
       <input type="text" id="newGroupName" placeholder="məs: Casa Eleganza komandası">
@@ -545,8 +588,26 @@
     <div class="chat-header-actions" id="chatHeaderActions"></div>
   </div>
   <div class="chat-body" id="chatBody"><div class="chat-empty">Yüklənir...</div></div>
+
+  <div class="attach-menu" id="attachMenu">
+    <button class="attach-item" onclick="triggerAttachInput('image')"><span>📷</span>Şəkil</button>
+    <button class="attach-item" onclick="triggerAttachInput('video')"><span>🎥</span>Video</button>
+    <button class="attach-item" onclick="triggerAttachInput('file')"><span>📎</span>Fayl</button>
+    <button class="attach-item" onclick="sendLocationMessage()"><span>📍</span>Konum</button>
+  </div>
+  <div class="voice-recording-bar" id="voiceRecordingBar" style="display:none;">
+    <span class="rec-dot"></span> Səs yazılır... <span id="voiceRecordTimer">0:00</span>
+    <button class="icon-btn decline" onclick="cancelVoiceRecording()">✕ İmtina</button>
+    <button class="icon-btn accept" onclick="stopVoiceRecording()">✓ Göndər</button>
+  </div>
+  <input type="file" id="attachImageInput" accept="image/*" style="display:none;" onchange="handleAttachFile(event,'image')">
+  <input type="file" id="attachVideoInput" accept="video/*" style="display:none;" onchange="handleAttachFile(event,'video')">
+  <input type="file" id="attachFileInput" accept="*/*" style="display:none;" onchange="handleAttachFile(event,'file')">
+
   <div class="chat-input-bar">
+    <button class="chat-attach-btn" onclick="toggleAttachMenu()">➕</button>
     <textarea id="chatInput" rows="1" placeholder="Mesaj yaz..." onkeydown="handleChatInputKey(event)" oninput="autoGrowChatInput(this)"></textarea>
+    <button class="chat-mic-btn" id="chatMicBtn" onclick="startVoiceRecording()" title="Səsli mesaj">🎤</button>
     <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
   </div>
 </div>
@@ -905,8 +966,9 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'qr') renderQR();
   if (t.dataset.tab === 'compose') prepareHandleQR();
-  if (t.dataset.tab === 'friends') { loadIncomingRequests(); loadFriendsList(); }
+  if (t.dataset.tab === 'friends') { loadIncomingRequests(); loadOutgoingRequests(); loadFriendsList(); }
   if (t.dataset.tab === 'messages') loadConversations();
+  if (t.dataset.tab === 'views') loadProfileViews();
 }));
 
 /* ---------- LINKS ---------- */
@@ -2144,6 +2206,51 @@ async function exportComposedPDF() {
   pdf.save('post-qr.pdf');
 }
 
+/* ---------- PROFİL BAXIŞLARI ("kim baxıb") ---------- */
+async function refreshViewsBadge() {
+  try {
+    const r = await fetch(`${FN}/profile-views`, { method: 'POST', body: JSON.stringify(authBody({ action: 'list' })) });
+    const j = await r.json();
+    if (!j.success) return;
+    const badge = document.getElementById('viewsBadge');
+    if (j.unseenCount > 0) { badge.style.display = 'flex'; badge.textContent = j.unseenCount > 99 ? '99+' : j.unseenCount; }
+    else badge.style.display = 'none';
+  } catch (e) {}
+}
+
+async function loadProfileViews() {
+  const wrap = document.getElementById('profileViewsListWrap');
+  try {
+    const r = await fetch(`${FN}/profile-views`, { method: 'POST', body: JSON.stringify(authBody({ action: 'list' })) });
+    const j = await r.json();
+    if (!j.success) { wrap.innerHTML = '<div class="empty-hint">Xəta baş verdi.</div>'; return; }
+
+    if (!j.views.length) {
+      wrap.innerHTML = '<div class="empty-hint">Hələ heç kim profilinə baxmayıb. QR kodunu paylaş!</div>';
+    } else {
+      wrap.innerHTML = j.views.map(v => `
+        <div class="person-row">
+          <div class="person-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent));">👁️</div>
+          <div class="person-info">
+            <div class="person-name">${escHtml(v.location)}${!v.seen ? ' <span style="color:var(--accent);">● yeni</span>' : ''}</div>
+            <div class="person-sub">${v.viewCount > 1 ? v.viewCount + ' dəfə baxıb · ' : ''}son baxış: ${timeAgoShort(v.lastViewedAt)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // Panel açılan kimi "yeni" işarələrini oxunmuş kimi qeyd et (bir neçə saniyə gecikmə ilə,
+    // ki istifadəçi "yeni" nişanını görməyə macal tapsın)
+    if (j.unseenCount > 0) {
+      setTimeout(async () => {
+        try { await fetch(`${FN}/profile-views`, { method: 'POST', body: JSON.stringify(authBody({ action: 'mark_seen' })) }); } catch (e) {}
+        refreshViewsBadge();
+      }, 2500);
+    }
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty-hint">Şəbəkə xətası.</div>';
+  }
+}
+
 /* ================== SOSİAL MODUL: dostluq + mesajlaşma ================== */
 function authBody(extra) {
   return Object.assign({ license_key: session.license_key, device_id: deviceId, token: session.token }, extra || {});
@@ -2166,18 +2273,18 @@ let presenceTimer = null;
 let friendsCache = [];
 function initSocialModule() {
   loadIncomingRequests();
+  loadOutgoingRequests();
   loadFriendsList();
   loadConversations();
+  refreshViewsBadge();
   if (presenceTimer) clearInterval(presenceTimer);
   presenceTimer = setInterval(() => {
     // Hər hansı sosial fetch onlayn statusunu (last_seen) yeniləyir — burada sadəcə
     // fon rejimində "aktivəm" siqnalını göndəririk və sayğacları təzələyirik.
     loadIncomingRequests();
+    refreshViewsBadge();
     if (document.getElementById('panel-messages').classList.contains('active') && !document.getElementById('chatOverlay').classList.contains('open')) {
       loadConversations();
-    }
-    if (document.getElementById('chatOverlay').classList.contains('open') && currentChatConversationId) {
-      pollChatMessages();
     }
   }, 15000);
 }
@@ -2189,13 +2296,9 @@ function debouncedFriendSearch() {
   friendSearchDebounce = setTimeout(runFriendSearch, 400);
 }
 async function runFriendSearch() {
-  let q = document.getElementById('friendSearchInput').value.trim();
+  const q = document.getElementById('friendSearchInput').value.trim();
   const box = document.getElementById('friendSearchResults');
   if (q.length < 2) { box.innerHTML = ''; return; }
-  // Tam profil linki yapışdırılıbsa (https://.../p/SLUG), yalnız SLUG hissəsini çıxar —
-  // backend "profile_slug" sütununa görə axtarır, tam URL-ə görə yox.
-  const slugMatch = q.match(/\/p\/([a-zA-Z0-9_-]+)/);
-  if (slugMatch) q = slugMatch[1];
   box.innerHTML = '<div class="empty-hint">Axtarılır...</div>';
   try {
     const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'search', q })) });
@@ -2225,9 +2328,38 @@ async function sendFriendRequest(slug, btnEl) {
   try {
     const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'request', to_slug: slug })) });
     const j = await r.json();
-    if (j.success) { runFriendSearch(); loadFriendsList(); }
+    if (j.success) { runFriendSearch(); loadFriendsList(); loadOutgoingRequests(); }
   } catch (e) {}
   if (btnEl) btnEl.disabled = false;
+}
+
+async function loadOutgoingRequests() {
+  try {
+    const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'outgoing' })) });
+    const j = await r.json();
+    if (!j.success) return;
+    const wrap = document.getElementById('outgoingRequestsWrap');
+    const list = document.getElementById('outgoingRequestsList');
+    if (!j.requests.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    list.innerHTML = j.requests.map(p => `
+      <div class="person-row">
+        <div class="person-avatar">${avatarInnerHtml(p)}<span class="dot ${p.isOnline ? 'online' : ''}"></span></div>
+        <div class="person-info"><div class="person-name">${escHtml(p.name)}</div><div class="person-sub">Sorğu göndərilib, gözlənilir...</div></div>
+        <div class="person-actions">
+          <button class="icon-btn decline" onclick="cancelFriendRequest('${p.slug}', this)" title="Sorğunu geri çağır">✕</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {}
+}
+async function cancelFriendRequest(slug, btnEl) {
+  const row = btnEl.closest('.person-row');
+  if (row) row.style.opacity = '.5';
+  try {
+    await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'cancel_request', to_slug: slug })) });
+  } catch (e) {}
+  loadOutgoingRequests();
+  runFriendSearch();
 }
 
 /* ---------- INCOMING REQUESTS ---------- */
@@ -2305,12 +2437,14 @@ async function removeFriend(slug, btnEl) {
 }
 
 /* ---------- CONVERSATIONS ---------- */
+let conversationsCache = [];
 async function loadConversations() {
   const wrap = document.getElementById('conversationsListWrap');
   try {
     const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'conversations' })) });
     const j = await r.json();
     if (!j.success) return;
+    conversationsCache = j.conversations || [];
     const totalUnread = j.conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
     const badge = document.getElementById('messagesBadge');
     if (totalUnread > 0) { badge.style.display = 'flex'; badge.textContent = totalUnread > 99 ? '99+' : totalUnread; }
@@ -2321,7 +2455,7 @@ async function loadConversations() {
       return;
     }
     wrap.innerHTML = j.conversations.map(c => `
-      <div class="conv-row" onclick="openChatOverlay('${c.id}', ${JSON.stringify(c.title)}, ${JSON.stringify(c.avatar)}, '${c.type}', ${c.isOnline})">
+      <div class="conv-row" onclick="openChatOverlayById('${c.id}')">
         <div class="person-avatar">${c.avatar ? `<img src="${escHtml(c.avatar)}">` : (c.type === 'group' ? '👥' : initials(c.title))}${c.type === 'direct' ? `<span class="dot ${c.isOnline ? 'online' : ''}"></span>` : ''}</div>
         <div class="person-info">
           <div class="conv-title-row"><div class="person-name">${escHtml(c.title)}</div><div class="conv-time">${c.lastMessageAt ? timeAgoShort(c.lastMessageAt) : ''}</div></div>
@@ -2330,6 +2464,11 @@ async function loadConversations() {
         ${c.unreadCount ? `<div class="conv-unread">${c.unreadCount}</div>` : ''}
       </div>`).join('');
   } catch (e) {}
+}
+function openChatOverlayById(conversationId) {
+  const c = conversationsCache.find(x => x.id === conversationId);
+  if (!c) return;
+  openChatOverlay(c.id, c.title, c.avatar, c.type, c.isOnline);
 }
 
 async function startDirectChat(slug) {
@@ -2352,6 +2491,9 @@ function openNewGroupModal() {
   document.getElementById('newGroupModal').classList.add('open');
   document.getElementById('newGroupName').value = '';
   document.getElementById('newGroupMsg').style.display = 'none';
+  newGroupAvatarDataUri = '';
+  document.getElementById('newGroupAvatarPreview').innerHTML = '👥';
+  document.getElementById('newGroupAvatarInput').value = '';
   const picker = document.getElementById('newGroupMemberPicker');
   if (!friendsCache.length) { picker.innerHTML = '<div class="empty-hint">Qrup yaratmaq üçün əvvəlcə dostların olmalıdır.</div>'; return; }
   picker.innerHTML = friendsCache.map(p => `
@@ -2372,12 +2514,12 @@ async function submitNewGroup() {
   if (!memberSlugs.length) { msg.textContent = 'Ən azı bir üzv seç.'; return; }
   msg.style.color = 'var(--muted)'; msg.textContent = 'Yaradılır...';
   try {
-    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'create_group', name, member_slugs: memberSlugs })) });
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'create_group', name, member_slugs: memberSlugs, avatar_base64: newGroupAvatarDataUri || undefined })) });
     const j = await r.json();
     if (j.success) {
       closeNewGroupModal();
       loadConversations();
-      openChatOverlay(j.conversation_id, name, null, 'group', false);
+      openChatOverlay(j.conversation_id, name, j.avatar || null, 'group', false);
     } else {
       msg.style.color = '#ef4444'; msg.textContent = 'Xəta baş verdi.';
     }
@@ -2389,10 +2531,12 @@ async function submitNewGroup() {
 /* ---------- FULL-SCREEN CHAT ---------- */
 let currentChatConversationId = null;
 let lastMessageTimestamp = null;
+let chatOpenToken = 0;
 
 function openChatOverlay(conversationId, title, avatar, type, isOnline) {
   currentChatConversationId = conversationId;
   lastMessageTimestamp = null;
+  chatOpenToken++;
   document.getElementById('chatHeaderName').textContent = title || (type === 'group' ? 'Qrup' : '—');
   document.getElementById('chatHeaderStatus').textContent = type === 'group' ? '' : (isOnline ? 'Onlayn' : 'Oflayn');
   document.getElementById('chatHeaderStatus').classList.toggle('online', !!isOnline && type !== 'group');
@@ -2403,23 +2547,52 @@ function openChatOverlay(conversationId, title, avatar, type, isOnline) {
   document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Yüklənir...</div>';
   document.getElementById('chatOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  loadChatHistory();
+  loadChatHistory(chatOpenToken);
 }
 
 function closeChatOverlay() {
   currentChatConversationId = null;
+  chatOpenToken++;
   document.getElementById('chatOverlay').classList.remove('open');
   document.body.style.overflow = '';
   loadConversations();
 }
 
+function attachmentBubbleHtml(m) {
+  const t = m.msgType || 'text';
+  if (t === 'image') {
+    return `<div class="msg-bubble att-image" onclick="window.open('${escHtml(m.attachmentUrl)}','_blank')"><img src="${escHtml(m.attachmentUrl)}" alt=""></div>`;
+  }
+  if (t === 'video') {
+    return `<div class="msg-bubble att-video"><video src="${escHtml(m.attachmentUrl)}" controls playsinline></video></div>`;
+  }
+  if (t === 'audio') {
+    return `<div class="msg-bubble att-audio">🎤<audio src="${escHtml(m.attachmentUrl)}" controls></audio></div>`;
+  }
+  if (t === 'file') {
+    return `<div class="msg-bubble att-file"><a href="${escHtml(m.attachmentUrl)}" target="_blank" rel="noopener">📎 ${escHtml(m.attachmentName || 'Fayl')}</a></div>`;
+  }
+  if (t === 'location' && m.meta) {
+    const url = `https://maps.google.com/?q=${m.meta.lat},${m.meta.lng}`;
+    return `<div class="msg-bubble att-location"><a href="${escHtml(url)}" target="_blank" rel="noopener">📍 Konum — Xəritədə aç</a></div>`;
+  }
+  return `<div class="msg-bubble">${escHtml(m.body)}</div>`;
+}
+
+let renderedMessageIds = new Set();
 function renderMessageBubbles(messages, append) {
   const body = document.getElementById('chatBody');
   const wasAtBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) < 60;
-  const html = messages.map(m => `
+  if (!append) renderedMessageIds = new Set();
+  // Artıq ekranda olan mesajları (id ilə) təkrar əlavə etmirik — eyni anda gedən
+  // iki poll çağırışı (və ya poll+send üst-üstə düşməsi) təkrar bubble yaratmasın deyə.
+  const newOnes = messages.filter(m => !renderedMessageIds.has(m.id));
+  newOnes.forEach(m => renderedMessageIds.add(m.id));
+  if (append && !newOnes.length) return;
+  const html = newOnes.map(m => `
     <div class="msg-row ${m.mine ? 'mine' : 'theirs'}">
       ${!m.mine ? `<div class="msg-sender">${escHtml(m.senderName)}</div>` : ''}
-      <div class="msg-bubble">${escHtml(m.body)}</div>
+      ${attachmentBubbleHtml(m)}
       <div class="msg-time">${new Date(m.createdAt).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}</div>
     </div>`).join('');
   if (append) body.insertAdjacentHTML('beforeend', html);
@@ -2427,20 +2600,23 @@ function renderMessageBubbles(messages, append) {
   if (!append || wasAtBottom) body.scrollTop = body.scrollHeight;
 }
 
-async function loadChatHistory() {
+async function loadChatHistory(myToken) {
   try {
     const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'history', conversation_id: currentChatConversationId })) });
     const j = await r.json();
+    if (myToken !== chatOpenToken) return; // bu müddətdə söhbət dəyişib/bağlanıb — köhnə cavabı görməzdən gəl
     if (!j.success) { document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Yüklənə bilmədi.</div>'; return; }
     renderMessageBubbles(j.messages, false);
     if (j.messages.length) lastMessageTimestamp = j.messages[j.messages.length - 1].createdAt;
   } catch (e) {
-    document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Şəbəkə xətası.</div>';
+    if (myToken === chatOpenToken) document.getElementById('chatBody').innerHTML = '<div class="chat-empty">Şəbəkə xətası.</div>';
   }
 }
 
+let isPolling = false;
 async function pollChatMessages() {
-  if (!currentChatConversationId) return;
+  if (!currentChatConversationId || isPolling) return;
+  isPolling = true;
   try {
     const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'poll', conversation_id: currentChatConversationId, since: lastMessageTimestamp || '1970-01-01' })) });
     const j = await r.json();
@@ -2449,6 +2625,7 @@ async function pollChatMessages() {
       lastMessageTimestamp = j.messages[j.messages.length - 1].createdAt;
     }
   } catch (e) {}
+  isPolling = false;
 }
 // Söhbət açıq ikən daha tez-tez (3 saniyədə bir) yeni mesajları yoxla
 setInterval(() => {
@@ -2468,7 +2645,7 @@ async function sendChatMessage() {
   if (!text || !currentChatConversationId) return;
   input.value = ''; input.style.height = 'auto';
   try {
-    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'send', conversation_id: currentChatConversationId, body: text })) });
+    const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'send', conversation_id: currentChatConversationId, body: text, msg_type: 'text' })) });
     const j = await r.json();
     if (j.success) {
       renderMessageBubbles([j.message], true);
@@ -2476,6 +2653,194 @@ async function sendChatMessage() {
     }
   } catch (e) {}
 }
+
+/* ---------- ƏLAVƏLƏR: şəkil / video / fayl / konum / səsli mesaj ---------- */
+function toggleAttachMenu() {
+  document.getElementById('attachMenu').classList.toggle('open');
+}
+function triggerAttachInput(kind) {
+  document.getElementById('attachMenu').classList.remove('open');
+  const map = { image: 'attachImageInput', video: 'attachVideoInput', file: 'attachFileInput' };
+  document.getElementById(map[kind]).click();
+}
+
+function appendUploadingBubble(label) {
+  const body = document.getElementById('chatBody');
+  const id = 'up_' + Date.now();
+  body.insertAdjacentHTML('beforeend', `<div class="msg-row mine" id="${id}"><div class="msg-bubble uploading">${label}</div></div>`);
+  body.scrollTop = body.scrollHeight;
+  return id;
+}
+function removeUploadingBubble(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+async function handleAttachFile(event, kind) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if (!file || !currentChatConversationId) return;
+
+  const labelMap = { image: '📷 Şəkil yüklənir...', video: '🎥 Video yüklənir...', file: '📎 Fayl yüklənir...' };
+  const upId = appendUploadingBubble(labelMap[kind] || 'Yüklənir...');
+
+  try {
+    const client = await initSupabaseClient();
+    if (!client) { removeUploadingBubble(upId); alert('Yükləmə sistemi hazır deyil.'); return; }
+
+    const r = await fetch(`${FN}/get-upload-url`, {
+      method: 'POST',
+      body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+    });
+    const j = await r.json();
+    if (!j.success) { removeUploadingBubble(upId); alert('Yükləmə linki alına bilmədi.'); return; }
+
+    const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+    if (upErr) { removeUploadingBubble(upId); alert('Fayl yüklənə bilmədi: ' + upErr.message); return; }
+
+    const sendR = await fetch(`${FN}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(authBody({
+        action: 'send', conversation_id: currentChatConversationId, body: '',
+        msg_type: kind, attachment_url: j.publicUrl, attachment_name: file.name
+      }))
+    });
+    const sendJ = await sendR.json();
+    removeUploadingBubble(upId);
+    if (sendJ.success) {
+      renderMessageBubbles([sendJ.message], true);
+      lastMessageTimestamp = sendJ.message.createdAt;
+    }
+  } catch (e) {
+    removeUploadingBubble(upId);
+    alert('Xəta baş verdi.');
+  }
+}
+
+function sendLocationMessage() {
+  document.getElementById('attachMenu').classList.remove('open');
+  if (!currentChatConversationId) return;
+  if (!navigator.geolocation) { alert('Bu brauzer konum bölüşməyi dəstəkləmir.'); return; }
+  const upId = appendUploadingBubble('📍 Konum alınır...');
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const r = await fetch(`${FN}/messages`, {
+        method: 'POST',
+        body: JSON.stringify(authBody({
+          action: 'send', conversation_id: currentChatConversationId, body: '📍 Konum', msg_type: 'location',
+          meta: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        }))
+      });
+      const j = await r.json();
+      removeUploadingBubble(upId);
+      if (j.success) { renderMessageBubbles([j.message], true); lastMessageTimestamp = j.message.createdAt; }
+    } catch (e) { removeUploadingBubble(upId); }
+  }, () => {
+    removeUploadingBubble(upId);
+    alert('Konuma icazə verilmədi.');
+  }, { timeout: 10000 });
+}
+
+/* ---------- SƏSLİ MESAJ (MediaRecorder) ---------- */
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordStartTime = null;
+let recordTimerInterval = null;
+
+async function startVoiceRecording() {
+  if (!currentChatConversationId) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder) { alert('Bu brauzer səs qeydini dəstəkləmir.'); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); };
+    mediaRecorder.start();
+    recordStartTime = Date.now();
+    document.getElementById('voiceRecordingBar').style.display = 'flex';
+    document.getElementById('chatMicBtn').style.display = 'none';
+    recordTimerInterval = setInterval(() => {
+      const secs = Math.floor((Date.now() - recordStartTime) / 1000);
+      document.getElementById('voiceRecordTimer').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    }, 250);
+  } catch (e) {
+    alert('Mikrofona icazə verilmədi.');
+  }
+}
+
+function cancelVoiceRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    recordedChunks = [];
+    mediaRecorder.stop();
+  }
+  clearInterval(recordTimerInterval);
+  document.getElementById('voiceRecordingBar').style.display = 'none';
+  document.getElementById('chatMicBtn').style.display = 'flex';
+}
+
+function stopVoiceRecording() {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+  const durationSec = Math.floor((Date.now() - recordStartTime) / 1000);
+  clearInterval(recordTimerInterval);
+  document.getElementById('voiceRecordingBar').style.display = 'none';
+  document.getElementById('chatMicBtn').style.display = 'flex';
+
+  mediaRecorder.addEventListener('stop', async () => {
+    if (!recordedChunks.length) return;
+    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+    const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+    const upId = appendUploadingBubble('🎤 Səsli mesaj göndərilir...');
+    try {
+      const client = await initSupabaseClient();
+      const r = await fetch(`${FN}/get-upload-url`, {
+        method: 'POST',
+        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+      });
+      const j = await r.json();
+      if (!j.success) { removeUploadingBubble(upId); return; }
+      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+      if (upErr) { removeUploadingBubble(upId); return; }
+      const sendR = await fetch(`${FN}/messages`, {
+        method: 'POST',
+        body: JSON.stringify(authBody({
+          action: 'send', conversation_id: currentChatConversationId, body: '', msg_type: 'audio',
+          attachment_url: j.publicUrl, attachment_name: file.name, meta: { duration: durationSec }
+        }))
+      });
+      const sendJ = await sendR.json();
+      removeUploadingBubble(upId);
+      if (sendJ.success) { renderMessageBubbles([sendJ.message], true); lastMessageTimestamp = sendJ.message.createdAt; }
+    } catch (e) { removeUploadingBubble(upId); }
+  }, { once: true });
+
+  mediaRecorder.stop();
+}
+
+/* ---------- QRUP ŞƏKLİ ---------- */
+let newGroupAvatarDataUri = '';
+function handleNewGroupAvatarChange(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    img.onload = () => {
+      const size = 160;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      newGroupAvatarDataUri = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('newGroupAvatarPreview').innerHTML = `<img src="${newGroupAvatarDataUri}">`;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+/* ---------- /ƏLAVƏLƏR ---------- */
 /* ================== /SOSİAL MODUL ================== */
 
 boot();

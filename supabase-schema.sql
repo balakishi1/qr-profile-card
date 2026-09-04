@@ -153,3 +153,25 @@ create table if not exists messages (
 );
 create index if not exists messages_conv_idx on messages(conversation_id, created_at);
 alter table messages enable row level security;
+
+-- Mesaj əlavələri: şəkil / video / səs qeydi / fayl / konum
+alter table messages add column if not exists msg_type text not null default 'text'; -- text|image|video|audio|file|location
+alter table messages add column if not exists attachment_url text;
+alter table messages add column if not exists attachment_name text;
+alter table messages add column if not exists meta jsonb;
+
+-- Profilə kim baxıb (unikal ziyarətçi = IP-hash üzrə) — "kimlər baxıb, hardan baxıb" bildirişi üçün
+create table if not exists profile_views_log (
+  id uuid primary key default gen_random_uuid(),
+  profile_slug text not null references licenses(profile_slug) on delete cascade,
+  ip_hash text not null,
+  city text,
+  country text,
+  first_viewed_at timestamptz default now(),
+  last_viewed_at timestamptz default now(),
+  view_count int not null default 1,
+  seen_by_owner boolean not null default false,
+  unique(profile_slug, ip_hash)
+);
+create index if not exists profile_views_log_slug_idx on profile_views_log(profile_slug, last_viewed_at desc);
+alter table profile_views_log enable row level security;

@@ -131,6 +131,28 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ success: true, requests: profiles }) };
     }
 
+    if (action === 'outgoing') {
+      const { data: rows } = await supabase
+        .from('friend_requests')
+        .select('to_slug, created_at')
+        .eq('from_slug', mySlug).eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      const slugs = (rows || []).map(r => r.to_slug);
+      let profiles = [];
+      if (slugs.length) {
+        const { data: lic } = await supabase.from('licenses').select('profile_slug, owner_name, profile_data, last_seen').in('profile_slug', slugs);
+        profiles = (lic || []).map(publicProfileCard);
+      }
+      return { statusCode: 200, body: JSON.stringify({ success: true, requests: profiles }) };
+    }
+
+    // Göndərdiyim, hələ qəbul edilməmiş sorğunu geri çağır
+    if (action === 'cancel_request') {
+      const toSlug = safeSlug(body.to_slug);
+      await supabase.from('friend_requests').delete().eq('from_slug', mySlug).eq('to_slug', toSlug).eq('status', 'pending');
+      return { statusCode: 200, body: JSON.stringify({ success: true }) };
+    }
+
     if (action === 'list') {
       const { data: rels } = await supabase
         .from('friend_requests')
