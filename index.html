@@ -54,9 +54,8 @@
   .blocked .icon{color:var(--red);}
 
   /* TABS */
-  .tabs{display:flex;gap:6px;background:var(--card2);padding:5px;border-radius:12px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-  .tabs::-webkit-scrollbar{display:none;}
-  .tab{flex:0 0 auto;text-align:center;padding:10px 14px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;position:relative;}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;background:var(--card2);padding:5px;border-radius:12px;margin-bottom:18px;}
+  .tab{flex:1 1 auto;min-width:88px;text-align:center;padding:10px 10px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;position:relative;}
   .tab.active{background:var(--accent);color:#fff;}
   .tab .badge-dot{position:absolute;top:4px;right:4px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
   .panel{display:none;}
@@ -493,6 +492,10 @@
           <div class="section-label">Gələn sorğular</div>
           <div id="incomingRequestsList"></div>
         </div>
+        <div id="outgoingRequestsWrap" style="display:none;">
+          <div class="section-label">Göndərdiyim sorğular</div>
+          <div id="outgoingRequestsList"></div>
+        </div>
         <div class="section-label" style="margin-top:0;">Dostlarım</div>
         <div id="friendsListWrap"><div class="empty-hint">Yüklənir...</div></div>
       </div>
@@ -905,7 +908,7 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'qr') renderQR();
   if (t.dataset.tab === 'compose') prepareHandleQR();
-  if (t.dataset.tab === 'friends') { loadIncomingRequests(); loadFriendsList(); }
+  if (t.dataset.tab === 'friends') { loadIncomingRequests(); loadOutgoingRequests(); loadFriendsList(); }
   if (t.dataset.tab === 'messages') loadConversations();
 }));
 
@@ -2225,7 +2228,7 @@ async function sendFriendRequest(slug, btnEl) {
   try {
     const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'request', to_slug: slug })) });
     const j = await r.json();
-    if (j.success) { runFriendSearch(); loadFriendsList(); }
+    if (j.success) { runFriendSearch(); loadFriendsList(); loadOutgoingRequests(); }
   } catch (e) {}
   if (btnEl) btnEl.disabled = false;
 }
@@ -2267,6 +2270,39 @@ async function respondFriendRequest(fromSlug, decision, btnEl) {
   } catch (e) {}
   loadIncomingRequests();
   loadFriendsList();
+  runFriendSearch();
+}
+
+async function loadOutgoingRequests() {
+  try {
+    const r = await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'outgoing' })) });
+    const j = await r.json();
+    if (!j.success) return;
+    const wrap = document.getElementById('outgoingRequestsWrap');
+    const list = document.getElementById('outgoingRequestsList');
+    if (!j.requests.length) {
+      wrap.style.display = 'none';
+    } else {
+      wrap.style.display = 'block';
+      list.innerHTML = j.requests.map(p => `
+        <div class="person-row">
+          <div class="person-avatar">${avatarInnerHtml(p)}<span class="dot ${p.isOnline ? 'online' : ''}"></span></div>
+          <div class="person-info"><div class="person-name">${escHtml(p.name)}</div><div class="person-sub">Cavab gözlənilir...</div></div>
+          <div class="person-actions">
+            <button class="icon-btn decline" onclick="cancelOutgoingRequest('${p.slug}',this)">Ləğv et</button>
+          </div>
+        </div>`).join('');
+    }
+  } catch (e) {}
+}
+
+async function cancelOutgoingRequest(toSlug, btnEl) {
+  const row = btnEl ? btnEl.closest('.person-row') : null;
+  if (row) row.style.opacity = '.5';
+  try {
+    await fetch(`${FN}/friends`, { method: 'POST', body: JSON.stringify(authBody({ action: 'remove', slug: toSlug })) });
+  } catch (e) {}
+  loadOutgoingRequests();
   runFriendSearch();
 }
 
@@ -2320,8 +2356,12 @@ async function loadConversations() {
       wrap.innerHTML = '<div class="empty-hint">Hələ söhbətin yoxdur. "Dostlar" bölməsindən birinə yazış.</div>';
       return;
     }
+    // Söhbət obyektlərini id ilə keşləyirik ki, klik zamanı ad/link kimi məlumatları
+    // birbaşa HTML atributuna (dırnaq konflikti yaradan JSON.stringify ilə) yazmaq lazım olmasın.
+    window._convCache = {};
+    j.conversations.forEach(c => { window._convCache[c.id] = c; });
     wrap.innerHTML = j.conversations.map(c => `
-      <div class="conv-row" onclick="openChatOverlay('${c.id}', ${JSON.stringify(c.title)}, ${JSON.stringify(c.avatar)}, '${c.type}', ${c.isOnline})">
+      <div class="conv-row" data-conv-id="${c.id}" onclick="openChatOverlayById('${c.id}')">
         <div class="person-avatar">${c.avatar ? `<img src="${escHtml(c.avatar)}">` : (c.type === 'group' ? '👥' : initials(c.title))}${c.type === 'direct' ? `<span class="dot ${c.isOnline ? 'online' : ''}"></span>` : ''}</div>
         <div class="person-info">
           <div class="conv-title-row"><div class="person-name">${escHtml(c.title)}</div><div class="conv-time">${c.lastMessageAt ? timeAgoShort(c.lastMessageAt) : ''}</div></div>
@@ -2330,6 +2370,12 @@ async function loadConversations() {
         ${c.unreadCount ? `<div class="conv-unread">${c.unreadCount}</div>` : ''}
       </div>`).join('');
   } catch (e) {}
+}
+
+function openChatOverlayById(id) {
+  const c = (window._convCache || {})[id];
+  if (!c) return;
+  openChatOverlay(c.id, c.title, c.avatar, c.type, c.isOnline);
 }
 
 async function startDirectChat(slug) {
@@ -2389,10 +2435,14 @@ async function submitNewGroup() {
 /* ---------- FULL-SCREEN CHAT ---------- */
 let currentChatConversationId = null;
 let lastMessageTimestamp = null;
+let shownMessageIds = new Set();
+let isPolling = false;
+let isSending = false;
 
 function openChatOverlay(conversationId, title, avatar, type, isOnline) {
   currentChatConversationId = conversationId;
   lastMessageTimestamp = null;
+  shownMessageIds = new Set();
   document.getElementById('chatHeaderName').textContent = title || (type === 'group' ? 'Qrup' : '—');
   document.getElementById('chatHeaderStatus').textContent = type === 'group' ? '' : (isOnline ? 'Onlayn' : 'Oflayn');
   document.getElementById('chatHeaderStatus').classList.toggle('online', !!isOnline && type !== 'group');
@@ -2416,7 +2466,12 @@ function closeChatOverlay() {
 function renderMessageBubbles(messages, append) {
   const body = document.getElementById('chatBody');
   const wasAtBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) < 60;
-  const html = messages.map(m => `
+  // Eyni mesaj (id-yə görə) artıq göstərilibsə, təkrar əlavə etmə —
+  // poll ilə optimistik "send" render-i arasında yarışma (race condition) təkrarlanmanın əsas səbəbi idi.
+  const fresh = messages.filter(m => !m.id || !shownMessageIds.has(m.id));
+  fresh.forEach(m => { if (m.id) shownMessageIds.add(m.id); });
+  if (!fresh.length) return;
+  const html = fresh.map(m => `
     <div class="msg-row ${m.mine ? 'mine' : 'theirs'}">
       ${!m.mine ? `<div class="msg-sender">${escHtml(m.senderName)}</div>` : ''}
       <div class="msg-bubble">${escHtml(m.body)}</div>
@@ -2440,7 +2495,8 @@ async function loadChatHistory() {
 }
 
 async function pollChatMessages() {
-  if (!currentChatConversationId) return;
+  if (!currentChatConversationId || isPolling) return;
+  isPolling = true;
   try {
     const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'poll', conversation_id: currentChatConversationId, since: lastMessageTimestamp || '1970-01-01' })) });
     const j = await r.json();
@@ -2448,7 +2504,10 @@ async function pollChatMessages() {
       renderMessageBubbles(j.messages, true);
       lastMessageTimestamp = j.messages[j.messages.length - 1].createdAt;
     }
-  } catch (e) {}
+  } catch (e) {
+  } finally {
+    isPolling = false;
+  }
 }
 // Söhbət açıq ikən daha tez-tez (3 saniyədə bir) yeni mesajları yoxla
 setInterval(() => {
@@ -2465,7 +2524,8 @@ function handleChatInputKey(e) {
 async function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
-  if (!text || !currentChatConversationId) return;
+  if (!text || !currentChatConversationId || isSending) return;
+  isSending = true;
   input.value = ''; input.style.height = 'auto';
   try {
     const r = await fetch(`${FN}/messages`, { method: 'POST', body: JSON.stringify(authBody({ action: 'send', conversation_id: currentChatConversationId, body: text })) });
@@ -2474,7 +2534,10 @@ async function sendChatMessage() {
       renderMessageBubbles([j.message], true);
       lastMessageTimestamp = j.message.createdAt;
     }
-  } catch (e) {}
+  } catch (e) {
+  } finally {
+    isSending = false;
+  }
 }
 /* ================== /SOSİAL MODUL ================== */
 
