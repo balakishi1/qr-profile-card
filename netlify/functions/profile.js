@@ -105,18 +105,17 @@ exports.handler = async (event) => {
   const host = event.headers['x-forwarded-host'] || event.headers.host || 'qrprofilcard.netlify.app';
   const fullProfileUrl = `https://${host}/p/${slug}`;
 
-  // Bu QR Profile Card məhsulunun özünü reklam edən kiçik bölmə — admin əlaqə nömrəsi env-dən gəlir
-  const adminPhone = process.env.ADMIN_CONTACT_PHONE || '';
-  const adminPhoneDigits = adminPhone.replace(/[^\d+]/g, '');
-  const promoBlock = adminPhone ? `
-    <a class="promo-card reveal" href="https://wa.me/${esc(adminPhoneDigits.replace('+', ''))}?text=${encodeURIComponent('Salam, mən də QR Profile Card istəyirəm')}" target="_blank" rel="noopener">
-      <div class="promo-icon">🔗</div>
+  // Bu QR Profile Card məhsulunun özünü reklam edən kiçik bölmə — hər kəs birbaşa
+  // qeydiyyat səhifəsinə keçib öz profilini yarada bilsin deyə (admin telefonundan asılı deyil)
+  const promoBlock = `
+    <a class="promo-card reveal" href="/register" target="_blank" rel="noopener">
+      <div class="promo-icon">✨</div>
       <div class="promo-text">
-        <div class="promo-title">Siz də belə profil istəyirsiniz?</div>
-        <div class="promo-sub">Bizimlə əlaqə saxlayın: ${esc(adminPhone)}</div>
+        <div class="promo-title" data-i18n="promo_title">Sən də özünə belə bir profil yarat!</div>
+        <div class="promo-sub" data-i18n="promo_sub">Pulsuzdur — 2 dəqiqəyə hazır olur →</div>
       </div>
       <div class="promo-arrow">→</div>
-    </a>` : '';
+    </a>`;
 
   // Böyük örtük şəkil VARSA — kiçik dairəvi avatar TƏKRAR göstərilmir (dublikat problemi həll edildi)
   const hasCover = !!d.avatar;
@@ -619,7 +618,8 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
         msg_sent: '✅ Mesajınız göndərildi! Tezliklə sizinlə əlaqə saxlanılacaq.',
         msg_saved_no_email: '⚠️ Mesajınız qeydə alındı, amma email göndərilə bilmədi. Zəhmət olmasa telefonla əlaqə saxlayın.',
         err_generic: 'Xəta baş verdi, bir az sonra cəhd edin.', err_network: 'Şəbəkə xətası.',
-        link_copied: 'Link kopyalandı: ', copy_link: 'Linki kopyala:'
+        link_copied: 'Link kopyalandı: ', copy_link: 'Linki kopyala:',
+        promo_title: 'Sən də özünə belə bir profil yarat!', promo_sub: 'Pulsuzdur — 2 dəqiqəyə hazır olur →'
       },
       en: {
         all: 'All', about_title: 'ABOUT ME', certificates: 'CERTIFICATES', diplomas: 'DIPLOMAS', testimonials: 'TESTIMONIALS',
@@ -633,7 +633,8 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
         msg_sent: '✅ Your message has been sent! We will get back to you shortly.',
         msg_saved_no_email: '⚠️ Your message was saved, but the email could not be sent. Please contact by phone instead.',
         err_generic: 'Something went wrong, please try again shortly.', err_network: 'Network error.',
-        link_copied: 'Link copied: ', copy_link: 'Copy link:'
+        link_copied: 'Link copied: ', copy_link: 'Copy link:',
+        promo_title: 'Create your own profile like this!', promo_sub: 'Free — ready in 2 minutes →'
       },
       ru: {
         all: 'Все', about_title: 'ОБО МНЕ', certificates: 'СЕРТИФИКАТЫ', diplomas: 'ДИПЛОМЫ', testimonials: 'ОТЗЫВЫ КЛИЕНТОВ',
@@ -647,7 +648,8 @@ ${d.avatar ? `<link rel="apple-touch-icon" href="${esc(d.avatar)}">
         msg_sent: '✅ Ваше сообщение отправлено! Мы скоро свяжемся с вами.',
         msg_saved_no_email: '⚠️ Сообщение сохранено, но email не отправлен. Пожалуйста, свяжитесь по телефону.',
         err_generic: 'Произошла ошибка, попробуйте чуть позже.', err_network: 'Ошибка сети.',
-        link_copied: 'Ссылка скопирована: ', copy_link: 'Скопируй ссылку:'
+        link_copied: 'Ссылка скопирована: ', copy_link: 'Скопируй ссылку:',
+        promo_title: 'Создай себе такой же профиль!', promo_sub: 'Бесплатно — готово за 2 минуты →'
       }
     };
 
