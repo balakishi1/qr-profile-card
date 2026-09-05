@@ -1,6 +1,14 @@
 # QR Profile Card — Quraşdırma
 
-## v24 (performans düzəlişi əlavəsi) — sürət optimallaşdırması
+## v24 (əlavə sürət optimallaşdırması #2) — "Daha da sürətli açılış"
+İctimai profil səhifəsinin (`/p/:slug`) açılışını gecikdirən 2 yer tapıldı və düzəldildi:
+
+- **QR kod kitabxanası artıq "lazy-load" olunur** — əvvəllər hər profil açılışında yüklənirdi (heç kim "QR göstər" düyməsinə basmasa belə). İndi yalnız həmin düyməyə basılanda yüklənir.
+- **"Kim baxıb" bildirişi üçün IP-dən şəhər/ölkə tapma (geolocation) artıq səhifənin açılışını GECİKDİRMİR.** Əvvəllər bu axtarış (yeni ziyarətçilər üçün ~1 saniyəyə qədər çəkə bilirdi) səhifə göndərilmədən ƏVVƏL gözlənilirdi. İndi səhifə dərhal göndərilir, geolocation sorğusu isə səhifə artıq göründükdən SONRA, brauzerin özündən fon rejimində göndərilir (`log-profile-view.js`) — istifadəçi bunu heç hiss etmir.
+
+**Texniki qeyd:** İlk cəhddə bunun üçün Netlify-ın "Background Functions" xüsusiyyətini işlətmişdim, sonra araşdırıb gördüm ki, **bu, yalnız Netlify-ın pulsuz olmayan planlarında (Personal $9/ay və yuxarı) mövcuddur**. Ona görə bunu ADİ funksiya + brauzerdən (client-side) çağırış üsulu ilə əvəz etdim ki, pulsuz planda da işləsin.
+
+## v24 dəyişiklikləri (performans optimallaşdırması #1)
 12-13 istifadəçi ilə "ləng işləmə" şikayətinə görə tapılan və düzəldilən performans problemləri:
 - **N+1 sorğu problemi düzəldildi**: "Söhbətlər" siyahısı əvvəllər hər söhbət üçün ayrı-ayrı 2 server sorğusu göndərirdi (5 söhbət = 10 sorğu). İndi 1 toplu sorğu ilə eyni məlumat alınır — 12-13 istifadəçi eyni anda bunu açanda server yükü kəskin azalır.
 - **Arxa fon sorğuları dayandırıldı**: istifadəçi tab-ı arxa plana atanda (başqa proqrama keçəndə) 15 saniyəlik və 3 saniyəlik yoxlama taymerləri artıq işləmir (`document.hidden` yoxlanışı). Tab-a geri qayıdanda dərhal yenilənir.
