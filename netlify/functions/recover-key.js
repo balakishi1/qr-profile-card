@@ -38,13 +38,13 @@ exports.handler = async (event) => {
         subject: '🔑 QR Profile Card — açarın',
         text:
           `Salam ${license.owner_name || ''},\n\nAçarını bərpa etmək üçün sorğu göndərdin.\n\n` +
-          `Açarın: ${license.license_key}\n\nProfilinə daxil olmaq üçün: https://${event.headers['x-forwarded-host'] || event.headers.host}/?key=${encodeURIComponent(license.license_key)}\n\n` +
+          `Açarın: ${license.license_key}\n\nProfilinə daxil olmaq üçün: https://${event.headers['x-forwarded-host'] || event.headers.host}/?key=${encodeURIComponent(license.license_key)}&email=${encodeURIComponent(email)}\n\n` +
           `Əgər bu sorğunu sən göndərməmisənsə, bu email-i sadəcə görməzdən gəl.`,
         html:
           `<p>Salam <b>${(license.owner_name || '').replace(/[<>&]/g, '')}</b>,</p>` +
           `<p>Açarını bərpa etmək üçün sorğu göndərdin.</p>` +
           `<p style="font-size:20px;font-weight:800;letter-spacing:2px;background:#f5f8fd;padding:12px 16px;border-radius:10px;display:inline-block;">${license.license_key}</p>` +
-          `<p><a href="https://${event.headers['x-forwarded-host'] || event.headers.host}/?key=${encodeURIComponent(license.license_key)}">Profilinə daxil ol →</a></p>` +
+          `<p><a href="https://${event.headers['x-forwarded-host'] || event.headers.host}/?key=${encodeURIComponent(license.license_key)}&email=${encodeURIComponent(email)}">Profilinə daxil ol →</a></p>` +
           `<p style="color:#888;font-size:12px;">Əgər bu sorğunu sən göndərməmisənsə, bu email-i sadəcə görməzdən gəl.</p>`
       });
     }

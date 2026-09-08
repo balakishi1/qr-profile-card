@@ -55,5 +55,5 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'inactive' }) };
   }
 
-  return { statusCode: 200, body: JSON.stringify({ success: true, license_key: license.license_key }) };
+  return { statusCode: 200, body: JSON.stringify({ success: true, license_key: license.license_key, email: profile.email }) };
 };

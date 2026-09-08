@@ -40,8 +40,12 @@ exports.handler = async (event) => {
   }
 
   const { license_key, device_id, device_info } = body;
+  const email = String(body.email || '').trim().toLowerCase();
   if (!license_key || !device_id) {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_fields' }) };
+  }
+  if (!email || !email.includes('@')) {
+    return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_email' }) };
   }
 
   const { data: license, error } = await supabase
@@ -58,6 +62,19 @@ exports.handler = async (event) => {
 
   if (!license.is_active) {
     return { statusCode: 403, body: JSON.stringify({ success: false, reason: 'inactive' }) };
+  }
+
+  // Kod (license_key) tək başına kifayət deyil — qeydiyyatda olan email də uyğun gəlməlidir
+  const registeredEmails = [
+    (license.google_email || '').trim().toLowerCase(),
+    (license.profile_data && license.profile_data.contactEmail ? String(license.profile_data.contactEmail) : '').trim().toLowerCase()
+  ].filter(Boolean);
+
+  if (!registeredEmails.includes(email)) {
+    await supabase.from('access_attempts').insert({
+      license_key, device_fingerprint: device_id, device_info, ip, allowed: false, note: 'email_mismatch'
+    }).then(() => {}).catch(() => {});
+    return { statusCode: 401, body: JSON.stringify({ success: false, reason: 'email_mismatch' }) };
   }
 
   const maxDevices = license.max_devices || 1;

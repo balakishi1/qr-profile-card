@@ -151,7 +151,9 @@ exports.handler = async (event) => {
 
   const host = (event.headers && (event.headers['x-forwarded-host'] || event.headers.host)) || '';
   const proto = (event.headers && event.headers['x-forwarded-proto']) || 'https';
-  const activateUrl = host ? `${proto}://${host}/?key=${encodeURIComponent(license_key)}` : `/?key=${encodeURIComponent(license_key)}`;
+  const activateUrl = host
+    ? `${proto}://${host}/?key=${encodeURIComponent(license_key)}&email=${encodeURIComponent(finalEmail.trim())}`
+    : `/?key=${encodeURIComponent(license_key)}&email=${encodeURIComponent(finalEmail.trim())}`;
 
   const emailResult = await sendEmail({
     to: finalEmail.trim(),

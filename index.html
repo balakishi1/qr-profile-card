@@ -209,10 +209,11 @@
 <div class="wrap">
   <div class="top">
     <div class="logo">🔗</div>
-    <div>
+    <div style="flex:1;">
       <h1>QR Profile Card</h1>
       <span id="ownerLabel">Sosial şəbəkə & QR alətin</span>
     </div>
+    <button id="logoutBtn" class="btn secondary small" style="display:none;" onclick="doLogout()">🚪 Çıxış</button>
   </div>
 
   <!-- GATE -->
@@ -230,6 +231,9 @@
       </div>
     </div>
 
+    <div class="field">
+      <input type="email" id="loginEmail" placeholder="qeydiyyat email-in" style="text-align:center;">
+    </div>
     <div class="field">
       <input type="text" id="licenseInput" placeholder="məs: A1B2C3D4" style="text-align:center;letter-spacing:2px;text-transform:uppercase;">
     </div>
@@ -688,6 +692,7 @@ async function handleGoogleLoginResponse(response) {
     const j = await r.json();
     if (j.success && j.license_key) {
       document.getElementById('licenseInput').value = j.license_key;
+      if (j.email) document.getElementById('loginEmail').value = j.email;
       doActivate();
     } else if (j.reason === 'not_registered') {
       errBox.textContent = 'Bu Google hesabı ilə qeydiyyat tapılmadı. Zəhmət olmasa əvvəlcə qeydiyyatdan keç.';
@@ -743,24 +748,32 @@ async function boot() {
   document.getElementById('gate').style.display = 'block';
   initGoogleLogin();
 
-  // Qeydiyyatdan (/register) gələn link: ?key=XXXX ilə açar avtomatik doldurulur və aktivləşdirilir
-  const urlKey = new URLSearchParams(window.location.search).get('key');
-  if (urlKey) {
-    document.getElementById('licenseInput').value = urlKey.trim().toUpperCase();
-    // URL-i təmizlə ki, sayfa yenilənəndə açar bir də göndərilməsin
+  // Qeydiyyatdan (/register) və ya "açarımı unutmuşam" linkindən gələn: ?key=XXXX&email=... ilə
+  // sahələr avtomatik doldurulur; hər ikisi varsa avtomatik aktivləşdirilir.
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlKey = urlParams.get('key');
+  const urlEmail = urlParams.get('email');
+  if (urlKey) document.getElementById('licenseInput').value = urlKey.trim().toUpperCase();
+  if (urlEmail) document.getElementById('loginEmail').value = urlEmail.trim();
+  if (urlKey || urlEmail) {
+    // URL-i təmizlə ki, sayfa yenilənəndə məlumatlar bir də göndərilməsin
     window.history.replaceState({}, document.title, window.location.pathname);
-    doActivate();
+    if (urlKey && urlEmail) doActivate();
   }
 }
 
 async function doActivate() {
   const key = document.getElementById('licenseInput').value.trim().toUpperCase();
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const errBox = document.getElementById('gateErr');
   errBox.style.display = 'none';
-  if (!key) return;
+  if (!email && !key) return;
+  if (!email) { errBox.textContent = 'Zəhmət olmasa qeydiyyat email-ini yaz.'; errBox.style.display = 'block'; return; }
+  if (!email.includes('@')) { errBox.textContent = 'Zəhmət olmasa düzgün email yaz.'; errBox.style.display = 'block'; return; }
+  if (!key) { errBox.textContent = 'Zəhmət olmasa açarını (kodu) yaz.'; errBox.style.display = 'block'; return; }
   const device_info = { userAgent: navigator.userAgent, screen: screen.width + 'x' + screen.height, language: navigator.language, platform: navigator.platform };
   try {
-    const r = await fetch(`${FN}/activate`, { method: 'POST', body: JSON.stringify({ license_key: key, device_id: deviceId, device_info }) });
+    const r = await fetch(`${FN}/activate`, { method: 'POST', body: JSON.stringify({ license_key: key, email, device_id: deviceId, device_info }) });
     const j = await r.json();
     if (j.success) {
       session = { license_key: key, token: j.token };
@@ -777,13 +790,32 @@ async function doActivate() {
       document.getElementById('gate').style.display = 'none';
       document.getElementById('blocked').style.display = 'block';
     } else {
-      errBox.textContent = j.reason === 'not_found' ? 'Bu açar tapılmadı.' : (j.reason === 'inactive' ? 'Bu açar deaktivdir.' : 'Xəta baş verdi.');
+      errBox.textContent = j.reason === 'not_found' ? 'Bu açar tapılmadı.'
+        : (j.reason === 'inactive' ? 'Bu açar deaktivdir.'
+        : (j.reason === 'email_mismatch' ? 'Bu email qeydiyyatdakı açarla uyğun gəlmir.'
+        : (j.reason === 'missing_email' ? 'Zəhmət olmasa qeydiyyat email-ini yaz.' : 'Xəta baş verdi.')));
       errBox.style.display = 'block';
     }
   } catch (e) {
     errBox.textContent = 'Şəbəkə xətası.';
     errBox.style.display = 'block';
   }
+}
+
+function doLogout() {
+  if (!confirm('Hesabdan çıxmaq istədiyinə əminsən? Yenidən daxil olmaq üçün email və açar lazım olacaq.')) return;
+  localStorage.removeItem('qpc_session');
+  session = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('blocked').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('ownerLabel').textContent = 'Sosial şəbəkə & QR alətin';
+  document.getElementById('licenseInput').value = '';
+  document.getElementById('loginEmail').value = '';
+  const errBox = document.getElementById('gateErr');
+  errBox.style.display = 'none';
+  document.getElementById('gate').style.display = 'block';
+  initGoogleLogin();
 }
 
 async function selfResetAndRetry() {
@@ -818,6 +850,7 @@ function enterApp(j) {
   document.getElementById('gate').style.display = 'none';
   document.getElementById('blocked').style.display = 'none';
   document.getElementById('app').classList.remove('hidden');
+  document.getElementById('logoutBtn').style.display = 'inline-block';
   document.getElementById('ownerName').value = j.owner_name || '';
   document.getElementById('ownerLabel').textContent = j.owner_name || 'Sosial şəbəkə & QR alətin';
   currentProfileData = j.profile_data && Object.keys(j.profile_data).length ? j.profile_data : { bio: '', links: [] };
