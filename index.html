@@ -1634,12 +1634,17 @@ async function renderSimpleQrCard() {
   await new Promise((resolve) => {
     const qrImg = new Image();
     qrImg.onload = () => { ctx.drawImage(qrImg, qrBoxX, qrBoxY, qrSize, qrSize); resolve(); };
+    qrImg.onerror = () => resolve(); // qrDataUrl local data: URL-dir, praktikada xəta olmamalıdır
     qrImg.src = qrDataUrl;
   });
 
   drawScanCorners(ctx, qrBoxX - 12, qrBoxY - 12, qrSize + 24, 34, 5, qrColor);
 
-  // QR-ın mərkəzinə şəkil (avatar) yerləşdir
+  // QR-ın mərkəzinə şəkil (avatar) yerləşdir.
+  // MÜHÜM: CORS icazəsi olmadan xarici mənbədən (Google profil şəkli, xarici storage və s.) şəkil
+  // canvas-a çəkilsə, canvas "murdarlanır" və aşağıdakı toDataURL() səssizcə uğursuz olur — QR
+  // heç görünmür. Ona görə crossOrigin tələb edirik; server bunu dəstəkləmirsə şəkil sadəcə
+  // yüklənmir (onerror) və avatarsız davam edirik ki, QR hər halda çıxsın.
   if (currentProfileData.avatar) {
     const centerR = qrSize * 0.15;
     const cx = qrBoxX + qrSize / 2, cy = qrBoxY + qrSize / 2;
@@ -1647,11 +1652,22 @@ async function renderSimpleQrCard() {
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(cx, cy, centerR + 8, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(cx, cy, centerR, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => { ctx.drawImage(img, cx - centerR, cy - centerR, centerR * 2, centerR * 2); resolve(); };
-      img.src = currentProfileData.avatar;
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        const timer = setTimeout(() => reject(new Error('avatar timeout')), 6000);
+        img.onload = () => {
+          clearTimeout(timer);
+          ctx.drawImage(img, cx - centerR, cy - centerR, centerR * 2, centerR * 2);
+          resolve();
+        };
+        img.onerror = () => { clearTimeout(timer); reject(new Error('avatar load error')); };
+        img.src = currentProfileData.avatar;
+      });
+    } catch (e) {
+      console.warn('QR avatar yüklənmədi (CORS və ya şəbəkə xətası), avatarsız davam edilir:', e);
+    }
     ctx.restore();
   }
 
@@ -1678,7 +1694,14 @@ async function renderSimpleQrCard() {
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   ctx.fillText('Scan me!', qrBoxX + 94, scanY + 14);
 
-  const dataUrl = canvas.toDataURL('image/png');
+  let dataUrl;
+  try {
+    dataUrl = canvas.toDataURL('image/png');
+  } catch (e) {
+    // Canvas hər hansı səbəbdən "murdarlanıbsa" (tainted), heç olmasa sadə QR-ı göstər
+    console.warn('Kart export edilə bilmədi, sadə QR göstərilir:', e);
+    dataUrl = qrDataUrl;
+  }
   document.getElementById('qrPreview').innerHTML = `<img src="${dataUrl}" style="max-width:100%;border-radius:14px;">`;
   return dataUrl;
 }
@@ -1865,15 +1888,33 @@ async function renderVizitka() {
   ctx.arc(W / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
   ctx.closePath();
   if (currentProfileData.avatar) {
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        ctx.clip();
-        ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
-        resolve();
-      };
-      img.src = currentProfileData.avatar;
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous'; // CORS icazəsi olmadan canvas "murdarlanır" və export sınır
+        const timer = setTimeout(() => reject(new Error('avatar timeout')), 6000);
+        img.onload = () => {
+          clearTimeout(timer);
+          ctx.clip();
+          ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
+          resolve();
+        };
+        img.onerror = () => { clearTimeout(timer); reject(new Error('avatar load error')); };
+        img.src = currentProfileData.avatar;
+      });
+    } catch (e) {
+      console.warn('Vizitka avatarı yüklənmədi (CORS/şəbəkə), baş hərflə davam edilir:', e);
+      ctx.clip();
+      const g2f = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
+      g2f.addColorStop(0, theme.accent1); g2f.addColorStop(1, theme.accent2);
+      ctx.fillStyle = g2f;
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 70px -apple-system, Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const initialFallback = (name || '?').trim().slice(0, 1).toUpperCase();
+      ctx.fillText(initialFallback, W / 2, avatarY + avatarSize / 2 + 4);
+    }
   } else {
     const g2 = ctx.createLinearGradient(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
     g2.addColorStop(0, theme.accent1); g2.addColorStop(1, theme.accent2);
@@ -1998,7 +2039,18 @@ async function renderVizitka() {
   ctx.fillText('Q R   P R O F I L E   C A R D', W / 2, footerY);
 
   document.getElementById('vizitkaPreviewBox').innerHTML =
-    `<img src="${canvas.toDataURL('image/png')}" style="max-width:100%;border-radius:20px;box-shadow:0 16px 40px rgba(0,0,0,.5);">`;
+    `<img src="${safeCanvasToDataUrl(canvas, qrDataUrl)}" style="max-width:100%;border-radius:20px;box-shadow:0 16px 40px rgba(0,0,0,.5);">`;
+}
+
+// Canvas CORS-la "murdarlanıbsa" toDataURL() xəta atır — belə halda heç olmasa sadə QR-ı göstər,
+// tam boş qalmasın.
+function safeCanvasToDataUrl(canvas, fallbackDataUrl) {
+  try {
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    console.warn('Canvas export edilə bilmədi, fallback göstərilir:', e);
+    return fallbackDataUrl || '';
+  }
 }
 
 document.getElementById('taglineInput').addEventListener('input', () => renderVizitka());
@@ -2007,15 +2059,25 @@ document.getElementById('ownerName').addEventListener('input', () => renderVizit
 
 function downloadVizitka() {
   const canvas = document.getElementById('vizitkaCanvas');
-  const link = document.createElement('a');
-  link.download = 'vizitka-qr.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  try {
+    const link = document.createElement('a');
+    link.download = 'vizitka-qr.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (e) {
+    alert('Vizitka yüklənə bilmədi (şəkil CORS xətası). Profil şəklini dəyişib yenidən sınayın.');
+  }
 }
 
 async function shareVizitka() {
   const canvas = document.getElementById('vizitkaCanvas');
-  const dataUrl = canvas.toDataURL('image/png');
+  let dataUrl;
+  try {
+    dataUrl = canvas.toDataURL('image/png');
+  } catch (e) {
+    alert('Vizitka paylaşıla bilmədi (şəkil CORS xətası). Profil şəklini dəyişib yenidən sınayın.');
+    return;
+  }
   const blob = await (await fetch(dataUrl)).blob();
   const file = new File([blob], 'vizitka-qr.png', { type: 'image/png' });
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
