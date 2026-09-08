@@ -27,6 +27,23 @@ alter table licenses add column if not exists google_sub text;
 alter table licenses add column if not exists google_email text;
 create unique index if not exists licenses_google_sub_idx on licenses (google_sub) where google_sub is not null;
 
+-- Hər profil üçün əsl unikal identifikator EMAIL-dir (kiçik hərflə saxlanılır).
+-- license_key eyni ola bilər (artıq unikallığı məcburi deyil, sadəcə giriş üçün istifadə olunur),
+-- amma eyni email ilə ikinci profil qeydiyyatdan keçə bilməz.
+alter table licenses add column if not exists owner_email_lc text;
+-- Mövcud sətirlər üçün geriyə doldur (google_email və ya profile_data->>contactEmail-dən)
+update licenses
+  set owner_email_lc = lower(coalesce(google_email, profile_data->>'contactEmail'))
+  where owner_email_lc is null
+    and coalesce(google_email, profile_data->>'contactEmail') is not null;
+
+-- DİQQƏT: unique index yaratmazdan əvvəl mövcud dublikatları yoxla:
+--   select owner_email_lc, count(*) from licenses group by owner_email_lc having count(*) > 1;
+-- Nəticə boşdursa aşağıdakını işə sal. Dublikat varsa, əvvəlcə hansı license_key-i saxlayacağını
+-- özün seç və digərlərini silmədən (məlumat itirməmək üçün) owner_email_lc-i o sətirlərdə null et:
+--   update licenses set owner_email_lc = null where id = '<saxlanmayacaq sətrin id-si>';
+create unique index if not exists licenses_owner_email_lc_idx on licenses (owner_email_lc) where owner_email_lc is not null;
+
 -- Bir lisenziyaya bağlanan bütün cihazlar (max_devices sayına qədər)
 create table if not exists license_devices (
   id uuid primary key default gen_random_uuid(),

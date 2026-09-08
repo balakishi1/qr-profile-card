@@ -374,6 +374,7 @@ const I18N = {
     collab_btn: 'Bizimlə əlaqə saxla', collab_whatsapp_msg: 'Salam, biznesim üçün QR Profile Card ilə əməkdaşlıq etmək istəyirəm.',
     err_name_required: 'Zəhmət olmasa adını yaz.', err_email_invalid: 'Zəhmət olmasa düzgün email yaz.',
     err_key_taken: 'Bu açar artıq götürülüb, başqa bir açar yaz.', err_generic: 'Xəta baş verdi, bir az sonra cəhd et.', err_network: 'Şəbəkə xətası.',
+    err_email_taken: 'Bu email ilə artıq qeydiyyat var. "Açarımı unutmuşam" bölməsindən açarını bərpa edə bilərsən.',
     rev_err_name: 'Zəhmət olmasa adını yaz.', rev_err_comment: 'Zəhmət olmasa rəyini yaz.',
     rev_sending: 'Göndərilir...', rev_success: 'Təşəkkürlər! Rəyin əlavə olundu.',
     or: 'və ya', google_verified: 'Google hesabından təsdiqləndi', err_google_taken: 'Bu Google hesabı ilə artıq qeydiyyat var. "Daxil ol" düyməsindən profilinə keç.'
@@ -418,6 +419,7 @@ const I18N = {
     collab_btn: 'Contact us', collab_whatsapp_msg: 'Hi, I would like to partner with QR Profile Card for my business.',
     err_name_required: 'Please enter your name.', err_email_invalid: 'Please enter a valid email.',
     err_key_taken: 'This key is already taken, please choose another one.', err_generic: 'Something went wrong, please try again shortly.', err_network: 'Network error.',
+    err_email_taken: 'This email is already registered. Use "Forgot my key" to recover your existing key.',
     rev_err_name: 'Please enter your name.', rev_err_comment: 'Please write your feedback.',
     rev_sending: 'Sending...', rev_success: 'Thank you! Your review has been added.',
     or: 'or', google_verified: 'Verified via Google account', err_google_taken: 'This Google account is already registered. Use "Log in" to open your profile.'
@@ -462,6 +464,7 @@ const I18N = {
     collab_btn: 'Связаться с нами', collab_whatsapp_msg: 'Здравствуйте, хочу сотрудничать с QR Profile Card для своего бизнеса.',
     err_name_required: 'Пожалуйста, введи имя.', err_email_invalid: 'Пожалуйста, введи корректный email.',
     err_key_taken: 'Этот ключ уже занят, выбери другой.', err_generic: 'Произошла ошибка, попробуй чуть позже.', err_network: 'Ошибка сети.',
+    err_email_taken: 'Этот email уже зарегистрирован. Используй "Забыл свой ключ", чтобы восстановить его.',
     rev_err_name: 'Пожалуйста, введи имя.', rev_err_comment: 'Пожалуйста, напиши отзыв.',
     rev_sending: 'Отправка...', rev_success: 'Спасибо! Твой отзыв добавлен.',
     or: 'или', google_verified: 'Подтверждено через Google', err_google_taken: 'Этот Google-аккаунт уже зарегистрирован. Используй "Войти", чтобы открыть профиль.'
@@ -558,6 +561,8 @@ async function submitRequest() {
       document.getElementById('openProfileBtn').href = j.activateUrl || `/?key=${encodeURIComponent(j.license_key)}`;
     } else if (j.reason === 'key_taken') {
       errMsg.textContent = t.err_key_taken; errMsg.style.display = 'block';
+    } else if (j.reason === 'email_already_registered') {
+      errMsg.textContent = t.err_email_taken; errMsg.style.display = 'block';
     } else if (j.reason === 'google_already_registered') {
       errMsg.textContent = t.err_google_taken; errMsg.style.display = 'block';
     } else {

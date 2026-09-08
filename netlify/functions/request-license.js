@@ -102,39 +102,75 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'missing_email' }) };
   }
 
+  // Əsl unikal identifikator EMAIL-dir — açar (license_key) eyni ola bilər, amma
+  // eyni email ilə ikinci dəfə qeydiyyat mümkün deyil.
+  const ownerEmailLc = finalEmail.trim().toLowerCase();
+  const { data: existingByEmail } = await supabase
+    .from('licenses')
+    .select('license_key')
+    .eq('owner_email_lc', ownerEmailLc)
+    .maybeSingle();
+  if (existingByEmail) {
+    return { statusCode: 409, body: JSON.stringify({ success: false, reason: 'email_already_registered' }) };
+  }
+
   let license_key = crypto.randomBytes(3).toString('hex').toUpperCase();
+  let isCustomKey = false;
   if (custom_key && custom_key.trim()) {
     license_key = custom_key.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    isCustomKey = true;
     if (license_key.length < 3) {
       return { statusCode: 400, body: JSON.stringify({ success: false, reason: 'key_too_short' }) };
     }
   }
   const profile_slug = crypto.randomBytes(6).toString('hex');
 
-  const { data, error } = await supabase
-    .from('licenses')
-    .insert({
-      license_key,
-      owner_name: finalName.trim().slice(0, 100),
-      is_active: true, // avtomatik aktivləşir, admin təsdiqi lazım deyil
-      profile_slug,
-      max_devices: 1,
-      google_sub: googleProfile ? googleProfile.sub : null,
-      google_email: googleProfile ? googleProfile.email : null,
-      profile_data: {
-        bio: { az: '', en: '', ru: '' },
-        avatar: (googleProfile && googleProfile.picture) || undefined,
-        links: [{ type: 'email', url: finalEmail.trim().slice(0, 200), label: 'E-mail', category: '' }],
-        phone: (contact_info || '').slice(0, 50), // telefon indi profildəki "Telefon" sahəsində düzgün görünür
-        contactEmail: finalEmail.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
-        requestNote: (contact_info || '').slice(0, 300)
-      }
-    })
-    .select()
-    .single();
+  const buildInsertPayload = (key) => ({
+    license_key: key,
+    owner_name: finalName.trim().slice(0, 100),
+    is_active: true, // avtomatik aktivləşir, admin təsdiqi lazım deyil
+    profile_slug,
+    max_devices: 1,
+    google_sub: googleProfile ? googleProfile.sub : null,
+    google_email: googleProfile ? googleProfile.email : null,
+    owner_email_lc: ownerEmailLc,
+    profile_data: {
+      bio: { az: '', en: '', ru: '' },
+      avatar: (googleProfile && googleProfile.picture) || undefined,
+      links: [{ type: 'email', url: finalEmail.trim().slice(0, 200), label: 'E-mail', category: '' }],
+      phone: (contact_info || '').slice(0, 50), // telefon indi profildəki "Telefon" sahəsində düzgün görünür
+      contactEmail: finalEmail.trim().slice(0, 200), // qeydiyyatda verdiyi email avtomatik təyin olunur
+      requestNote: (contact_info || '').slice(0, 300)
+    }
+  });
+
+  // Açar (license_key) DB-də hələ də unikaldır (cihaz/admin sistemləri buna söykənir),
+  // amma bunu istifadəçiyə görünməz saxlayırıq: toqquşma olsa sakitcə fərqli açarla yenidən cəhd edilir.
+  // Email unikallığını yuxarıda artıq yoxladıq, ona görə bu retry yalnız KEY toqquşmasını əhatə edir.
+  let data, error;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const attemptKey = attempt === 0
+      ? license_key
+      : (isCustomKey ? `${license_key}${crypto.randomBytes(1).toString('hex').toUpperCase()}` : crypto.randomBytes(3).toString('hex').toUpperCase());
+    const result = await supabase.from('licenses').insert(buildInsertPayload(attemptKey)).select().single();
+    if (!result.error) {
+      data = result.data;
+      license_key = attemptKey;
+      error = null;
+      break;
+    }
+    error = result.error;
+    const isKeyCollision = error.code === '23505' && /license_key/i.test(error.message || error.details || '');
+    if (!isKeyCollision) break; // başqa növ xəta (məs. email yarışı) — dayan
+  }
 
   if (error) {
-    if (error.code === '23505' || /duplicate|unique/i.test(error.message)) {
+    if (error.code === '23505' && /owner_email_lc/i.test(error.message || error.details || '')) {
+      // Nadir hal: iki eyni email ilə eyni anda qeydiyyat cəhdi (race condition)
+      return { statusCode: 409, body: JSON.stringify({ success: false, reason: 'email_already_registered' }) };
+    }
+    if (error.code === '23505') {
+      // 5 cəhddən sonra da açar toqquşması davam edirsə (praktik olaraq demək olar mümkün deyil)
       return { statusCode: 409, body: JSON.stringify({ success: false, reason: 'key_taken' }) };
     }
     return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
