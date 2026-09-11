@@ -1337,6 +1337,46 @@ function renderAlbums() {
   });
 }
 
+/* ---------- ŞƏKİL SIXMA (Supabase egress-i azaltmaq üçün) ----------
+   Kamera şəkilləri adətən 3-8MB olur; bunu yükləməzdən əvvəl maksimum
+   1600px enə və JPEG keyfiyyət 0.8-ə endirmək faylı adətən 150-400KB-a
+   salır — hər profil baxışında bu qədər az data köçürülür (Supabase
+   "cached egress" kvotası bundan asılıdır). Videolar və şəkil olmayan
+   fayllar toxunulmadan keçir. */
+function compressImageFile(file, maxDim = 1600, quality = 0.8) {
+  return new Promise((resolve) => {
+    if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/gif') {
+      resolve(file); // GIF (animasiya) və şəkil olmayanlar toxunulmur
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(file); return; }
+          const newName = file.name.replace(/\.(png|jpe?g|webp|heic|heif)$/i, '') + '.jpg';
+          resolve(new File([blob], newName, { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(file); // parse alınmasa orijinalı göndər
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 async function uploadFilesToAlbum(albumId, fileList) {
   const client = await initSupabaseClient();
   if (!client) {
@@ -1353,14 +1393,15 @@ async function uploadFilesToAlbum(albumId, fileList) {
     const file = files[i];
     statusEl.textContent = `Yüklənir (${i + 1}/${files.length}): ${file.name}...`;
     try {
+      const uploadFile = file.type.startsWith('video') ? file : await compressImageFile(file);
       const r = await fetch(`${FN}/get-upload-url`, {
         method: 'POST',
-        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+        body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: uploadFile.name })
       });
       const j = await r.json();
       if (!j.success) { statusEl.textContent = `Xəta: ${file.name} yüklənmədi`; continue; }
 
-      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, uploadFile, { cacheControl: '31536000' });
       if (upErr) { statusEl.textContent = `Xəta: ${file.name} yüklənmədi (${upErr.message})`; continue; }
 
       album.items.push({
@@ -1454,13 +1495,14 @@ function makeGallerySection(fieldName, gridId, inputId, statusId) {
       const file = files[i];
       statusEl.textContent = `Yüklənir (${i + 1}/${files.length})...`;
       try {
+        const uploadFile = await compressImageFile(file);
         const r = await fetch(`${FN}/get-upload-url`, {
           method: 'POST',
-          body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+          body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: uploadFile.name })
         });
         const j = await r.json();
         if (!j.success) continue;
-        const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+        const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, uploadFile, { cacheControl: '31536000' });
         if (upErr) continue;
         currentProfileData[fieldName].push({ url: j.publicUrl, path: j.path });
         render();
@@ -2794,14 +2836,15 @@ async function handleAttachFile(event, kind) {
     const client = await initSupabaseClient();
     if (!client) { removeUploadingBubble(upId); alert('Yükləmə sistemi hazır deyil.'); return; }
 
+    const uploadFile = kind === 'image' ? await compressImageFile(file) : file;
     const r = await fetch(`${FN}/get-upload-url`, {
       method: 'POST',
-      body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: file.name })
+      body: JSON.stringify({ license_key: session.license_key, device_id: deviceId, token: session.token, filename: uploadFile.name })
     });
     const j = await r.json();
     if (!j.success) { removeUploadingBubble(upId); alert('Yükləmə linki alına bilmədi.'); return; }
 
-    const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+    const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, uploadFile, { cacheControl: '31536000' });
     if (upErr) { removeUploadingBubble(upId); alert('Fayl yüklənə bilmədi: ' + upErr.message); return; }
 
     const sendR = await fetch(`${FN}/messages`, {
@@ -2912,7 +2955,7 @@ function stopVoiceRecording() {
       });
       const j = await r.json();
       if (!j.success) { removeUploadingBubble(upId); alert('Yükləmə linki alına bilmədi.'); return; }
-      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file);
+      const { error: upErr } = await client.storage.from('media').uploadToSignedUrl(j.path, j.token, file, { cacheControl: '31536000' });
       if (upErr) { removeUploadingBubble(upId); alert('Səs faylı yüklənə bilmədi: ' + upErr.message); return; }
       const sendR = await fetch(`${FN}/messages`, {
         method: 'POST',
