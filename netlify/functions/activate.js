@@ -57,6 +57,7 @@ exports.handler = async (event) => {
   const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown';
 
   if (error || !license) {
+    if (error) console.error('activate: licenses sorğusu uğursuz oldu', { license_key, code: error.code, message: error.message, details: error.details, hint: error.hint });
     return { statusCode: 404, body: JSON.stringify({ success: false, reason: 'not_found' }) };
   }
 
